@@ -1,11 +1,12 @@
 // Draws a frame: sea, flows, shallows, wake, islands, marks, pickups, sea
-// life, pirates, boat, birds, cannonballs and spray, weather and lighting,
-// then the HUD on top.
+// life, pirates, the regatta fleet and its dirty air, boat, birds,
+// cannonballs and spray, weather and lighting, then the HUD on top.
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
 import { drawShallows, drawIslands, drawFloes, drawPickups, drawMarks } from './terrain.js';
 import { createWake, updateWake, drawWake, drawBoat, drawGhost } from './boat.js';
+import { createFleetFx, updateFleetFx, drawFleetWakes, drawDirtyAir, drawFleet } from './fleet.js';
 import {
   createEffects,
   updateStreaks,
@@ -36,6 +37,7 @@ export function createRenderer(canvas) {
     wake: createWake(),
     fx: createEffects(),
     life: createLifeFx(),
+    fleet: createFleetFx(),
     light: createLighting(),
     hud: createHud(),
     quality: 1,
@@ -62,6 +64,7 @@ export function resetView(r, game) {
   r.wake = createWake();
   r.fx = createEffects();
   r.life = createLifeFx();
+  r.fleet = createFleetFx();
   r.hud.minimap = null;
   snapCamera(r.cam, game, r.w, r.h);
 }
@@ -73,6 +76,7 @@ export function renderFrame(r, game, dt, time, ui) {
   updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 9000));
   updateParticles(r.fx, dt);
   updateLifeFx(r.life, game, dt);
+  updateFleetFx(r.fleet, game);
 
   ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
   ctx.save();
@@ -91,6 +95,8 @@ export function renderFrame(r, game, dt, time, ui) {
   drawKrakens(ctx, game, time);
   drawSeaBelow(ctx, game, cam, time);
   drawWake(ctx, r.wake, game.clock);
+  drawFleetWakes(ctx, r.fleet, game);
+  drawDirtyAir(ctx, game, time);
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
   drawFloes(ctx, game, cam, time);
@@ -106,6 +112,7 @@ export function renderFrame(r, game, dt, time, ui) {
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
     look: ui && ui.look,
   };
+  drawFleet(ctx, game, time);
   drawBoat(ctx, game.boat, time, boatState);
   drawSkyLife(ctx, r.life, game, cam, time);
   drawCannonballs(ctx, game);

@@ -36,7 +36,8 @@ export const MEDALS = [
     name: 'Gold Wind',
     icon: 'star',
     text: 'Earn all three stars on a voyage.',
-    run: ({ result }) => result.stars >= 3,
+    // A regatta's stars are for your place, not a par time.
+    run: ({ result }) => !result.race && result.stars >= 3,
     progress: (save, levels) => [Math.min(1, count(records(save, levels), (r) => r && r.stars >= 3)), 1],
   },
   {
@@ -59,7 +60,7 @@ export const MEDALS = [
     name: 'Pure Wind',
     icon: 'wind',
     text: 'Earn three stars on a voyage with gust jars, and leave them all shut.',
-    run: ({ def, result }) => result.stars >= 3 && !result.jars && (def.pickups || []).some((p) => p.kind === 'gust'),
+    run: ({ def, result }) => !result.race && result.stars >= 3 && !result.jars && (def.pickups || []).some((p) => p.kind === 'gust'),
   },
   {
     id: 'personal-best',
@@ -184,6 +185,13 @@ export const MEDALS = [
     text: `Sail ${FAR_HORIZON_KM} km east in one Open Sea run.`,
     unit: 'km',
     progress: (save) => [Math.min(FAR_HORIZON_KM, Math.floor(toMeters(save.openSea ? save.openSea.best : 0) / 100) / 10), FAR_HORIZON_KM],
+  },
+  {
+    id: 'line-honours',
+    name: 'Line Honours',
+    icon: 'trophy',
+    text: 'Win a regatta: first home of the fleet.',
+    progress: (save) => [Math.min(1, save.regatta ? save.regatta.wins : 0), 1],
   },
 ];
 

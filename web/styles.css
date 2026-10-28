@@ -414,6 +414,22 @@ button:focus-visible {
   color: #8fd8ea;
 }
 
+.voyage.regatta {
+  border-color: rgba(229, 72, 77, 0.6);
+  background: rgba(229, 72, 77, 0.09);
+}
+
+.voyage.regatta .num {
+  font-size: 26px;
+  text-transform: uppercase;
+  color: #ff8a7a;
+}
+
+.voyage.regatta .stars {
+  letter-spacing: 0;
+  color: var(--brass);
+}
+
 .voyage:disabled {
   opacity: 0.8;
 }
@@ -927,6 +943,22 @@ button:focus-visible {
   font-weight: 700;
   font-size: calc(19px * var(--text, 1));
   text-align: right;
+}
+
+/* Regatta finishing order: each boat with its time, yours picked out. */
+.stat-rows.standings {
+  margin-bottom: 12px;
+}
+
+.stat-rows.standings .v small {
+  margin-left: 6px;
+  font-size: calc(14px * var(--text, 1));
+  font-weight: 600;
+  color: var(--foam-dim);
+}
+
+.stat-rows.standings .v.you {
+  color: var(--brass);
 }
 
 .badge {

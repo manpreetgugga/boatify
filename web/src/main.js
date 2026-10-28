@@ -5,6 +5,7 @@ import { LEVELS } from './data/levels.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
 import { openSeaDef } from './world/opensea.js';
+import { regattaDef, fleetFor, ordinal } from './world/regatta.js';
 import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
@@ -18,7 +19,7 @@ import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
-import { loadSave, writeSave, recordResult, recordSeaRun, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
+import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
 const root = document.getElementById('boatify');
@@ -33,7 +34,7 @@ const audio = createAudio();
 
 let mode = 'title'; // title | countdown | playing | paused | finishing | results
 let game = null;
-let levelIndex = 0; // campaign index, 'daily' or 'sea'
+let levelIndex = 0; // campaign index, 'daily', 'sea' or 'regatta'
 let autopilot = null;
 let botDriving = false;
 let recorder = null;
@@ -215,16 +216,19 @@ function showTitle(withMenu = true) {
 }
 
 function startLevel(ref) {
-  // Every Open Sea run is a fresh stretch of sea.
-  const def = ref === 'sea' ? openSeaDef((Date.now() % 1e9) + 1) : ref === 'daily' ? dailyDef() : LEVELS[ref];
+  // Every Open Sea run is a fresh stretch of sea, and every regatta a fresh
+  // course, raced against the fleet your wins have earned.
+  const seed = (Date.now() % 1e9) + 1;
+  const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'daily' ? dailyDef() : LEVELS[ref];
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
   levelIndex = ref;
   game = createGame(def, { boat: selectedBoat(save) });
   autopilot = botDriving ? createAutopilot(game) : null;
-  // No ghost to race on the open sea: no two runs share a course.
-  recorder = def.endless ? null : createRecorder(game);
-  const g = def.endless ? null : loadGhost(def.id);
+  // No ghost on the open sea or in a regatta: no two runs share a course.
+  const fresh = def.endless || def.race;
+  recorder = fresh ? null : createRecorder(game);
+  const g = fresh ? null : loadGhost(def.id);
   ghost = isValidGhost(g, def) ? g : null;
   resetView(renderer, game);
   ui.hide();
@@ -262,6 +266,13 @@ function finishVoyage(result) {
   input.setEnabled(false);
   if (game.sea) {
     const improved = recordSeaRun(save, result);
+    improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
+    if (improved.medals.length) writeSave(save);
+    pending = { improved, result };
+    return;
+  }
+  if (game.race) {
+    const improved = recordRace(save, result);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
     if (improved.medals.length) writeSave(save);
     pending = { improved, result };
@@ -327,9 +338,32 @@ function handleEvents(events, live) {
         audio.sfx.checkpoint();
         buzz(25);
         if (game.sea) floatText(fx, c.x, c.y - 18, `+${e.bonus} s`, C.ok);
-        else ui.toast('Buoy reached. If you sink, you restart here.', 'good', 2600);
+        else if (game.race) {
+          floatText(fx, c.x, c.y - 18, `MARK ${c.label} ✓`, C.ok);
+          const next = game.level.checkpoints[e.index + 1];
+          ui.toast(next ? `Mark ${c.label} rounded. On to mark ${next.label}!` : 'Last mark rounded. Race for the harbor!', 'good', 2600);
+        } else ui.toast('Buoy reached. If you sink, you restart here.', 'good', 2600);
         break;
       }
+      case 'early':
+        if (live) ui.toast(`Round mark ${e.mark + 1} first! The marks count only in order.`, 'alert', 3000);
+        break;
+      case 'place':
+        if (!live) break;
+        floatText(fx, game.boat.x, game.boat.y - 16, e.gained ? `▲ ${ordinal(e.place)}` : `▼ ${ordinal(e.place)}`, e.gained ? C.ok : C.danger);
+        if (e.gained) buzz(15);
+        break;
+      case 'rival':
+        if (live && e.phase === 'finish') ui.toast(`${e.name} finishes ${ordinal(e.place)}.`, '', 2200);
+        break;
+      case 'bump':
+        burst(fx, e.x, e.y, { count: Math.round(5 + e.impact * 1.5), speed: 14 + e.impact * 3, color: C.foam, size: 2 });
+        cam.shake = Math.min(1, cam.shake + e.impact / 20);
+        if (!live) break;
+        audio.sfx.collide(e.impact * 0.7, 'sand');
+        buzz(Math.min(80, 15 + e.impact * 6));
+        firstSight('bump', 'Bump! Boats that touch lose their way. Give the fleet room.');
+        break;
       case 'gate':
         if (!live) break;
         floatText(fx, game.boat.x, game.boat.y - 14, 'GATE MISSED', C.danger);
@@ -393,7 +427,7 @@ function handleEvents(events, live) {
       case 'respawn':
         if (!live) break;
         audio.sfx.respawn();
-        ui.toast('The hull gave out. Back to the last buoy (+15 s).', '', 3600);
+        ui.toast(game.race ? 'The hull gave out. Back to the last mark.' : 'The hull gave out. Back to the last buoy.', '', 3600);
         break;
       case 'kraken':
         if (!live) break;
@@ -543,6 +577,7 @@ function frame(now) {
     if (finishTimer <= 0) {
       mode = 'results';
       if (game.sea) ui.seaResults(pending.result, pending.improved, save);
+      else if (game.race) ui.raceResults(pending.result, pending.improved, save);
       else ui.results(levelIndex, pending.result, pending.improved, save);
     }
   }
@@ -655,6 +690,7 @@ window.__boatify = {
       hull: game && game.hull,
       pearls: game && game.pearls,
       sea: game && game.sea && { clock: game.sea.clock, gates: game.sea.gates, missed: game.sea.missed, best: game.sea.best },
+      race: game && game.race && { place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
       result: game && game.result,
       frames,
     };

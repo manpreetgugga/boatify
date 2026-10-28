@@ -3,15 +3,16 @@
 
 import { clamp, dist, wrapAngle, angleDiff } from '../core/math.js';
 import { hashString } from '../core/rng.js';
-import { createBoat, stepBoat, hullCircles, boatSpeed, CAPSIZE_ANGLE, HEEL_WARNING, BOOST_DURATION, BOAT_TYPES } from '../physics/boat.js';
+import { createBoat, stepBoat, boatSpeed, CAPSIZE_ANGLE, HEEL_WARNING, BOOST_DURATION, BOAT_TYPES } from '../physics/boat.js';
 import { buildLevel, pearlCount, courseGoal } from './level.js';
 import { createWind, updateWind, sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
-import { circlePolygon, circleCircle } from './collision.js';
-import { moveFloes, floeContact } from './floes.js';
+import { hullContact, bounce, fence } from './contact.js';
+import { moveFloes } from './floes.js';
 import { prepareWildlife, updateWildlife } from './wildlife.js';
 import { preparePirates, updatePirates } from './pirates.js';
 import { prepareOpenSea, updateOpenSea, reachGate, endRun, PEARL_TIME } from './opensea.js';
+import { prepareRace, updateRace, shadeWind, finishRace } from './regatta.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
@@ -19,7 +20,8 @@ const DAMAGE = { sand: 0.9, rock: 2.6, coral: 1.8, ice: 2.2 };
 
 export function createGame(def, options = {}) {
   const level = buildLevel(def);
-  const seed = hashString(def.id) ^ (options.seed || 0);
+  // A course charted from a seed (a regatta) gets its own gusts and shifts too.
+  const seed = hashString(def.windSeed || def.id) ^ (options.seed || 0);
   const wind = createWind(def.wind, seed, level.islands, { calms: level.calms, storms: level.storms });
   const boat = createBoat(level.start.x, level.start.y, level.start.heading, BOAT_TYPES[options.boat] || BOAT_TYPES.sloop);
   boat.trim = boat.trimTarget = 0.45;
@@ -63,8 +65,10 @@ export function createGame(def, options = {}) {
     closeBreaches: 0, // whale breaches seen up close
     chases: 0, // times a pirate ship came after you
     sea: null, // the endless open sea's clock and gates
+    race: null, // the regatta fleet and standings
   };
   if (def.endless) prepareOpenSea(game);
+  if (def.race) prepareRace(game);
   return game;
 }
 
@@ -95,6 +99,7 @@ function tick(game, input, dt) {
     updateWind(wind, dt);
     updateWildlife(game, dt);
     updatePirates(game, dt);
+    if (game.race) updateRace(game, dt);
     return;
   }
 
@@ -108,8 +113,10 @@ function tick(game, input, dt) {
   updateWildlife(game, dt);
   updatePirates(game, dt);
   updateWeather(game, dt);
+  if (game.race) updateRace(game, dt);
 
   const w = sampleWind(wind, boat.x, boat.y, game.windHere);
+  if (game.race) game.race.dirty = shadeWind(game, boat, w);
   const water = sampleWater(level, boat.x, boat.y, game.waterHere);
   const env = { wx: w.wx, wy: w.wy, cx: water.cx, cy: water.cy };
 
@@ -181,7 +188,7 @@ function tick(game, input, dt) {
   }
 
   resolveCollisions(game, false);
-  keepInBounds(game, dt);
+  fence(boat, level, dt);
   checkPickups(game);
   checkCheckpoints(game);
   checkTips(game);
@@ -193,7 +200,17 @@ function tick(game, input, dt) {
   }
 
   const f = level.finish;
-  if (dist(boat.x, boat.y, f.x, f.y) < f.r) finish(game);
+  const toFinish = dist(boat.x, boat.y, f.x, f.y);
+  if (toFinish < f.r) {
+    // A race only finishes once every mark is rounded.
+    if (!game.race || game.nextCheckpoint >= level.checkpoints.length) finish(game);
+    else if (!game.race.early) {
+      game.race.early = true;
+      emit(game, 'early', { mark: game.nextCheckpoint });
+    }
+  } else if (game.race && toFinish > f.r + 60) {
+    game.race.early = false;
+  }
 }
 
 function capsize(game) {
@@ -233,66 +250,22 @@ function damage(game, amount, cause) {
 }
 
 function resolveCollisions(game, passive) {
-  const { boat, level } = game;
-  const circles = hullCircles(boat);
-  let hit = null;
-  for (const c of circles) {
-    for (const isl of level.islands) {
-      const contact = circlePolygon(c.x, c.y, c.r, isl);
-      if (contact && (!hit || contact.depth > hit.depth)) hit = contact;
-    }
-    for (const rock of level.rocks) {
-      const dx = c.x - rock.x;
-      const dy = c.y - rock.y;
-      const rr = c.r + rock.r;
-      if (dx * dx + dy * dy >= rr * rr) continue;
-      const contact = circleCircle(c.x, c.y, c.r, rock);
-      if (contact && (!hit || contact.depth > hit.depth)) hit = contact;
-    }
-    if (level.floes.length) {
-      const contact = floeContact(level, c.x, c.y, c.r);
-      if (contact && (!hit || contact.depth > hit.depth)) hit = contact;
-    }
-  }
+  const { boat } = game;
+  const hit = hullContact(game.level, boat);
   if (!hit) return;
-  boat.x += hit.nx * hit.depth;
-  boat.y += hit.ny * hit.depth;
-  // Velocity relative to the obstacle: a drifting floe can ram a boat too.
-  const ovx = hit.vx || 0;
-  const ovy = hit.vy || 0;
-  const vn = (boat.vx - ovx) * hit.nx + (boat.vy - ovy) * hit.ny;
-  if (vn < 0) {
-    const restitution = 0.25;
-    boat.vx -= (1 + restitution) * vn * hit.nx;
-    boat.vy -= (1 + restitution) * vn * hit.ny;
-    boat.vx = ovx + (boat.vx - ovx) * 0.82;
-    boat.vy = ovy + (boat.vy - ovy) * 0.82;
-    const impact = -vn;
-    if (!passive && impact > 2.5) {
-      const amount = (impact - 2.5) * (DAMAGE[hit.material] || 2);
-      damage(game, amount, hit.material);
-      game.collisions += 1;
-      game.hits[hit.material] = (game.hits[hit.material] || 0) + 1;
-      emit(game, 'collide', { impact, material: hit.material, x: boat.x - hit.nx * 6, y: boat.y - hit.ny * 6 });
-      // Glancing blows twist the bow away from the obstacle.
-      const fwdX = Math.cos(boat.heading);
-      const fwdY = Math.sin(boat.heading);
-      const cross = fwdX * hit.ny - fwdY * hit.nx;
-      boat.yawRate += clamp(cross * impact * 0.08, -1.2, 1.2);
-    }
+  const impact = bounce(boat, hit);
+  if (!passive && impact > 2.5) {
+    const amount = (impact - 2.5) * (DAMAGE[hit.material] || 2);
+    damage(game, amount, hit.material);
+    game.collisions += 1;
+    game.hits[hit.material] = (game.hits[hit.material] || 0) + 1;
+    emit(game, 'collide', { impact, material: hit.material, x: boat.x - hit.nx * 6, y: boat.y - hit.ny * 6 });
+    // Glancing blows twist the bow away from the obstacle.
+    const fwdX = Math.cos(boat.heading);
+    const fwdY = Math.sin(boat.heading);
+    const cross = fwdX * hit.ny - fwdY * hit.nx;
+    boat.yawRate += clamp(cross * impact * 0.08, -1.2, 1.2);
   }
-}
-
-function keepInBounds(game, dt) {
-  const { boat, level } = game;
-  const m = 24;
-  const k = 6;
-  if (boat.x < m) boat.vx += (m - boat.x) * k * dt;
-  if (boat.y < m) boat.vy += (m - boat.y) * k * dt;
-  if (boat.x > level.width - m) boat.vx -= (boat.x - (level.width - m)) * k * dt;
-  if (boat.y > level.height - m) boat.vy -= (boat.y - (level.height - m)) * k * dt;
-  boat.x = clamp(boat.x, 0, level.width);
-  boat.y = clamp(boat.y, 0, level.height);
 }
 
 function checkPickups(game) {
@@ -320,6 +293,7 @@ function checkCheckpoints(game) {
   for (const c of level.checkpoints) {
     if (c.reached || c.missed) continue;
     if (game.sea && c.x > boat.x + c.r) break; // gates ahead are in order
+    if (level.race && c.index !== game.nextCheckpoint) break; // marks are rounded in order
     if (dist(boat.x, boat.y, c.x, c.y) > c.r) continue;
     c.reached = true;
     game.nextCheckpoint = Math.max(game.nextCheckpoint, c.index + 1);
@@ -407,11 +381,12 @@ function finish(game) {
     whales: game.closeBreaches,
     chases: game.chases,
   };
+  if (game.race) Object.assign(game.result, finishRace(game));
   emit(game, 'finish', { ...game.result });
 }
 
 // Helpers the HUD, autopilot and audio share. On the open sea "the finish"
-// is the next gate.
+// is the next gate, and in a regatta the next mark.
 export function distanceToFinish(game) {
   const { boat } = game;
   const f = courseGoal(game);

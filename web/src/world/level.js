@@ -34,6 +34,7 @@ export function buildLevel(def) {
     par: def.par,
     tips: def.tips || [],
     endless: !!def.endless,
+    race: !!def.race,
   };
   moveFloes(level, 0);
   return level;
@@ -43,9 +44,11 @@ export function pearlCount(level) {
   return level.pickups.filter((p) => p.kind === 'pearl').length;
 }
 
-// Where the boat is headed: B, or on the open sea the next gate.
+// Where the boat is headed: B, on the open sea the next gate, and in a
+// regatta the next mark until they are all rounded.
 export function courseGoal(game) {
   const { level } = game;
+  if (level.race) return level.checkpoints[game.nextCheckpoint] || level.finish;
   if (!level.endless) return level.finish;
   return level.checkpoints[game.nextCheckpoint] || { x: game.boat.x + 600, y: level.height / 2 };
 }

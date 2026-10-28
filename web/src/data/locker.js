@@ -116,6 +116,19 @@ export const SAILS = [
       { disc: [0.27, 0.4, 0.04], color: '#c8423a' },
     ],
   },
+  {
+    id: 'regatta',
+    name: 'Regatta Stripes',
+    medal: 'line-honours',
+    cloth: '#f5f0e4',
+    shade: '#d8d2c4',
+    marks: [
+      { band: [0.08, 0.15], color: '#c8423a' },
+      { band: [0.19, 0.23], color: '#22406f' },
+      { disc: [0.3, 0.5, 0.13], color: '#22406f' },
+      { disc: [0.3, 0.5, 0.07], color: '#f5f0e4' },
+    ],
+  },
 ];
 
 export const HULLS = [

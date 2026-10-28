@@ -7,6 +7,7 @@ import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.
 import { windFromBearing } from '../world/wind.js';
 import { ESCORT_TIME } from '../world/wildlife.js';
 import { chasingShip } from '../world/pirates.js';
+import { ordinal } from '../world/regatta.js';
 import { worldToScreen } from './camera.js';
 import { C, font, FONT, rgba } from './palette.js';
 
@@ -50,7 +51,9 @@ function fitText(ctx, str, size, maxW, weight, family, minSize = 9) {
 export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = null) {
   const L = layout;
   if (game.sea) drawSeaClock(ctx, game, L, time);
+  else if (game.race) drawRaceBox(ctx, game, L, time);
   else drawTopLeft(ctx, game, L);
+  if (game.race) drawRivalTags(ctx, game, cam, L);
   if (ghost) drawGhostInfo(ctx, game, cam, L, ghost);
   drawEscort(ctx, game, L, time, ghost && ghost.gap !== null && game.time >= 2);
   drawMinimap(ctx, hud, game, cam, L, time);
@@ -117,6 +120,56 @@ function drawSeaClock(ctx, game, L, time) {
   text(ctx, `⚑ ${sea.gates}`, x + w - 10, y + 13, 11, C.warn, 'right', 700, FONT.body);
   text(ctx, formatTime(sea.clock), x + 12, y + 30, 21, low ? C.danger : C.text, 'left', 700);
   text(ctx, formatDistance(sea.best), x + w - 10, y + 31, 15, C.text, 'right', 700);
+}
+
+// In a regatta: the leg you are on, your place in the fleet and the race
+// clock, with a warning chip underneath while you sail in dirty air.
+function drawRaceBox(ctx, game, L, time) {
+  drawPause(ctx, L);
+  const race = game.race;
+  const x = L.timer.x;
+  const y = L.timer.y;
+  const w = L.compact ? 150 : 176;
+  panel(ctx, x, y, w, 44, 10);
+  const marks = game.level.checkpoints.length;
+  const leg = game.nextCheckpoint < marks ? `MARK ${game.nextCheckpoint + 1}/${marks}` : 'FINISH';
+  text(ctx, 'REGATTA', x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
+  text(ctx, leg, x + w - 10, y + 13, 11, C.warn, 'right', 700, FONT.body);
+  text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
+  const place = race.place || 1;
+  const field = race.rivals.length + 1;
+  ctx.font = font(12, 600, FONT.body);
+  const ofW = ctx.measureText(` / ${field}`).width;
+  text(ctx, ` / ${field}`, x + w - 10, y + 32, 12, C.textDim, 'right', 600, FONT.body);
+  text(ctx, ordinal(place), x + w - 10 - ofW, y + 30, 20, place === 1 ? C.brass : C.text, 'right', 800, FONT.display, true);
+  if (race.dirty > 0.15 && game.status === 'sailing') {
+    const cw = 92;
+    const cy = y + 50;
+    ctx.globalAlpha = clamp(race.dirty * 2.5, 0.5, 1) * (0.8 + 0.2 * Math.sin(time * 6));
+    panel(ctx, x, cy, cw, 22, 8);
+    text(ctx, 'DIRTY AIR', x + cw / 2, cy + 11.5, 11, C.warn, 'center', 800, FONT.body);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Each rival's name over its boat, in its sail color, unless the boat is
+// behind the instrument panel or the chart.
+function drawRivalTags(ctx, game, cam, L) {
+  const under = (x, y, b) => x > b.x - 30 && x < b.x + b.w + 30 && y > b.y - 12 && y < b.y + b.h + 12;
+  for (const r of game.race.rivals) {
+    const [sx, sy] = worldToScreen(cam, r.boat.x, r.boat.y);
+    const ty = sy - r.boat.type.length * cam.scale * 1.05 - 4;
+    if (sx < L.insets.l || sx > L.w - L.insets.r || ty < 0 || sy > L.h) continue;
+    if (under(sx, ty, L.panel) || under(sx, ty, L.minimap)) continue;
+    ctx.font = font(11, 800, FONT.body);
+    const tw = ctx.measureText(r.name).width + 12;
+    ctx.fillStyle = 'rgba(6, 22, 34, 0.55)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(sx - tw / 2, ty - 8, tw, 16, 8);
+    else ctx.rect(sx - tw / 2, ty - 8, tw, 16);
+    ctx.fill();
+    text(ctx, r.name, sx, ty + 0.5, 11, r.look.sail, 'center', 800, FONT.body);
+  }
 }
 
 // Label over the ghost boat and a chip under the timer: ahead or behind.
@@ -311,6 +364,13 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
     ctx.arc(x + ship.x * k, y + ship.y * k, chasing ? 3.2 + Math.sin(time * 8) * 0.8 : 2.6, 0, Math.PI * 2);
     ctx.fill();
   }
+  // The regatta fleet, each in its sail color.
+  for (const r of game.race ? game.race.rivals : []) {
+    ctx.fillStyle = r.look.sail;
+    ctx.beginPath();
+    ctx.arc(x + r.boat.x * k, y + r.boat.y * k, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
   const f = level.finish;
   if (!game.sea) {
     ctx.fillStyle = C.signal;
@@ -375,10 +435,13 @@ function drawPointers(ctx, game, cam, L, time) {
   const ship = chasingShip(game);
   if (ship) targets.push({ x: ship.x, y: ship.y, color: C.danger, label: 'PIRATE', dist: Math.hypot(ship.x - game.boat.x, ship.y - game.boat.y) });
   const f = game.level.finish;
-  if (!game.sea) targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
   const next = game.level.checkpoints[game.nextCheckpoint];
-  // Out on the open sea the next gate is the mark to steer for.
-  if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: game.sea ? 'GATE' : '', dist: distanceToFinish(game) });
+  // A regatta points at B only once every mark is rounded.
+  if (!game.sea && !(game.race && next)) targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
+  // Out on the open sea the next gate is the mark to steer for, and in a
+  // regatta the next mark.
+  const markLabel = game.sea ? 'GATE' : game.race && next ? `MARK ${next.label}` : '';
+  if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: markLabel, dist: distanceToFinish(game) });
   // Pointers ride the edge of the open water between the HUD bands.
   const m = 30;
   const x0 = L.insets.l + m;
@@ -509,7 +572,7 @@ function drawInstruments(ctx, game, L, controls, time) {
   const numW = ctx.measureText(kn.toFixed(1)).width;
   text(ctx, 'kn', sx + numW + 4, P.y + 46, 13, C.textDim, 'left', 600, FONT.body);
   const vmgColor = vmg > 0.5 ? C.ok : vmg < -0.5 ? C.danger : C.warn;
-  text(ctx, `${game.sea ? 'to gate' : 'to B'} ${vmg >= 0 ? '▲' : '▼'} ${Math.abs(vmg).toFixed(1)}`, sx, P.y + P.h - 16, 13, vmgColor, 'left', 700);
+  text(ctx, `${game.sea ? 'to gate' : game.race && game.nextCheckpoint < game.level.checkpoints.length ? 'to mark' : 'to B'} ${vmg >= 0 ? '▲' : '▼'} ${Math.abs(vmg).toFixed(1)}`, sx, P.y + P.h - 16, 13, vmgColor, 'left', 700);
 
   // Sail trim and heel.
   const gx = P.x + P.w * 0.74;

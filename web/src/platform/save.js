@@ -35,6 +35,7 @@ function blank() {
     levels: {},
     daily: {},
     openSea: { best: 0, gates: 0, runs: 0 }, // best distance east, most gates in a run
+    regatta: { races: 0, wins: 0, podiums: 0, best: null }, // best: fastest winning time
     streak: { count: 0, best: 0, last: null },
     settings: { ...DEFAULT_SETTINGS },
     notes: [],
@@ -67,6 +68,7 @@ export function loadSave() {
     stats: { ...base.stats, ...(data.stats || {}) },
     streak: { ...base.streak, ...(isObj(data.streak) ? data.streak : {}) },
     openSea: { ...base.openSea, ...(isObj(data.openSea) ? data.openSea : {}) },
+    regatta: { ...base.regatta, ...(isObj(data.regatta) ? data.regatta : {}) },
     levels: isObj(data.levels) ? data.levels : {},
     daily: isObj(data.daily) ? data.daily : {},
     notes: Array.isArray(data.notes) ? data.notes : [],
@@ -135,6 +137,31 @@ export function recordSeaRun(save, result) {
   };
   save.stats.voyages += 1;
   save.stats.distance += result.sailed || 0;
+  save.stats.capsizes += result.capsizes || 0;
+  writeSave(save);
+  return improved;
+}
+
+// Merge a regatta into the save. Returns what improved.
+export function recordRace(save, result) {
+  const prev = save.regatta;
+  const won = result.place === 1;
+  const improved = {
+    won,
+    firstWin: won && !prev.wins,
+    time: won && (prev.best === null || result.time < prev.best),
+    prevWin: prev.best, // not prevBest: every course is new, so Personal Best can't apply
+    first: !prev.races,
+  };
+  save.regatta = {
+    races: prev.races + 1,
+    wins: prev.wins + (won ? 1 : 0),
+    podiums: prev.podiums + (result.place <= 3 ? 1 : 0),
+    best: improved.time ? result.time : prev.best,
+  };
+  if (result.boat && !save.sailed.includes(result.boat)) save.sailed.push(result.boat);
+  save.stats.voyages += 1;
+  save.stats.distance += result.distance || 0;
   save.stats.capsizes += result.capsizes || 0;
   writeSave(save);
   return improved;

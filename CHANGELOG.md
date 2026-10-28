@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0] - 2026-10-28
+
+Regatta: race the fleet.
+
+- **Regatta.** A new race mode, unlocked with the daily voyage. Race three rival boats round two marks and into the harbor: Petrel in a red-sailed sloop, Marlin in a yellow-sailed skiff and Squall in a blue junk. Every regatta is a fresh course with its own wind.
+- Round the marks in order. Mark 2 doesn't count until you've rounded mark 1, and the harbor doesn't count until you've rounded both.
+- **Dirty air.** Every sail leaves a wind shadow downwind of it, drawn as a faint dark fan on the water. Sail into one and you lose up to a quarter of your wind. A DIRTY AIR chip warns you while you're in it.
+- Boats that touch push apart and lose speed. The rivals steer clear of a boat under their bow, but it's up to you to steer round them.
+- The HUD shows your place in the fleet, which mark is next and the race clock. Each rival's name floats over its boat in its sail color and shows on the minimap. You get a call-out when you gain or lose a place, and a note when a rival finishes.
+- Win a race and the fleet steps up from Club to Open, then Championship. The briefing shows your fleet, the rivals and your record. The results card shows the finishing order with everyone's time.
+- New medal: **Line Honours** (win a regatta). It unlocks the Regatta Stripes sail. That makes twenty-three.
+- Fixed: when the hull gave out, the message said "+15 s" but no time was ever added. The message no longer mentions a penalty.
+
 ## [0.11.0] - 2026-10-28
 
 The Open Sea, and a sail you can see.

@@ -389,7 +389,8 @@ function drawBottle(ctx, bob) {
 export function drawMarks(ctx, game, cam, time) {
   const { level } = game;
   const s = level.start;
-  drawLetterBuoy(ctx, s.x, s.y + 22, 'A', C.brass, time);
+  if (level.race) drawStartLine(ctx, game, time);
+  else drawLetterBuoy(ctx, s.x, s.y + 22, 'A', C.brass, time);
 
   const reach = cam.w / cam.scale / 2 + 120;
   level.checkpoints.forEach((c, i) => {
@@ -408,7 +409,8 @@ export function drawMarks(ctx, game, cam, time) {
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    drawBuoy(ctx, c.x, c.y, c.reached ? C.ok : C.warn, time + i);
+    if (c.label) drawLetterBuoy(ctx, c.x, c.y, c.label, c.reached ? C.ok : C.warn, time + i);
+    else drawBuoy(ctx, c.x, c.y, c.reached ? C.ok : C.warn, time + i);
   });
 
   if (level.endless) return;
@@ -434,6 +436,26 @@ export function drawMarks(ctx, game, cam, time) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('B', f.x, f.y - f.r - 14);
+}
+
+// A regatta starts between two buoys, the fleet abreast on the line.
+function drawStartLine(ctx, game, time) {
+  const boats = [game.level.start, ...(game.def.fleetStart || [])];
+  const x = boats[0].x;
+  const top = Math.min(...boats.map((b) => b.y)) - 34;
+  const bottom = Math.max(...boats.map((b) => b.y)) + 34;
+  // The line fades once the fleet is away, leaving its two buoys.
+  const fade = Math.min(1, Math.max(0.3, 1 - (game.time - 20) / 15));
+  ctx.strokeStyle = `rgba(232, 244, 242, ${(0.4 * fade).toFixed(3)})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, bottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  drawBuoy(ctx, x, top, C.brass, time);
+  drawBuoy(ctx, x, bottom, C.brass, time + 1);
 }
 
 // An open-sea gate: a buoy either side, to sail between. Missed ones fade.
