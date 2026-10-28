@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.0] - 2026-10-28
+
+The prologue: a short film before the first voyage.
+
+- **The prologue.** The first launch now opens on a film, letterboxed with captions, before any menu. It's dawn, and a sloop is rowing out of harbor in a flat calm. A squall comes in with rain and thunder, a sea knocks the oar out of its oarlock, and it splashes down astern. The rest of the film shows what the wind does: point her into it and the sail flaps and she stops, with the no-go wedge drawn over the water. Turn her across it and she flies, with the fastest angles marked in green and dolphins coming to ride the bow wave. Then the chart lays a dotted course from her to B, past the reefs, the whirlpools, the squalls and a fog marked "?", and the title card hands you the helm.
+- **Take the helm** goes straight to How to sail and then your first voyage. **Skip** (or Back) goes to the title screen. Either way the film won't play again on its own. Players who already have voyages in their logbook go straight to the title screen as before.
+- **Prologue** on the title screen plays the film again. It's highlighted until you've seen it.
+- The film runs on the real boat, wind and weather, with the camera and helm scripted. It has new sounds: the oar's creak and stroke, the knock when it's lost and the splash when it lands.
+
 ## [0.13.0] - 2026-10-28
 
 Castaways: no one left behind.

@@ -10,7 +10,10 @@ import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
 import { createRecorder, recordGhost, finishGhost, isValidGhost, ghostAt, ghostGap } from './world/ghost.js';
-import { createRenderer, resize, resetView, renderFrame } from './render/renderer.js';
+import { createFilm, stepFilm, drainFilmEvents } from './world/prologue.js';
+import { createRenderer, resize, resetView, resetFilmView, renderFrame } from './render/renderer.js';
+import { SKIPPER, snapFilmCamera } from './render/film.js';
+import { VISUAL } from './render/boat.js';
 import { hudLayout } from './render/layout.js';
 import { burst, ring, floatText } from './render/effects.js';
 import { C, setColorblind } from './render/palette.js';
@@ -32,7 +35,7 @@ if (awardMedals(save, LEVELS).length) writeSave(save);
 const renderer = createRenderer(canvas);
 const audio = createAudio();
 
-let mode = 'title'; // title | countdown | playing | paused | finishing | results
+let mode = 'title'; // title | film | countdown | playing | paused | finishing | results
 let game = null;
 let levelIndex = 0; // campaign index, 'daily', 'sea' or 'regatta'
 let autopilot = null;
@@ -40,6 +43,8 @@ let botDriving = false;
 let recorder = null;
 let ghost = null; // best run of the current voyage, if any
 let ghostView = null; // { pose, gap, type } for this frame
+let film = null; // the prologue, while it plays
+let filmScreen = null; // its captions and title card
 let demoTimer = 0;
 let demoIndex = 0;
 let finishTimer = 0;
@@ -172,6 +177,8 @@ const ui = createUI(root, LEVELS, {
     writeSave(save);
   },
   onBackToTitle: () => showTitle(),
+  onFilm: () => playFilm(),
+  onFilmDone: (helm) => finishFilm(helm),
   onBackTo: (name) => {
     if (name === 'voyages') ui.voyages(save);
     else if (name === 'shipyard') ui.shipyard(save, true);
@@ -206,6 +213,7 @@ function startDemo() {
 function showTitle(withMenu = true) {
   if (cancelCountdown) cancelCountdown();
   cancelCountdown = null;
+  film = null;
   mode = 'title';
   input.setEnabled(false);
   ui.clearToasts();
@@ -222,6 +230,7 @@ function startLevel(ref) {
   const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'daily' ? dailyDef() : LEVELS[ref];
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
+  film = null;
   levelIndex = ref;
   game = createGame(def, { boat: selectedBoat(save) });
   autopilot = botDriving ? createAutopilot(game) : null;
@@ -291,6 +300,70 @@ function finishVoyage(result) {
     storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
   }
   pending = { improved, result };
+}
+
+// --- The prologue ----------------------------------------------------------
+
+function playFilm() {
+  if (cancelCountdown) cancelCountdown();
+  cancelCountdown = null;
+  film = createFilm();
+  game = film.game;
+  autopilot = null;
+  recorder = null;
+  ghost = null;
+  resetFilmView(renderer, film);
+  ui.clearToasts();
+  input.setEnabled(false);
+  mode = 'film';
+  audio.unlock();
+  filmScreen = ui.film();
+  filmScreen.caption(film.shot.caption);
+}
+
+// Skipped, sat through, or the helm taken from the title card. Either way it
+// has been seen and won't play by itself again.
+function finishFilm(helm) {
+  if (mode !== 'film') return;
+  if (!save.seenFilm) {
+    save.seenFilm = true;
+    writeSave(save);
+  }
+  filmScreen = null;
+  showTitle(!helm);
+  if (helm) ui.begin(save);
+}
+
+function filmEvents(events) {
+  const fx = renderer.fx;
+  for (const e of events) {
+    if (mode !== 'film') return;
+    switch (e.type) {
+      case 'shot':
+        filmScreen.caption(e.caption);
+        if (e.id === 'title') filmScreen.card();
+        break;
+      case 'thunder':
+        buzz(25);
+        setTimeout(() => audio.sfx.thunder(), 250);
+        break;
+      case 'stroke':
+        audio.sfx.oar('stroke');
+        break;
+      case 'oar':
+        audio.sfx.oar('lost');
+        buzz(30);
+        break;
+      case 'splash':
+        burst(fx, e.x, e.y, { count: 18, speed: 28, color: C.foam, size: 2.2 });
+        ring(fx, e.x, e.y, C.foam, 16, 0.8);
+        audio.sfx.oar('splash');
+        break;
+      case 'end':
+        finishFilm(false);
+        break;
+    }
+  }
 }
 
 // --- Simulation events -> feedback -----------------------------------------
@@ -574,6 +647,11 @@ function frame(now) {
     demoTimer -= dt;
     if (game.status === 'finished' && demoTimer > 3) demoTimer = 3;
     if (demoTimer <= 0) startDemo();
+  } else if (mode === 'film') {
+    for (let k = 0; k < timeScale && mode === 'film'; k++) {
+      stepFilm(film, dt, VISUAL);
+      filmEvents(drainFilmEvents(film));
+    }
   } else if (mode === 'playing') {
     for (let k = 0; k < timeScale; k++) {
       const cmd = input.read(dt);
@@ -612,16 +690,22 @@ function frame(now) {
     look: boatLook(game.boat.type, fittedGear(save)),
     ghost: ghostView,
     hud: showHud,
+    film,
+    crew: film && SKIPPER,
     layout: getLayout(),
     controls: input.state.controls,
   });
-  audio.update(game, dt, mode === 'playing' || mode === 'finishing');
+  audio.update(game, dt, mode === 'playing' || mode === 'finishing' || mode === 'film');
   requestAnimationFrame(frame);
 }
 
 // --- Platform --------------------------------------------------------------
 
 function onBack() {
+  if (mode === 'film') {
+    finishFilm(false);
+    return true;
+  }
   if (mode === 'playing') {
     pause();
     return true;
@@ -684,6 +768,16 @@ window.__boatify = {
   daily: dailyDef,
   startLevel,
   showTitle,
+  playFilm,
+  skipFilm: () => finishFilm(false),
+  // Run the prologue on to a moment, as fast as it will go, and frame it.
+  filmSeek(t) {
+    while (film && mode === 'film' && film.t < t) {
+      stepFilm(film, 1 / 60, VISUAL);
+      filmEvents(drainFilmEvents(film));
+    }
+    if (film) snapFilmCamera(renderer.cam, film, renderer.w, renderer.h);
+  },
   setAutopilot(on) {
     botDriving = !!on;
     if (mode !== 'title' && game) autopilot = on ? createAutopilot(game) : null;
@@ -721,6 +815,7 @@ window.__boatify = {
       sea: game && game.sea && { clock: game.sea.clock, gates: game.sea.gates, missed: game.sea.missed, best: game.sea.best },
       race: game && game.race && { place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
       result: game && game.result,
+      film: film && { t: film.t, shot: film.shot.id, oar: film.oar.state, route: !!film.route },
       frames,
     };
   },
@@ -738,7 +833,9 @@ try {
 } catch {
   // Older WebViews: the setting is read again next launch.
 }
-showTitle();
+// A first launch opens on the prologue; after that, on the title.
+if (!save.seenFilm && !save.stats.voyages) playFilm();
+else showTitle();
 requestAnimationFrame((t) => {
   last = t;
   frame(t);

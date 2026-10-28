@@ -47,6 +47,7 @@ function blank() {
     sailed: [], // boats that have finished a voyage
     sightings: {}, // sea life the player has had the first-meeting tip for
     seenIntro: false,
+    seenFilm: false, // the prologue has played through or been skipped
   };
 }
 

@@ -1,7 +1,7 @@
-// Browser smoke test of the bundled game: menus, a voyage sailed by the
-// autopilot at high speed, the results card, today's daily voyage, the
-// Shipyard and Sail Locker, the medals and the accessibility settings. Fails
-// on any page error.
+// Browser smoke test of the bundled game: the prologue, menus, a voyage
+// sailed by the autopilot at high speed, the results card, today's daily
+// voyage, the Shipyard and Sail Locker, the medals and the accessibility
+// settings. Fails on any page error.
 //
 //   node scripts/smoke.cjs [--shots <dir>] [--level <index>] [--size 915x412]
 
@@ -32,7 +32,46 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
 
   await tab.goto(`file://${page}`);
   await tab.waitForFunction(() => window.__boatify && window.__boatify.state().frames > 20);
+
+  step('a first launch opens on the prologue');
+  await tab.waitForSelector('section[aria-label="Prologue"].open');
+  if ((await tab.evaluate(() => window.__boatify.state().mode)) !== 'film') throw new Error('no prologue on a first launch');
+  await tab.waitForTimeout(1200);
+  await snap('00a-film-dawn');
+  const caption = () => tab.evaluate(() => document.querySelector('.film-caption').textContent);
+  for (const [t, name, says] of [
+    [11.5, '00b-film-squall', 'squall'],
+    [15, '00c-film-oar-lost', 'took the oar'],
+    [26.5, '00d-film-irons', 'flaps'],
+    [33.5, '00e-film-reach', 'flies'],
+    [45.5, '00f-film-chart', 'fog'],
+  ]) {
+    await tab.evaluate((s) => window.__boatify.filmSeek(s), t);
+    await tab.waitForTimeout(500);
+    const said = await caption();
+    if (!said.includes(says)) throw new Error(`at ${t} s the prologue says "${said}"`);
+    await snap(name);
+  }
+  const reel = await tab.evaluate(() => window.__boatify.state().film);
+  if (reel.oar !== 'adrift' || !reel.route) throw new Error(`prologue ${JSON.stringify(reel)}`);
+  await tab.evaluate(() => window.__boatify.filmSeek(49));
+  await tab.locator('.film-card.in').waitFor();
+  await tab.waitForTimeout(1300);
+  await snap('00g-film-title');
+  await tab.getByRole('button', { name: 'Take the helm' }).click();
+  await tab.waitForSelector('section[aria-label="How to sail"].open');
+  if (!(await tab.evaluate(() => window.__boatify.save.seenFilm))) throw new Error('prologue not marked as seen');
+  step('back to the title; the prologue plays again from there and can be skipped');
+  await tab.keyboard.press('Escape');
+  await tab.waitForSelector('section[aria-label="Title"].open');
+  await tab.getByRole('button', { name: 'Prologue' }).click();
+  await tab.waitForSelector('section[aria-label="Prologue"].open');
+  await tab.waitForTimeout(600);
+  await tab.getByRole('button', { name: 'Skip' }).click();
+
   step('title screen with demo voyage');
+  await tab.waitForSelector('section[aria-label="Title"].open');
+  if ((await tab.evaluate(() => window.__boatify.state().mode)) !== 'title') throw new Error('skip did not land on the title');
   await tab.waitForTimeout(1500);
   await snap('01-title');
 

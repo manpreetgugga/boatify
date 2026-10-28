@@ -1267,6 +1267,104 @@ button:focus-visible {
   animation: pop 0.9s ease both;
 }
 
+/* Prologue: the picture between letterbox bars, the caption in the lower one. */
+
+.screen.film {
+  padding: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  background: none;
+}
+
+.film-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(40px, 12vh, 104px);
+  padding: 0 calc(var(--inset-right) + 20px) 0 calc(var(--inset-left) + 20px);
+  background: #02070b;
+  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.film-bar.top {
+  padding-top: var(--inset-top);
+  justify-content: flex-end;
+  transform: translateY(-100%);
+}
+
+.film-bar.bottom {
+  padding-bottom: var(--inset-bottom);
+  transform: translateY(100%);
+}
+
+.screen.film.open .film-bar {
+  transform: none;
+}
+
+.film-skip {
+  opacity: 0.7;
+  min-height: 34px;
+  padding: 0 14px;
+}
+
+.film-caption {
+  margin: 0;
+  max-width: 46ch;
+  text-align: center;
+  font-family: var(--body);
+  font-size: calc(clamp(15px, 4.4vh, 25px) * var(--text, 1));
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--foam);
+  transition: opacity 0.32s ease;
+}
+
+.film-caption.out {
+  opacity: 0;
+}
+
+.film-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 20px;
+  text-align: center;
+  background: radial-gradient(ellipse at center, rgba(4, 14, 22, 0.72) 0%, rgba(4, 14, 22, 0.3) 48%, rgba(4, 14, 22, 0) 72%);
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 1.2s ease, transform 1.6s ease;
+}
+
+.film-card[hidden] {
+  display: none;
+}
+
+.film-card.in {
+  opacity: 1;
+  transform: none;
+}
+
+.film-card .tagline {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: calc(clamp(18px, 5vh, 28px) * var(--text, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.film-card .btn {
+  margin-top: 8px;
+  min-width: 200px;
+}
+
 @keyframes pop {
   0% {
     opacity: 0;

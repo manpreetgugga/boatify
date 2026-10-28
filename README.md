@@ -23,6 +23,7 @@ from that source. Android 8.0 or newer.
 | Pause | Pause button or back | P or Esc |
 | Restart, mute, toggle trim | | R, M, T |
 
+- **The prologue.** The first time you launch, a short film tells the story: a calm dawn, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, across it she flies), and last the chart from A to B with the reefs, whirlpools, squalls and the fog in between. Skip it any time, or watch it again from the title screen's Prologue button.
 - **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the wind dial shows where the sail stops working.
 - **Beam reach is fastest.** Wind from the side gives the most speed; dead downwind is slower than you'd think.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".
@@ -62,7 +63,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
+npm test            # the prologue film, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```
@@ -73,7 +74,7 @@ The game is plain JavaScript modules in `web/src`:
 - `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
-- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta course and its fleet; `world/castaways.js`: castaways and hauling them aboard; `data/medals.js`: the medals; `data/locker.js`: the Sail Locker's sails and hull paints
+- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta course and its fleet; `world/castaways.js`: castaways and hauling them aboard; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/locker.js`: the Sail Locker's sails and hull paints
 
 ### Android
 

@@ -344,6 +344,12 @@ export function createUI(root, levels, handlers) {
   let lastBriefing = 0;
   const toasts = root.querySelector('#toasts');
 
+  // The first voyage not yet sailed, or the last one once they all are.
+  const resumeIndex = (save) => {
+    const next = levels.findIndex((l) => !save.levels[l.id] || save.levels[l.id].best === null);
+    return next === -1 ? levels.length - 1 : next;
+  };
+
   // A voyage is referred to by its campaign index or as 'daily'.
   const defOf = (ref) => (ref === 'daily' ? handlers.daily() : levels[ref]);
   const recordOf = (save, def) => (def.daily ? save.daily : save.levels)[def.id];
@@ -450,9 +456,16 @@ export function createUI(root, levels, handlers) {
       handlers.onScreen(null);
     },
 
+    // Set sail on the next voyage not yet sailed (by way of How to Sail the
+    // first time).
+    begin(save) {
+      const resume = resumeIndex(save);
+      if (save.seenIntro) ui.briefing(resume, save);
+      else ui.howto(save, true, resume);
+    },
+
     title(save) {
-      const nextIndex = levels.findIndex((l) => !save.levels[l.id] || save.levels[l.id].best === null);
-      const resume = nextIndex === -1 ? levels.length - 1 : nextIndex;
+      const resume = resumeIndex(save);
       const today = dateKey();
       const dailyOpen = isDailyUnlocked(save, levels);
       const sailedToday = !!save.daily[dailyId(today)];
@@ -474,12 +487,13 @@ export function createUI(root, levels, handlers) {
             <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
             <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
             <button class="btn small" data-act="logbook">Logbook</button>
+            <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">Prologue</button>
             <button class="btn small" data-act="settings">Settings</button>
           </div>
           <div class="title-meta"><span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
         </div>
       </section>`);
-      click(node, '[data-act=play]', () => (save.seenIntro ? ui.briefing(resume, save) : ui.howto(save, true, resume)));
+      click(node, '[data-act=play]', () => ui.begin(save));
       click(node, '[data-act=voyages]', () => ui.voyages(save, true));
       click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
       click(node, '[data-act=sea]', () => ui.seaBriefing(save));
@@ -489,7 +503,48 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=medals]', () => ui.medals(save));
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
+      click(node, '[data-act=film]', () => handlers.onFilm());
       show('title', node);
+    },
+
+    // The prologue's frame: letterbox bars, the caption under the picture, a
+    // way out, and the title card it ends on. Returns the film's controls.
+    film() {
+      const node = el(`<section class="screen film" aria-label="Prologue">
+        <div class="film-bar top"><button class="btn small film-skip" data-act="skip">Skip</button></div>
+        <div class="film-card" hidden>
+          <div class="eyebrow">A sailing voyage</div>
+          <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
+          <p class="tagline">Only the wind.</p>
+          <button class="btn primary" data-act="helm">Take the helm</button>
+        </div>
+        <div class="film-bar bottom"><p class="film-caption" aria-live="polite"></p></div>
+      </section>`);
+      const caption = node.querySelector('.film-caption');
+      const card = node.querySelector('.film-card');
+      let fade = 0;
+      click(node, '[data-act=skip]', () => handlers.onFilmDone(false));
+      click(node, '[data-act=helm]', () => handlers.onFilmDone(true));
+      show('film', node);
+      return {
+        // Captions fade out, change, and fade back in.
+        caption(text) {
+          clearTimeout(fade);
+          caption.classList.add('out');
+          fade = setTimeout(() => {
+            caption.textContent = text;
+            caption.classList.toggle('out', !text);
+          }, 320);
+        },
+        card() {
+          card.hidden = false;
+          void card.offsetWidth;
+          card.classList.add('in');
+          node.classList.add('ending');
+          const helm = card.querySelector('[data-act=helm]');
+          if (!matchMedia('(pointer: coarse)').matches) helm.focus({ preventScroll: true });
+        },
+      };
     },
 
     voyages(save, push = false) {

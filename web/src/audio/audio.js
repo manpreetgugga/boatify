@@ -279,6 +279,21 @@ export function createAudio() {
         tone(140, { type: 'sine', peak: 0.12 * vol, attack: 0.005, decay: 0.2, glide: 0.4 });
       }
     },
+    oar(phase) {
+      if (phase === 'stroke') {
+        // The oarlock creaks, then the blade pulls through the water.
+        tone(320, { type: 'triangle', peak: 0.035, attack: 0.02, decay: 0.12, glide: 0.8 });
+        hiss({ freq: 700, q: 0.8, peak: 0.12, attack: 0.12, decay: 0.5, sweep: 0.6, at: 0.05 });
+      } else if (phase === 'lost') {
+        // Wood knocks on the gunwale, and away it goes.
+        tone(210, { type: 'square', peak: 0.08, decay: 0.06 });
+        tone(260, { type: 'square', peak: 0.06, decay: 0.05, at: 0.09 });
+        hiss({ freq: 1800, q: 0.7, peak: 0.16, attack: 0.04, decay: 0.6, sweep: 0.4, at: 0.05 });
+      } else {
+        hiss({ type: 'bandpass', freq: 1000, q: 0.6, peak: 0.28, attack: 0.01, decay: 0.55, sweep: 0.45 });
+        tone(170, { type: 'sine', peak: 0.08, attack: 0.005, decay: 0.18, glide: 0.4 });
+      }
+    },
     medal() {
       // A rising fanfare that ends on a ringing bell.
       [67, 72, 76, 79].forEach((n, i) => tone(midi(n), { type: 'triangle', peak: 0.13, decay: 0.35, at: i * 0.08 }));

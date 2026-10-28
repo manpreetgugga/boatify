@@ -1,6 +1,7 @@
 // Draws a frame: sea, flows, shallows, wake, islands, marks, pickups,
 // castaways, sea life, pirates, the regatta fleet and its dirty air, boat,
 // birds, cannonballs and spray, weather and lighting, then the HUD on top.
+// The prologue film swaps in its own camera and draws its marks over the sea.
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
@@ -24,6 +25,7 @@ import { drawPirates, drawCannonballs } from './pirates.js';
 import { drawCastaways, shirtOf, skinOf } from './castaways.js';
 import { createLighting, drawLighting } from './lighting.js';
 import { createHud, drawHud } from './hud.js';
+import { snapFilmCamera, updateFilmCamera, drawFilmWorld, drawFilmLight } from './film.js';
 
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d', { alpha: false });
@@ -70,9 +72,17 @@ export function resetView(r, game) {
   snapCamera(r.cam, game, r.w, r.h);
 }
 
+// The prologue starts on its own opening frame.
+export function resetFilmView(r, film) {
+  resetView(r, film.game);
+  snapFilmCamera(r.cam, film, r.w, r.h);
+}
+
 export function renderFrame(r, game, dt, time, ui) {
   const { ctx, cam } = r;
-  updateCamera(cam, game, dt, r.w, r.h);
+  const film = ui && ui.film;
+  if (film) updateFilmCamera(cam, film, dt, r.w, r.h);
+  else updateCamera(cam, game, dt, r.w, r.h);
   updateWake(r.wake, game.boat, game.clock, game.status === 'sailing' || game.status === 'finished');
   updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 9000));
   updateParticles(r.fx, dt);
@@ -113,7 +123,7 @@ export function renderFrame(r, game, dt, time, ui) {
     sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : game.result && game.result.reason === 'sunk' ? 1 : 0,
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
     look: ui && ui.look,
-    crew: game.castaways.filter((c) => c.state === 'aboard').map((c) => ({ shirt: shirtOf(c), skin: skinOf(c) })),
+    crew: (ui && ui.crew) || game.castaways.filter((c) => c.state === 'aboard').map((c) => ({ shirt: shirtOf(c), skin: skinOf(c) })),
   };
   drawFleet(ctx, game, time);
   drawBoat(ctx, game.boat, time, boatState);
@@ -121,6 +131,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawCannonballs(ctx, game);
   drawParticles(ctx, r.fx, cam);
   drawStormClouds(ctx, game, time);
+  if (film) drawFilmWorld(ctx, cam, film, time);
   ctx.restore();
 
   ctx.save();
@@ -128,6 +139,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawSnow(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLighting(ctx, r.light, game, cam, time, r.w, r.h);
   drawLightning(ctx, r.fx, game, r.w, r.h);
+  if (film) drawFilmLight(ctx, film, r.w, r.h);
   ctx.restore();
 
   if (ui && ui.hud) {
