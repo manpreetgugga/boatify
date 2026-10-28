@@ -103,6 +103,9 @@ export function recordResult(save, levelId, result, notes = [], bucket = 'levels
 
 export function isUnlocked(save, levels, index) {
   if (index === 0) return true;
+  // A voyage you've already finished stays open, even if one is added before it.
+  const own = levels[index] && save.levels[levels[index].id];
+  if (own && own.best !== null) return true;
   const prev = levels[index - 1];
   return !!(prev && save.levels[prev.id] && save.levels[prev.id].best !== null);
 }

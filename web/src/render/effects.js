@@ -12,6 +12,7 @@ export function createEffects() {
     particles: [],
     floaters: [],
     rain: [],
+    snow: [],
     sample: {},
     bolt: null,
   };
@@ -311,6 +312,33 @@ export function drawRain(ctx, fx, game, w, h, dt) {
     ctx.lineTo(r.x - vx * 0.03, r.y - vy * 0.03);
   }
   ctx.stroke();
+}
+
+// Screen-space snow: slow flakes that tumble and drift with the wind.
+export function drawSnow(ctx, fx, game, w, h, dt, time) {
+  const amount = game.level.weather.snow || 0;
+  const count = Math.floor(amount * 160);
+  while (fx.snow.length < count) fx.snow.push({ x: Math.random() * w, y: Math.random() * h, z: 0.4 + Math.random() * 0.6, p: Math.random() * 6 });
+  fx.snow.length = count;
+  if (!count) return;
+  const wx = game.windHere.wx;
+  const wy = game.windHere.wy;
+  ctx.fillStyle = 'rgba(240, 250, 252, 0.75)';
+  ctx.beginPath();
+  for (const f of fx.snow) {
+    f.x += (wx * 2.2 + Math.sin(time * 1.3 + f.p) * 9) * f.z * dt;
+    f.y += (34 + wy * 2.2) * f.z * dt;
+    if (f.y > h + 4) {
+      f.y = -4;
+      f.x = Math.random() * w;
+    } else if (f.y < -6) f.y = h + 2;
+    if (f.x < -6) f.x += w + 12;
+    if (f.x > w + 6) f.x -= w + 12;
+    const r = 0.8 + f.z * 1.4;
+    ctx.moveTo(f.x + r, f.y);
+    ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
 }
 
 export function drawLightning(ctx, fx, game, w, h) {

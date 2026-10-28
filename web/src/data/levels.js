@@ -281,6 +281,49 @@ export const LEVELS = [
       { near: [800, 300, 230], text: 'Bubbles rising? The kraken is about to strike. Keep out of the ring.' },
     ],
   },
+  {
+    id: 'drift-ice',
+    name: 'Drift Ice',
+    blurb: 'A channel between two ice shelves, and slabs of drift ice that slide across it with the tide.',
+    size: [2100, 1100],
+    start: { x: 150, y: 560, heading: 90 },
+    finish: { x: 1960, y: 560, r: 50, kind: 'harbor' },
+    wind: { from: 350, speed: 15, gust: 0.22, shift: 10, period: 45 },
+    weather: { snow: 0.6, fog: 0.2 },
+    par: { gold: 135, silver: 195 },
+    islands: [
+      { pts: ridge([[-60, 140], [400, 170], [800, 150], [1200, 190], [1600, 160], [2160, 150]], 260, 241, 0.3), kind: 'ice', shadow: 0.3 },
+      { pts: ridge([[-60, 980], [450, 940], [850, 960], [1250, 930], [1650, 960], [2160, 950]], 260, 243, 0.3), kind: 'ice', shadow: 0.3 },
+      { pts: blob(840, 460, 62, 245, 0.22), kind: 'ice' },
+      { pts: blob(1270, 670, 56, 247, 0.22), kind: 'ice' },
+    ],
+    floes: [
+      { pts: blob(620, 550, 52, 251, 0.14, 18, [0.9, 1.5]), drift: [0, 150], period: 100, phase: 0 },
+      { pts: blob(1050, 550, 56, 253, 0.14, 18, [0.9, 1.45]), drift: [0, -135], period: 120, phase: 2 },
+      { pts: blob(1490, 550, 50, 257, 0.14, 18, [0.95, 1.5]), drift: [0, 150], period: 90, phase: 4 },
+    ],
+    rocks: [
+      ...rockField(400, 410, 40, 4, 261),
+      ...rockField(1700, 680, 40, 4, 263),
+      ...rockField(1270, 420, 30, 3, 267),
+    ],
+    pickups: [
+      { x: 380, y: 620, kind: 'pearl' },
+      { x: 840, y: 640, kind: 'pearl' },
+      { x: 1270, y: 540, kind: 'pearl' },
+      { x: 1700, y: 470, kind: 'pearl' },
+      { x: 1820, y: 640, kind: 'pearl' },
+      { x: 840, y: 330, kind: 'repair' },
+      { x: 400, y: 720, kind: 'gust' },
+      { x: 1180, y: 780, kind: 'bottle', note: 'The ice swings with the tide, back and forth like a slow pendulum. Count the beat before you cross.' },
+    ],
+    checkpoints: [{ x: 840, y: 580 }, { x: 1280, y: 560 }],
+    tips: [
+      { at: 0, text: 'Drift ice ahead. The floes slide back and forth across the channel with the tide.' },
+      { at: 7, text: "Watch where a floe is going, not where it is. Pass behind it, or wait for the gap." },
+      { near: [1050, 550, 280], text: 'Ice dents a hull badly, and a moving floe can ram you. Give it room.' },
+    ],
+  },
 ];
 
 function coral(r) {

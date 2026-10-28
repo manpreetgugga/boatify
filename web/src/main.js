@@ -279,7 +279,7 @@ function handleEvents(events, live) {
         burst(fx, e.x, e.y, {
           count: Math.round(6 + e.impact * 1.5),
           speed: 18 + e.impact * 3,
-          color: sand ? '#e8d6a8' : e.material === 'coral' ? '#ff8a7a' : C.foam,
+          color: sand ? '#e8d6a8' : e.material === 'coral' ? '#ff8a7a' : e.material === 'ice' ? C.ice : C.foam,
           size: 2,
         });
         cam.shake = Math.min(1, cam.shake + e.impact / 14);

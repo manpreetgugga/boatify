@@ -3,7 +3,7 @@
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
-import { drawShallows, drawIslands, drawPickups, drawMarks } from './terrain.js';
+import { drawShallows, drawIslands, drawFloes, drawPickups, drawMarks } from './terrain.js';
 import { createWake, updateWake, drawWake, drawBoat, drawGhost } from './boat.js';
 import {
   createEffects,
@@ -14,6 +14,7 @@ import {
   drawKrakens,
   drawStormClouds,
   drawRain,
+  drawSnow,
   drawLightning,
 } from './effects.js';
 import { createLighting, drawLighting } from './lighting.js';
@@ -85,6 +86,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawWake(ctx, r.wake, game.clock);
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
+  drawFloes(ctx, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
   if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, ui.ghost.type || game.boat.type, time);
@@ -100,6 +102,7 @@ export function renderFrame(r, game, dt, time, ui) {
 
   ctx.save();
   drawRain(ctx, r.fx, game, r.w, r.h, dt);
+  drawSnow(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLighting(ctx, r.light, game, cam, time, r.w, r.h);
   drawLightning(ctx, r.fx, game, r.w, r.h);
   ctx.restore();

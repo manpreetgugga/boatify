@@ -149,6 +149,11 @@ export function createAudio() {
       tone(material === 'sand' ? 90 : 70, { type: 'sine', peak: 0.5 * k, attack: 0.003, decay: 0.35, glide: 0.5 });
       hiss({ type: 'lowpass', freq: material === 'sand' ? 900 : 1800, peak: 0.35 * k, decay: material === 'sand' ? 0.35 : 0.2 });
       if (material !== 'sand') tone(140, { type: 'square', peak: 0.12 * k, decay: 0.12, glide: 0.6 });
+      if (material === 'ice') {
+        // A brittle crack and a tinkle of chips.
+        hiss({ type: 'highpass', freq: 3200, peak: 0.18 * k, decay: 0.09 });
+        [2350, 3100, 2700].forEach((f, i) => tone(f, { type: 'triangle', peak: 0.05 * k, decay: 0.18, at: 0.03 + i * 0.05, glide: 0.92 }));
+      }
     },
     pickup(kind) {
       if (kind === 'pearl') {

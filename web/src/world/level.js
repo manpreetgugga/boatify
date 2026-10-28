@@ -3,6 +3,7 @@
 
 import { prepareIsland } from './shapes.js';
 import { prepareCurrents, prepareWhirlpools } from './water.js';
+import { prepareFloes, moveFloes } from './floes.js';
 import { fromBearing } from '../core/math.js';
 
 export function buildLevel(def) {
@@ -12,7 +13,7 @@ export function buildLevel(def) {
   let pickupId = 0;
   const pickups = (def.pickups || []).map((p) => ({ ...p, id: pickupId++, taken: false, bob: Math.random() * 6 }));
   const checkpoints = (def.checkpoints || []).map((c, i) => ({ ...c, r: c.r || 40, index: i, reached: false }));
-  return {
+  const level = {
     id: def.id,
     name: def.name,
     width,
@@ -23,15 +24,18 @@ export function buildLevel(def) {
     checkpoints,
     currents: prepareCurrents(def.currents),
     whirlpools: prepareWhirlpools(def.whirlpools),
+    floes: prepareFloes(def.floes),
     calms: def.calms || [],
     storms: def.storms || [],
     krakens: (def.krakens || []).map((k) => ({ ...k, phase: 'idle', phaseTime: 0, hit: false })),
     start: { x: def.start.x, y: def.start.y, heading: fromBearing(def.start.heading) },
     finish: { ...def.finish },
-    weather: { rain: 0, fog: 0, night: false, lightning: false, dark: 0, ...(def.weather || {}) },
+    weather: { rain: 0, snow: 0, fog: 0, night: false, lightning: false, dark: 0, ...(def.weather || {}) },
     par: def.par,
     tips: def.tips || [],
   };
+  moveFloes(level, 0);
+  return level;
 }
 
 export function pearlCount(level) {

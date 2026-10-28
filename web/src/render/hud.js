@@ -175,7 +175,7 @@ function buildMinimap(game, L) {
     m.setLineDash([]);
   }
   for (const isl of level.islands) {
-    m.fillStyle = isl.kind === 'rock' ? '#8d867c' : C.sand;
+    m.fillStyle = isl.kind === 'rock' ? '#8d867c' : isl.kind === 'ice' ? C.ice : C.sand;
     m.beginPath();
     isl.pts.forEach(([x, y], i) => (i ? m.lineTo(x, y) : m.moveTo(x, y)));
     m.closePath();
@@ -210,6 +210,14 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
   ctx.strokeStyle = 'rgba(232, 244, 242, 0.35)';
   ctx.lineWidth = 1;
   ctx.strokeRect(x + (cam.x - vw / 2) * k, y + (cam.y - vh / 2) * k, vw * k, vh * k);
+  // Floes move, so they're drawn live.
+  ctx.fillStyle = C.ice;
+  for (const fl of level.floes) {
+    ctx.beginPath();
+    fl.pts.forEach(([px, py], i) => (i ? ctx.lineTo(x + (px + fl.ox) * k, y + (py + fl.oy) * k) : ctx.moveTo(x + (px + fl.ox) * k, y + (py + fl.oy) * k)));
+    ctx.closePath();
+    ctx.fill();
+  }
   for (const c of level.checkpoints) {
     ctx.fillStyle = c.reached ? C.ok : C.warn;
     ctx.beginPath();
@@ -286,15 +294,28 @@ function drawPointers(ctx, game, cam, L, time) {
   const y1 = Math.max(y0 + 40, L.panel.y - 18);
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
+  let first = null;
   for (const t of targets) {
     const [sx, sy] = worldToScreen(cam, t.x, t.y);
     if (sx > x0 && sx < x1 && sy > y0 && sy < y1) continue;
     const a = Math.atan2(sy - cy, sx - cx);
     const s = Math.min((x1 - x0) / 2 / Math.abs(Math.cos(a) || 1e-6), (y1 - y0) / 2 / Math.abs(Math.sin(a) || 1e-6));
     let px = cx + Math.cos(a) * s;
-    const py = cy + Math.sin(a) * s;
+    let py = cy + Math.sin(a) * s;
     const mm = L.minimap;
-    if (px > mm.x - 24 && py < mm.y + mm.h + 44) px = mm.x - 24;
+    const underMap = (qx, qy) => qx > mm.x - 24 && qy < mm.y + mm.h + 44;
+    if (underMap(px, py)) px = mm.x - 24;
+    // Two targets in the same direction: slide the second pointer along the
+    // edge so it doesn't sit on top of the first one and its label.
+    if (first && Math.hypot(px - first.x, py - first.y) < 46) {
+      const nx = -Math.sin(a);
+      const ny = Math.cos(a);
+      const side = (px - first.x) * nx + (py - first.y) * ny >= 0 ? 1 : -1;
+      const slide = (k) => [clamp(first.x + nx * k * 48, x0, x1), clamp(first.y + ny * k * 48, y0, y1)];
+      const fits = ([qx, qy]) => Math.hypot(qx - first.x, qy - first.y) >= 40 && !underMap(qx, qy);
+      [px, py] = [slide(side), slide(-side)].find(fits) || slide(side);
+    }
+    if (!first) first = { x: px, y: py };
     ctx.save();
     ctx.translate(px, py);
     const pulse = 1 + 0.08 * Math.sin(time * 5);

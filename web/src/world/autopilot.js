@@ -4,6 +4,7 @@
 
 import { angleDiff, clamp, wrapAngle, DEG } from '../core/math.js';
 import { isClear } from './collision.js';
+import { inFloeLane, floeContact } from './floes.js';
 import { boatSpeed } from '../physics/boat.js';
 import { sampleWind } from './wind.js';
 
@@ -57,6 +58,8 @@ export function createNavGrid(level, wind = null) {
         const d = Math.hypot(x - cz.x, y - cz.y);
         if (d < cz.r) h += 3 * (1 - d / cz.r);
       }
+      // Prefer to cross the lanes drifting ice floes sweep where they're short.
+      if (!blocked[i] && level.floes.length && inFloeLane(level, x, y, CLEARANCE)) h += 4;
       // Wind shadows cost time too: steer clear of the lee of islands.
       if (wind && !blocked[i]) h += 2.5 * sampleWind(wind, x, y, sample).shade;
       hazard[i] = h;
@@ -194,12 +197,16 @@ export function createAutopilot(game) {
     tackHold: 0,
     stuck: 0,
     target: null,
+    clock: game.clock,
+    speed: 0,
   };
 }
 
 export function autopilotInput(ap, game, dt) {
   const { boat, level } = game;
   const windFrom = wrapAngle(game.wind.angle + Math.PI);
+  ap.clock = game.clock;
+  ap.speed = boatSpeed(boat);
   ap.replan -= dt;
   ap.tackHold -= dt;
   if (!ap.path || ap.replan <= 0) {
@@ -243,14 +250,25 @@ export function autopilotInput(ap, game, dt) {
     }
     desired = wrapAngle(windFrom + ap.tack * off);
   }
-  // Swerve around anything right ahead.
-  if (!ahead(ap, boat, desired, 55)) {
-    for (const o of [20, -20, 40, -40, 65, -65, 90, -90]) {
-      const h = wrapAngle(desired + o * DEG);
-      if (Math.abs(angleDiff(h, windFrom)) < 38 * DEG) continue;
-      if (ahead(ap, boat, h, 55)) {
-        desired = h;
-        break;
+  // Swerve around anything right ahead. Drifting ice needs a longer look.
+  const look = level.floes.length ? 85 : 55;
+  let wait = false;
+  if (!ahead(ap, boat, desired, look)) {
+    const bowX = boat.x + Math.cos(boat.heading) * 24;
+    const bowY = boat.y + Math.sin(boat.heading) * 24;
+    if (level.floes.length && ahead(ap, boat, desired, look, false) && !inFloeLane(level, bowX, bowY, 14)) {
+      // Only drifting ice is in the way and it can't reach us here: head up,
+      // let the sail flap and wait for the gap.
+      wait = true;
+      desired = wrapAngle(windFrom + Math.sign(angleDiff(windFrom, boat.heading) || 1) * 45 * DEG);
+    } else {
+      for (const o of [20, -20, 40, -40, 65, -65, 90, -90]) {
+        const h = wrapAngle(desired + o * DEG);
+        if (Math.abs(angleDiff(h, windFrom)) < 38 * DEG) continue;
+        if (ahead(ap, boat, h, look)) {
+          desired = h;
+          break;
+        }
       }
     }
   }
@@ -260,17 +278,28 @@ export function autopilotInput(ap, game, dt) {
   ap.stuck = speed < 2.5 ? ap.stuck + dt : 0;
   const boost = game.gustJars > 0 && (ap.stuck > 2.5 || game.waterHere.vortex > 0.55) && boat.boostTime <= 0;
   if (boost) ap.stuck = 0;
+  if (wait) return { steer, trimTarget: 1, autoTrim: false, boost: false };
   return { steer, trimTarget: boat.optimalTrim, autoTrim: true, boost };
 }
 
-function ahead(ap, boat, heading, distance) {
+function ahead(ap, boat, heading, distance, ice = true) {
+  const { level } = ap.grid;
   const cx = Math.cos(heading);
   const cy = Math.sin(heading);
+  const floes = ice && level.floes.length > 0;
+  // The boat gets to a point somewhere between flat out and a slow pace.
+  const fast = Math.max(ap.speed, 16);
+  const slow = Math.max(ap.speed, 8);
   for (let d = 12; d <= distance; d += 10) {
     const x = boat.x + cx * d;
     const y = boat.y + cy * d;
-    if (x < 0 || y < 0 || x > ap.grid.level.width || y > ap.grid.level.height) return false;
+    if (x < 0 || y < 0 || x > level.width || y > level.height) return false;
     if (ap.grid.blocked[cellOf(ap.grid, x, y)]) return false;
+    // Ice floes: where they will be by the time the boat gets there.
+    if (floes) {
+      const t = ap.clock + d / slow;
+      if (floeContact(level, x, y, 12, ap.clock + d / fast) || floeContact(level, x, y, 12, t) || floeContact(level, x, y, 12, t + 1.5)) return false;
+    }
   }
   return true;
 }

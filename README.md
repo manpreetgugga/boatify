@@ -42,6 +42,7 @@ from that source. Android 8.0 or newer.
 6. **Wind Shadow**: tall islands steal your wind.
 7. **Storm Front**: squalls, rain and lightning.
 8. **Kraken Fog**: night, fog and something in the water.
+9. **Drift Ice**: snow, icebergs and floes that drift across the channel.
 
 Finish under the gold time for three stars. Collect pearls, gust jars, repair
 crates and messages in bottles along the way.
@@ -52,7 +53,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # physics, wind, boats, levels and daily courses (the autopilot sails them), save and bundle tests
+npm test            # physics, wind, boats, floes, levels and daily courses (the autopilot sails them), save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```
@@ -60,7 +61,7 @@ npm run smoke       # browser playtest with Playwright (needs Playwright install
 The game is plain JavaScript modules in `web/src`:
 
 - `physics/`: sail aerodynamics, the boat model and the Shipyard's boat types
-- `world/`: game simulation, wind field, water, collisions, voyages, autopilot
+- `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
 - `data/levels.js`: the voyages; `data/daily.js`: the daily course generator

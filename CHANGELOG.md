@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0] - 2026-10-28
+
+Into the ice.
+
+- **Voyage 9: Drift Ice.** A snowy channel between two ice shelves. Slabs of drift ice slide back and forth across it with the tide, and a moving floe can ram you. Time your crossings, pass behind a floe, or ease the sail and wait for the gap.
+- Each floe shows its path: a dotted track marks the line it swings along, and chevrons, a wake and foam on its leading edge show which way it's going right now. The minimap shows the floes moving too.
+- Snow, icebergs and ice shelves: new ice terrain that dents a hull nearly as badly as rock.
+- The autopilot (and the title screen demo) reads the drifting ice and waits for a gap instead of sailing into it.
+- The arrow to the next buoy no longer sits on top of the arrow to B when both point the same way.
+- A voyage you've already finished stays open, even if a new voyage is added before it.
+
 ## [0.4.0] - 2026-10-28
 
 Pick your boat.

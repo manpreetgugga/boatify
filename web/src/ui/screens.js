@@ -32,10 +32,12 @@ function hazardsOf(def) {
   if ((def.calms || []).length) out.push(['Calm patches', false]);
   if ((def.storms || []).length) out.push(['Squalls', true]);
   if ((def.krakens || []).length) out.push(['Kraken', true]);
+  if ((def.floes || []).length) out.push(['Drifting ice', true]);
   const w = def.weather || {};
   if (w.fog) out.push(['Fog', false]);
   if (w.night) out.push(['Night', false]);
   if (w.lightning) out.push(['Lightning', false]);
+  if (w.snow) out.push(['Snow', false]);
   if ((def.wind.events || []).length) out.push(['Wind shifts', false]);
   return out;
 }

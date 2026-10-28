@@ -8,6 +8,7 @@ import { buildLevel, pearlCount } from './level.js';
 import { createWind, updateWind, sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
 import { circlePolygon, circleCircle } from './collision.js';
+import { moveFloes, floeContact } from './floes.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
@@ -72,6 +73,7 @@ export function stepGame(game, input, frameDt) {
 function tick(game, input, dt) {
   const { boat, level, wind } = game;
   game.clock += dt;
+  if (level.floes.length) moveFloes(level, game.clock);
   if (game.status === 'finished') {
     // Coast to a stop inside the harbor.
     boat.vx *= 1 - dt * 1.5;
@@ -224,17 +226,24 @@ function resolveCollisions(game, passive) {
       const contact = circleCircle(c.x, c.y, c.r, rock);
       if (contact && (!hit || contact.depth > hit.depth)) hit = contact;
     }
+    if (level.floes.length) {
+      const contact = floeContact(level, c.x, c.y, c.r);
+      if (contact && (!hit || contact.depth > hit.depth)) hit = contact;
+    }
   }
   if (!hit) return;
   boat.x += hit.nx * hit.depth;
   boat.y += hit.ny * hit.depth;
-  const vn = boat.vx * hit.nx + boat.vy * hit.ny;
+  // Velocity relative to the obstacle: a drifting floe can ram a boat too.
+  const ovx = hit.vx || 0;
+  const ovy = hit.vy || 0;
+  const vn = (boat.vx - ovx) * hit.nx + (boat.vy - ovy) * hit.ny;
   if (vn < 0) {
     const restitution = 0.25;
     boat.vx -= (1 + restitution) * vn * hit.nx;
     boat.vy -= (1 + restitution) * vn * hit.ny;
-    boat.vx *= 0.82;
-    boat.vy *= 0.82;
+    boat.vx = ovx + (boat.vx - ovx) * 0.82;
+    boat.vy = ovy + (boat.vy - ovy) * 0.82;
     const impact = -vn;
     if (!passive && impact > 2.5) {
       const amount = (impact - 2.5) * (DAMAGE[hit.material] || 2);

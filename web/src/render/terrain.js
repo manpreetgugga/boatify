@@ -49,6 +49,13 @@ export function drawShallows(ctx, game, cam, time) {
   for (const isl of game.level.islands) {
     if (!inView(v, isl.bounds, 40)) continue;
     const { path } = islandCache(isl);
+    if (isl.kind === 'ice') {
+      // Ice rises from deep water: just a pale glow of the ice below.
+      ctx.strokeStyle = 'rgba(150, 220, 235, 0.2)';
+      ctx.lineWidth = 18;
+      ctx.stroke(path);
+      continue;
+    }
     ctx.strokeStyle = 'rgba(63, 167, 160, 0.16)';
     ctx.lineWidth = 46;
     ctx.stroke(path);
@@ -69,6 +76,102 @@ export function drawShallows(ctx, game, cam, time) {
   }
 }
 
+// Ice: `lift` is how far the top stands out of the water, so tall bergs
+// show a deep blue side and flat floes barely any.
+function drawIce(ctx, path, decor, lift = 1) {
+  ctx.fillStyle = C.iceDeep;
+  ctx.fill(path);
+  ctx.clip(path);
+  ctx.translate(-2.5 * lift, -3.5 * lift);
+  ctx.fillStyle = C.ice;
+  ctx.fill(path);
+  ctx.translate(2.5 * lift, 3.5 * lift);
+  ctx.strokeStyle = C.iceShade;
+  ctx.lineWidth = 6;
+  ctx.stroke(path);
+  // Cracks and pressure ridges.
+  ctx.strokeStyle = 'rgba(95, 160, 185, 0.55)';
+  ctx.lineWidth = 1.1;
+  for (const d of decor) {
+    const r = 11 * d.s;
+    const c = Math.cos(d.r);
+    const s = Math.sin(d.r);
+    ctx.beginPath();
+    ctx.moveTo(d.x - c * r, d.y - s * r);
+    ctx.lineTo(d.x - s * r * 0.25, d.y + c * r * 0.25);
+    ctx.lineTo(d.x + c * r, d.y + s * r);
+    ctx.stroke();
+  }
+}
+
+// Drifting floes. A dotted track shows the line each one swings along, and a
+// wake, foam on the leading edge and chevrons show which way it's heading.
+export function drawFloes(ctx, game, cam, time) {
+  const v = viewBounds(cam, 60);
+  for (const f of game.level.floes) {
+    const b = f.bounds;
+    const [dx, dy] = f.drift;
+    if (b.maxX + Math.abs(dx) + 30 < v.minX || b.minX - Math.abs(dx) - 30 > v.maxX || b.maxY + Math.abs(dy) + 30 < v.minY || b.minY - Math.abs(dy) - 30 > v.maxY) continue;
+    const { path, decor } = islandCache(f);
+    ctx.fillStyle = 'rgba(232, 244, 242, 0.22)';
+    ctx.beginPath();
+    for (let k = -1; k <= 1.001; k += 0.08) {
+      ctx.moveTo(f.cx + dx * k + 2.2, f.cy + dy * k);
+      ctx.arc(f.cx + dx * k, f.cy + dy * k, 2.2, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    const speed = Math.hypot(f.vx, f.vy);
+    const vmax = (Math.hypot(dx, dy) * Math.PI * 2) / f.period;
+    const pace = Math.min(1, speed / Math.max(vmax, 1e-6));
+    ctx.save();
+    ctx.translate(f.ox, f.oy);
+    ctx.lineWidth = 2;
+    for (let i = 1; i <= 3; i++) {
+      ctx.save();
+      ctx.translate(-f.vx * 0.9 * i, -f.vy * 0.9 * i);
+      ctx.strokeStyle = `rgba(232, 244, 242, ${(0.2 * pace * (1 - i / 4)).toFixed(3)})`;
+      ctx.stroke(path);
+      ctx.restore();
+    }
+    ctx.strokeStyle = 'rgba(150, 220, 235, 0.18)';
+    ctx.lineWidth = 16;
+    ctx.stroke(path);
+    if (speed > 0.5) {
+      ctx.save();
+      ctx.translate(f.vx * 0.5, f.vy * 0.5);
+      ctx.strokeStyle = `rgba(232, 244, 242, ${Math.min(0.5, 0.1 + speed * 0.05).toFixed(3)})`;
+      ctx.lineWidth = 4 + Math.sin(time * 3 + f.seed) * 1.2;
+      ctx.stroke(path);
+      ctx.restore();
+    }
+    ctx.strokeStyle = 'rgba(232, 244, 242, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke(path);
+    ctx.save();
+    drawIce(ctx, path, decor, 0.45);
+    ctx.restore();
+    if (pace > 0.15) {
+      const a = Math.atan2(f.vy, f.vx);
+      ctx.save();
+      ctx.translate(f.cx, f.cy);
+      ctx.rotate(a);
+      ctx.strokeStyle = `rgba(80, 150, 178, ${(0.75 * pace).toFixed(3)})`;
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (const o of [-9, 7]) {
+        ctx.moveTo(o - 7, -11);
+        ctx.lineTo(o + 4, 0);
+        ctx.lineTo(o - 7, 11);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}
+
 export function drawIslands(ctx, game, cam, time) {
   const v = viewBounds(cam, 60);
   for (const isl of game.level.islands) {
@@ -79,7 +182,9 @@ export function drawIslands(ctx, game, cam, time) {
     ctx.lineWidth = 2.4;
     ctx.stroke(path);
     ctx.save();
-    if (isl.kind === 'rock') {
+    if (isl.kind === 'ice') {
+      drawIce(ctx, path, decor);
+    } else if (isl.kind === 'rock') {
       ctx.fillStyle = C.rockDark;
       ctx.fill(path);
       ctx.clip(path);
