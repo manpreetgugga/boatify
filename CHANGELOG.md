@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- **Boatify is now called No Paddle.** New name on the title screen, the phone's home screen and the release downloads. It's the same app underneath, so the update installs over the old one and keeps your progress.
+
 ## [0.8.0] - 2026-10-28
 
 Sea life.

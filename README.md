@@ -1,8 +1,8 @@
-# Boatify
+# No Paddle
 
 A squall snapped your oar. Now only the wind can carry you from **A** to **B**.
 
-Boatify is a sailing game for Android (and any modern browser). Read the wind,
+No Paddle (first released as Boatify) is a sailing game for Android (and any modern browser). Read the wind,
 pick your angle, tack upwind, ride the gusts and get to the harbor without
 capsizing, sinking on a reef or getting dragged into a whirlpool.
 
@@ -10,7 +10,7 @@ capsizing, sinking on a reef or getting dragged into a whirlpool.
 
 Every version is published as a pre-release on the
 [Releases page](https://github.com/manpreetgugga/boatify/releases) with a signed
-APK. Download `boatify-vX.Y.Z.apk` on your phone, open it and allow installing
+APK. Download `no-paddle-vX.Y.Z.apk` on your phone, open it and allow installing
 from that source. Android 8.0 or newer.
 
 ## How to play

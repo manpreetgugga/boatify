@@ -14,4 +14,4 @@ console.log(`${section}
 
 ---
 
-**Install on Android:** download \`boatify-v${version}.apk\` below on your phone, open it and allow installing from this source. Android 8.0 or newer. Releases are signed with the same development key, so a new version installs over the old one and keeps your progress.`);
+**Install on Android:** download \`no-paddle-v${version}.apk\` below on your phone, open it and allow installing from this source. Android 8.0 or newer. Releases are signed with the same development key, so a new version installs over the old one and keeps your progress.`);

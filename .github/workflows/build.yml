@@ -28,7 +28,7 @@ jobs:
         run: npm run build
       - uses: actions/upload-artifact@v4
         with:
-          name: boatify-web
+          name: no-paddle-web
           path: dist/index.html
 
   android:
@@ -53,12 +53,12 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           mkdir -p out
-          cp android/app/build/outputs/apk/release/app-release.apk "out/boatify-v${VERSION}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "out/no-paddle-v${VERSION}.apk"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "file=out/boatify-v${VERSION}.apk" >> "$GITHUB_OUTPUT"
+          echo "file=out/no-paddle-v${VERSION}.apk" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: boatify-v${{ steps.apk.outputs.version }}-apk
+          name: no-paddle-v${{ steps.apk.outputs.version }}-apk
           path: ${{ steps.apk.outputs.file }}
       - name: Publish pre-release
         if: github.event_name == 'push'
@@ -72,5 +72,5 @@ jobs:
             echo "Release $TAG already exists; bump the version in package.json to publish a new one."
           else
             node scripts/release-notes.mjs "$VERSION" > notes.md
-            gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" --title "Boatify $TAG" --notes-file notes.md --prerelease
+            gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" --title "No Paddle $TAG" --notes-file notes.md --prerelease
           fi

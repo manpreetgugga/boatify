@@ -93,7 +93,7 @@ export function buildPages() {
   // The artifact page is a fragment: the host supplies the document shell.
   const body = html.match(/<body>([\s\S]*?)<\/body>/)[1].replace(scriptRe, '').trim();
   const artifact = [
-    '<title>Boatify Sailing Game</title>',
+    '<title>No Paddle Sailing Game</title>',
     '<meta name="description" content="Your oar is lost. Sail by the wind from A to B." />',
     '<meta name="claude:viewport-fit-sides" content="cover" />',
     `<style>\n${css}\n</style>`,

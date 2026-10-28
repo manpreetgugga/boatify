@@ -33,4 +33,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found');
   }
-}).listen(port, () => console.log(`Boatify: http://localhost:${port}/ (serving ${root})`));
+}).listen(port, () => console.log(`No Paddle: http://localhost:${port}/ (serving ${root})`));

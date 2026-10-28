@@ -430,7 +430,7 @@ export function createUI(root, levels, handlers) {
       const node = el(`<section class="screen scrim" aria-label="Title">
         <div class="title-wrap">
           <div class="eyebrow">A sailing voyage</div>
-          <h1 class="logo">BOAT<span>IFY</span></h1>
+          <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
           <p class="tagline">A squall snapped your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it, ride it, and don't capsize.</p>
           <div class="title-buttons">
             <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? 'Set sail' : 'Start voyage'}</button>
