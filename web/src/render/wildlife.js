@@ -1,7 +1,8 @@
 // Sea life on screen: dolphins that porpoise along beside the bow, whales that
 // spout, dive and breach, the swell a breach sends out, gulls that perch on a
 // slow boat or circle the harbor, and schools of flying fish that skim away
-// from a fast one. Gulls and flying fish are decoration only.
+// from a fast one. Gulls and flying fish are decoration only. A guide pod
+// trails a line of foam from the bow, curving the way to turn.
 
 import { clamp, dist } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
@@ -177,6 +178,7 @@ export function drawSeaLife(ctx, game, cam, time) {
   }
   for (const pod of life.pods) {
     if (!visible(v, pod.x, pod.y, 120)) continue;
+    if (pod.state === 'guide') drawGuideTrail(ctx, game.boat, pod, time);
     const fast = pod.state === 'escort' ? 3.2 : 1.6;
     for (const m of pod.members) {
       if (m.leap > 0) continue;
@@ -184,6 +186,43 @@ export function drawSeaLife(ctx, game, cam, time) {
       drawDolphin(ctx, m, surf, 0, time);
     }
   }
+}
+
+// Foam flowing from the bow round to the guide pod: turn this way.
+function drawGuideTrail(ctx, boat, pod, time) {
+  const a = 0.7 * clamp((pod.span - pod.timer) / 0.6, 0, 1) * clamp(pod.timer, 0, 1);
+  if (a <= 0) return;
+  const L = boat.type.length * VISUAL;
+  const c = Math.cos(boat.heading);
+  const s = Math.sin(boat.heading);
+  const bx = boat.x + c * L * 0.55;
+  const by = boat.y + s * L * 0.55;
+  const reach = dist(bx, by, pod.x, pod.y) * 0.5;
+  const cx = bx + c * reach;
+  const cy = by + s * reach;
+  // End short of the lead dolphin, with a chevron pointing along the curve.
+  const ex = bx + (pod.x - bx) * 0.8;
+  const ey = by + (pod.y - by) * 0.8;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = '#bfefff';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([5, 6]);
+  ctx.lineDashOffset = -time * 22;
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.quadraticCurveTo(cx, cy, ex, ey);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const dir = Math.atan2(ey - cy, ex - cx);
+  ctx.beginPath();
+  for (const side of [-1, 1]) {
+    ctx.moveTo(ex + Math.cos(dir + side * 2.5) * 7, ey + Math.sin(dir + side * 2.5) * 7);
+    ctx.lineTo(ex, ey);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Above the boat: leaping dolphins, a breaching whale, spouts, gulls and flying fish.

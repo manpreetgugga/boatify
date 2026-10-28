@@ -1,9 +1,10 @@
 // Sea life. Dolphin pods roam open water; sail past one fast enough and it
 // swims along your bow wave, giving the boat a gentle push until you slow
 // down or the dolphins tire. Whales cruise and spout, dive, then breach and
-// send out a swell that shoves and rocks any boat it rolls under.
+// send out a swell that shoves and rocks any boat it rolls under. A guide
+// pod (see guide.js) shows a lost sailor the way to go.
 
-import { clamp, dist } from '../core/math.js';
+import { DEG, angleDiff, clamp, dist } from '../core/math.js';
 import { createRng } from '../core/rng.js';
 import { boatSpeed } from '../physics/boat.js';
 
@@ -14,6 +15,9 @@ export const ESCORT_COOLDOWN = 20;
 const SLOW_SPEED = 5;
 const POD_CRUISE = 9;
 const DOLPHIN_SPRINT = 34;
+export const GUIDE_TIME = 8; // seconds a guide pod waits to be followed
+export const GUIDE_LEAD = 70; // how far ahead of the boat it swims
+const GUIDE_FOLLOW = 35 * DEG; // a boat this close to the way is following
 
 // Whale cycle, in seconds from the start of a period.
 export const WHALE = { dive: 11, rise: 22, breach: 23.6, splash: 24.8, period: 27, close: 200, swell: 280, swellSpeed: 85, body: 40 };
@@ -67,6 +71,28 @@ export function addSeaLife(life, { dolphins = [], whales = [] }) {
   }
 }
 
+// A guide pod: three dolphins that surface off the bow, on the side to turn
+// to, and swim the way to go.
+export function addGuidePod(life, boat, way, time = GUIDE_TIME) {
+  const side = Math.sign(angleDiff(boat.heading, way)) || 1;
+  const c = Math.cos(boat.heading);
+  const s = Math.sin(boat.heading);
+  const x = boat.x + c * 28 - s * side * 22;
+  const y = boat.y + s * 28 + c * side * 22;
+  const members = [0, 1, 2].map((k) => ({
+    u: -k * 9,
+    v: (k % 2 ? 1 : -1) * (k ? 7 : 0),
+    x: x - Math.cos(way) * k * 6,
+    y: y - Math.sin(way) * k * 6,
+    heading: way,
+    phase: k * 2.1,
+    leap: k === 0 ? 1 : 0, // the first one jumps to catch your eye
+  }));
+  const pod = { guide: true, way, home: { x, y }, roam: 60, orbit: 0, x, y, heading: way, state: 'guide', timer: time, span: time, cooldown: 0, slow: 0, ride: 0, members };
+  life.pods.push(pod);
+  return pod;
+}
+
 export function updateWildlife(game, dt) {
   const life = game.life;
   if (!life) return;
@@ -75,6 +101,8 @@ export function updateWildlife(game, dt) {
     updatePod(game, pod, dt);
     ride = Math.max(ride, pod.ride);
   }
+  // A guide pod that has led someone home swims off for good.
+  if (life.pods.some((p) => p.gone)) life.pods = life.pods.filter((p) => !p.gone);
   game.boat.escort = ride;
   if (ride > 0.5) game.escortTime += dt;
   for (const w of life.whales) updateWhale(game, w, dt);
@@ -107,6 +135,29 @@ function updatePod(game, pod, dt) {
       pod.slow = 0;
       game.events.push({ type: 'dolphins', phase: 'join', x: pod.x, y: pod.y });
     }
+  } else if (pod.state === 'guide') {
+    // Swim the way to go, keeping a little ahead of the boat.
+    pod.timer -= dt;
+    pod.heading = pod.way;
+    const tx = boat.x + Math.cos(pod.way) * GUIDE_LEAD;
+    const ty = boat.y + Math.sin(pod.way) * GUIDE_LEAD;
+    const d = dist(pod.x, pod.y, tx, ty);
+    const step = Math.min(d, (speed + 22) * dt);
+    if (d > 0.01) {
+      pod.x += ((tx - pod.x) / d) * step;
+      pod.y += ((ty - pod.y) / d) * step;
+    }
+    // Follow them up to speed and they ride your bow wave.
+    if (sailing && speed > JOIN_SPEED && Math.abs(angleDiff(boat.heading, pod.way)) < GUIDE_FOLLOW) {
+      pod.state = 'escort';
+      pod.timer = ESCORT_TIME;
+      pod.slow = 0;
+      game.events.push({ type: 'dolphins', phase: 'join', guide: true, x: pod.x, y: pod.y });
+    } else if (pod.timer <= 0 || !sailing) {
+      pod.state = 'leave';
+      pod.timer = 4;
+      pod.side = Math.sign(angleDiff(boat.heading, pod.way)) || 1;
+    }
   } else if (pod.state === 'escort') {
     pod.timer -= dt;
     pod.slow = speed < SLOW_SPEED ? pod.slow + dt : 0;
@@ -128,7 +179,10 @@ function updatePod(game, pod, dt) {
     pod.heading = away;
     pod.x += Math.cos(away) * POD_CRUISE * 2.5 * dt;
     pod.y += Math.sin(away) * POD_CRUISE * 2.5 * dt;
-    if (pod.timer <= 0) pod.state = 'roam';
+    if (pod.timer <= 0) {
+      pod.state = 'roam';
+      if (pod.guide) pod.gone = true;
+    }
   }
 
   // Members chase their slot: behind the leader while roaming, at the bow
@@ -144,6 +198,9 @@ function updatePod(game, pod, dt) {
       const row = k >> 1;
       su = L * 0.55 + 5 - row * 9 + Math.sin(game.clock * 1.3 + m.phase) * 2;
       sv = (k % 2 ? 1 : -1) * (B * 0.5 + 6 + row * 2.5);
+    } else if (pod.state === 'guide') {
+      su = m.u + Math.sin(game.clock * 2.4 + m.phase) * 6;
+      sv = m.v;
     } else {
       su = m.u;
       sv = m.v + Math.sin(game.clock * 0.9 + m.phase) * 3;
@@ -153,7 +210,7 @@ function updatePod(game, pod, dt) {
     const tx = pod.x + c * su - s * sv;
     const ty = pod.y + s * su + c * sv;
     const d = dist(m.x, m.y, tx, ty);
-    const cruise = escort ? speed + DOLPHIN_SPRINT * clamp(d / 30, 0.2, 1) : POD_CRUISE * 2.5;
+    const cruise = escort || pod.guide ? speed + DOLPHIN_SPRINT * clamp(d / 30, 0.2, 1) : POD_CRUISE * 2.5;
     const step = Math.min(d, cruise * dt);
     if (d > 0.01) {
       m.x += ((tx - m.x) / d) * step;
@@ -163,7 +220,7 @@ function updatePod(game, pod, dt) {
     const target = d > 4 ? Math.atan2(ty - m.y, tx - m.x) : pod.heading;
     m.heading += Math.atan2(Math.sin(target - m.heading), Math.cos(target - m.heading)) * clamp(dt * 6, 0, 1);
     m.leap = Math.max(0, m.leap - dt / 1.1);
-    if (m.leap <= 0 && game.life.rng.chance(dt * (escort ? 0.35 : 0.06))) m.leap = 1;
+    if (m.leap <= 0 && game.life.rng.chance(dt * (pod.state === 'guide' ? 0.6 : escort ? 0.35 : 0.06))) m.leap = 1;
     off += d;
   });
   const formed = escort && off / pod.members.length < 16;

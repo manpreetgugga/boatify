@@ -471,7 +471,7 @@ export function createUI(root, levels, handlers) {
       const dailyOpen = isDailyUnlocked(save, levels);
       const sailedToday = !!save.daily[dailyId(today)];
       const streak = currentStreak(save, today);
-      const node = el(`<section class="screen scrim" aria-label="Title">
+      const node = el(`<section class="screen scrim title" aria-label="Title">
         <div class="title-wrap">
           <div class="eyebrow">A sailing voyage</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
@@ -1074,6 +1074,7 @@ export function createUI(root, levels, handlers) {
             ${toggle('leftHanded', 'Left-handed controls', 'Steer on the right, gust button on the left')}
             ${seg('steerSensitivity', 'Steering', 'How hard a small thumb movement turns', [[0.75, 'Gentle'], [1, 'Normal'], [1.35, 'Sharp']])}
             ${toggle('ghost', 'Race your best run', 'A pale ghost boat replays your fastest voyage')}
+            ${toggle('hints', 'Dolphin hints', 'Stuck or lost? Dolphins show you which way to turn')}
             <h3 class="setting-group">Seeing and reading</h3>
             ${toggle('colorblind', 'Colour-blind friendly', 'Blue for good and orange for danger, instead of green and red')}
             ${toggle('reduceMotion', 'Reduce motion', 'No screen shake or lightning flashes, lighter rain and snow')}

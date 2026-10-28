@@ -216,6 +216,7 @@ export function createAutopilot(game) {
     target: null,
     clock: game.clock,
     speed: 0,
+    desired: game.boat.heading,
   };
 }
 
@@ -295,6 +296,7 @@ export function autopilotInput(ap, game, dt) {
       }
     }
   }
+  ap.desired = desired; // the heading it's steering for (the dolphin guide reads it)
   const err = angleDiff(boat.heading, desired);
   const steer = clamp(err * 2.4 - boat.yawRate * 0.45, -1, 1);
   const speed = boatSpeed(boat);

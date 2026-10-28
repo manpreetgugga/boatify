@@ -6,6 +6,13 @@ No Paddle (first released as Boatify) is a sailing game for Android (and any mod
 pick your angle, tack upwind, ride the gusts and get to the harbor without
 capsizing, sinking on a reef or getting dragged into a whirlpool.
 
+<p>
+  <img src="docs/screens/title.jpg" width="49%" alt="The title screen: No Paddle, with a line of harbor talk and the menu">
+  <img src="docs/screens/prologue.jpg" width="49%" alt="The prologue: stuck head to wind in the no-go zone, dolphins show the way across the wind">
+  <img src="docs/screens/dolphins.jpg" width="49%" alt="In irons on the first voyage, a pod of dolphins and a line of foam show which way to turn">
+  <img src="docs/screens/storm.jpg" width="49%" alt="Sailing through the rain of the Storm Front, with an SOS pointer to a castaway">
+</p>
+
 ## Download
 
 Every version is published as a pre-release on the
@@ -23,11 +30,12 @@ from that source. Android 8.0 or newer.
 | Pause | Pause button or back | P or Esc |
 | Restart, mute, toggle trim | | R, M, T |
 
-- **The prologue.** The first time you launch, a short film tells the story: a calm dawn, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, across it she flies), and last the chart from A to B with the reefs, whirlpools, squalls and the fog in between. Skip it any time, or watch it again from the title screen's Prologue button.
+- **The prologue.** The first time you launch, a short film tells the story: a calm dawn, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, until dolphins show the way across it and she flies), and last the chart from A to B with the reefs, whirlpools, squalls and the fog in between. Skip it any time, or watch it again from the title screen's Prologue button.
 - **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the wind dial shows where the sail stops working.
 - **Beam reach is fastest.** Wind from the side gives the most speed; dead downwind is slower than you'd think.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".
 - **Watch the heel.** Gusts lean the boat over. Past the danger mark you capsize. Ease out or bear away.
+- **Follow the dolphins.** Stuck head to wind, or sailing off away from B? A few dolphins surface off the bow on the side to turn to and swim the way to go, with a line of foam curving from your bow to them. Follow them up to speed and they ride your bow wave. Turn the hint off in Settings.
 - **Read the water.** Dark ruffled patches are gusts, pale glassy water is a lull or an island's wind shadow. Streaks show how the air flows.
 - **Daily voyage.** After the first three voyages, a new course is charted every day: the same one for everyone that day. Sail it on consecutive days to build a streak.
 - **Open Sea.** An endless run east with no harbor at the end. Sail through buoy gates to put time back on the clock (pearls add a little more) while the wind shifts and islands, reefs, currents and whirlpools come thicker the further you go. How far can you get before the clock runs out?
@@ -39,7 +47,7 @@ from that source. Android 8.0 or newer.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
 - **Pirates.** On Pirate Waters a square-rigged brig hunts you. It's fast downwind but can't sail close to the wind, so reach across the wind, get upwind, or thread a reef gap too narrow for it. Dodge the cannonballs: a red ring marks where each will land.
 - **Sea life.** Dolphins ride your bow wave and push you along if you sail fast enough. Whales spout, dive and breach, sending out a swell that rocks your boat. Flying fish skim past and gulls land on the stern when you stop.
-- **Play your way.** Settings has colour-blind friendly colours (blue and orange instead of green and red), a reduce-motion mode (no screen shake or lightning flashes; it follows your phone's setting until you choose), three text sizes, left-handed controls and steering sensitivity.
+- **Play your way.** Settings has colour-blind friendly colours (blue and orange instead of green and red), a reduce-motion mode (no screen shake or lightning flashes; it follows your phone's setting until you choose), three text sizes, left-handed controls, steering sensitivity and the dolphin hints.
 
 ### Voyages
 
@@ -65,7 +73,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # the prologue film, harbor talk and secret medals, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
+npm test            # the prologue film, dolphin guides, harbor talk and secret medals, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```
@@ -76,7 +84,7 @@ The game is plain JavaScript modules in `web/src`:
 - `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
-- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta course and its fleet; `world/castaways.js`: castaways and hauling them aboard; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/rumors.js`: the title screen's harbor talk; `data/locker.js`: the Sail Locker's sails and hull paints
+- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta course and its fleet; `world/castaways.js`: castaways and hauling them aboard; `world/guide.js`: dolphins that show a stuck or lost sailor the way; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/rumors.js`: the title screen's harbor talk; `data/locker.js`: the Sail Locker's sails and hull paints
 
 ### Android
 

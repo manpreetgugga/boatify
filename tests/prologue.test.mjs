@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createFilm, stepFilm, endFilm, drainFilmEvents, shotAt, SHOTS, FILM_END, OAR_LOST, CALLOUTS, PROLOGUE } from '../web/src/world/prologue.js';
+import { createFilm, stepFilm, endFilm, drainFilmEvents, shotAt, SHOTS, FILM_END, OAR_LOST, GUIDE_AT, CALLOUTS, PROLOGUE } from '../web/src/world/prologue.js';
 import { boatSpeed } from '../web/src/physics/boat.js';
 import { isClear } from '../web/src/world/collision.js';
 import { loadSave } from '../web/src/platform/save.js';
@@ -56,6 +56,16 @@ test('head to wind the sail flaps and she stops; across it she flies', () => {
   const reach = mid('reach');
   assert.ok(reach.every((s) => !s.luffing && s.speed > 9), `reach speeds ${reach.map((s) => s.speed.toFixed(1))}`);
   assert.ok(film.game.escortTime > 2, 'and the dolphins come along');
+});
+
+test('stuck in irons, dolphins show the way, and she follows them', () => {
+  const guide = seen.events.find((e) => e.type === 'guide');
+  assert.ok(guide && Math.abs(guide.t - GUIDE_AT) < 0.05);
+  assert.equal(shotAt(guide.t).id, 'irons');
+  const join = seen.events.find((e) => e.type === 'dolphins' && e.phase === 'join');
+  assert.ok(join && join.guide, 'the same dolphins ride her bow');
+  assert.equal(shotAt(join.t).id, 'reach');
+  assert.ok(!PROLOGUE.dolphins, 'no other pod steals the scene');
 });
 
 test('the chart lays a way to B from wherever she is', () => {

@@ -49,6 +49,7 @@ let demoTimer = 0;
 let demoIndex = 0;
 let finishTimer = 0;
 let pending = null;
+let guideTold = {}; // which dolphin hints this voyage has explained
 let cancelCountdown = null;
 let timeScale = 1;
 let insets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -100,6 +101,7 @@ function applySettings() {
     renderer.quality = q;
     resize(renderer);
   }
+  if (game && mode !== 'title' && mode !== 'film') game.guide.on = guideOn();
   layout = null;
 }
 
@@ -232,8 +234,9 @@ function startLevel(ref) {
   if (cancelCountdown) cancelCountdown();
   film = null;
   levelIndex = ref;
-  game = createGame(def, { boat: selectedBoat(save) });
+  game = createGame(def, { boat: selectedBoat(save), guide: guideOn() });
   autopilot = botDriving ? createAutopilot(game) : null;
+  guideTold = {};
   // No ghost on the open sea or in a regatta: no two runs share a course.
   const fresh = def.endless || def.race;
   recorder = fresh ? null : createRecorder(game);
@@ -354,6 +357,14 @@ function filmEvents(events) {
         audio.sfx.oar('lost');
         buzz(30);
         break;
+      case 'guide':
+        audio.sfx.dolphins();
+        floatText(fx, e.x, e.y - 12, 'This way!', '#bfefff');
+        break;
+      case 'dolphins':
+        audio.sfx.dolphins();
+        floatText(fx, film.game.boat.x, film.game.boat.y - 14, 'BOW RIDERS!', '#bfefff');
+        break;
       case 'splash':
         burst(fx, e.x, e.y, { count: 18, speed: 28, color: C.foam, size: 2.2 });
         ring(fx, e.x, e.y, C.foam, 16, 0.8);
@@ -370,6 +381,12 @@ function filmEvents(events) {
 
 function buzz(ms) {
   if (save.settings.vibration) vibrate(ms);
+}
+
+// Dolphins show a stuck or lost sailor the way, unless hints are off or the
+// autopilot has the helm.
+function guideOn() {
+  return save.settings.hints !== false && !botDriving;
 }
 
 // A one-time tip the first time the player meets a kind of sea life.
@@ -531,6 +548,16 @@ function handleEvents(events, live) {
       case 'lightning':
         if (!live) break;
         setTimeout(() => audio.sfx.thunder(), 250 + Math.random() * 900);
+        break;
+      case 'guide':
+        if (!live) break;
+        audio.sfx.dolphins();
+        floatText(fx, e.x, e.y - 12, 'This way!', '#bfefff');
+        // Said once a voyage; after that the dolphins speak for themselves.
+        if (!guideTold[e.reason]) {
+          guideTold[e.reason] = true;
+          ui.toast(e.reason === 'irons' ? 'Stuck head to wind! Follow the dolphins: turn across the wind.' : "B isn't that way! Follow the dolphins.", '', 4200);
+        }
         break;
       case 'dolphins':
         if (!live) break;
@@ -780,7 +807,10 @@ window.__boatify = {
   },
   setAutopilot(on) {
     botDriving = !!on;
-    if (mode !== 'title' && game) autopilot = on ? createAutopilot(game) : null;
+    if (mode !== 'title' && game) {
+      autopilot = on ? createAutopilot(game) : null;
+      game.guide.on = guideOn();
+    }
   },
   setTimeScale(n) {
     timeScale = Math.max(1, Math.round(n));
@@ -788,6 +818,16 @@ window.__boatify = {
   // Wind the Open Sea clock down to see a run end.
   setSeaClock(s) {
     if (game && game.sea) game.sea.clock = s;
+  },
+  // Put her bow to the wind, dead in the water, with the dolphins ready.
+  inIrons() {
+    if (!game) return;
+    Object.assign(game.boat, { vx: 0, vy: 0, heading: game.wind.angle + Math.PI, yawRate: 0 });
+    game.guide.cooldown = 0;
+  },
+  guidePod() {
+    const pod = game && game.life.pods.find((p) => p.state === 'guide');
+    return pod && { x: pod.x, y: pod.y, way: pod.way };
   },
   // Heave to just upwind of the first castaway still adrift, bow to the
   // wind, and let the drift carry the boat alongside. Returns their name.

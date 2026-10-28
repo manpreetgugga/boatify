@@ -1,12 +1,14 @@
 // The prologue: a short film for a first launch. Dawn, and a sloop rowing out
 // of harbor; a squall that takes the oar; then the wind doing what it does
 // (head to wind the sail flaps, across it she flies); and last the chart, A
-// to B, with what lies between. It runs the real boat, wind and weather, with
-// a script at the helm.
+// to B, with what lies between. Stuck head to wind, the boat is shown the way
+// by dolphins, as a lost sailor is in the game. It runs the real boat, wind
+// and weather, with a script at the helm.
 
 import { DEG, angleDiff, clamp, fromBearing, smoothstep, wrapAngle } from '../core/math.js';
 import { blob, rockField } from './shapes.js';
 import { createGame, stepGame, drainEvents } from './game.js';
+import { addGuidePod } from './wildlife.js';
 
 const FROM = 315; // the wind blows from the north-west all film long
 
@@ -27,8 +29,6 @@ export const PROLOGUE = {
   // The squall. The script carries it across the boat, then parks it out on
   // the chart for the last shot.
   storms: [{ x: -2000, y: -2000, r: 300, power: 0.8 }],
-  // A pod that waits for the reach to come and ride the bow wave.
-  dolphins: [{ x: 470, y: 600, r: 16 }],
 };
 
 // When each shot starts, and what it says.
@@ -39,13 +39,14 @@ export const SHOTS = [
   { id: 'lost', at: 13, caption: '…and the sea took the oar.' },
   { id: 'wind', at: 18, caption: 'No paddle now. Only the wind.' },
   { id: 'irons', at: 23.5, caption: 'Point her into the wind, and the sail just flaps.' },
-  { id: 'reach', at: 30, caption: 'Turn her across it, and she flies.' },
+  { id: 'reach', at: 30, caption: 'Follow the dolphins across it, and she flies.' },
   { id: 'chart', at: 36.5, caption: 'Somewhere out there is B, and home.' },
   { id: 'dangers', at: 41, caption: 'Past the reefs, the squalls… and whatever stirs in the fog.' },
   { id: 'title', at: 47.5, caption: '' },
 ];
 export const FILM_END = 56;
 export const OAR_LOST = 13.1;
+export const GUIDE_AT = 25.5; // in irons, and the dolphins come to show the way
 const FLASHES = [10.6, OAR_LOST, 15.4];
 const STROKE = 1.6; // seconds per stroke of the oar
 
@@ -147,8 +148,12 @@ export function stepFilm(film, dt, visual = 1.7) {
     }
   }
 
-  // The dolphins hold off until she flies.
-  if (t < 31) for (const pod of game.life.pods) pod.cooldown = Math.max(pod.cooldown, 1);
+  // Stuck head to wind, dolphins surface and swim off across it. They wait
+  // for her to follow, then ride the bow wave.
+  if (t0 < GUIDE_AT && t >= GUIDE_AT) {
+    const pod = addGuidePod(game.life, boat, fromBearing(FROM + 90), 10);
+    film.events.push({ type: 'guide', x: pod.x, y: pod.y });
+  }
 
   // At the helm: come round to each stretch's heading at a steady rate.
   const { bearing, turn } = course(t);
@@ -211,7 +216,7 @@ export function stepFilm(film, dt, visual = 1.7) {
     oar.spin *= 1 - dt * 0.2;
   }
 
-  drainEvents(game);
+  for (const e of drainEvents(game)) if (e.type === 'dolphins' && e.phase === 'join') film.events.push(e);
   if (t >= FILM_END) endFilm(film);
 }
 

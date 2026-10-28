@@ -197,12 +197,18 @@ button:focus-visible {
 
 /* Title */
 
+/* Large text on a short phone can outgrow the screen: scroll, never clip. */
+.screen.title {
+  overflow-y: auto;
+}
+
 .title-wrap {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 18px;
   max-width: 560px;
+  margin-block: auto;
 }
 
 .logo {
@@ -1448,6 +1454,19 @@ button:focus-visible {
 }
 
 @media (max-height: 420px) {
+  .title-wrap {
+    gap: 10px;
+    max-width: 640px;
+  }
+  .title-wrap .tagline {
+    max-width: 56ch;
+  }
+  .rumor {
+    max-width: 64ch;
+  }
+  .title-buttons {
+    gap: 10px;
+  }
   .sheet-head h2 {
     font-size: 24px;
   }

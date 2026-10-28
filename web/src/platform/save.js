@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   steerSensitivity: 1,
   quality: 'high',
   ghost: true,
+  hints: true, // dolphins show the way when you're stuck or lost
   boat: 'sloop',
   sail: 'stock', // Sail Locker choices
   hull: 'stock',

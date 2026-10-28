@@ -101,6 +101,13 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await snap('05-sailing');
   await tab.mouse.up();
 
+  step('in irons: dolphins show the way');
+  await tab.evaluate(() => window.__boatify.inIrons());
+  await tab.waitForFunction(() => window.__boatify.guidePod(), null, { timeout: 8000 });
+  await tab.waitForFunction(() => /Follow the dolphins/.test(document.querySelector('#toasts').textContent), null, { timeout: 3000 });
+  await tab.waitForTimeout(2200);
+  await snap('05b-dolphin-guide');
+
   if (levelIndex !== 0) {
     await tab.evaluate((i) => window.__boatify.startLevel(i), levelIndex);
     await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });

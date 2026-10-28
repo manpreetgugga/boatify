@@ -10,6 +10,7 @@ import { sampleWater } from './water.js';
 import { hullContact, bounce, fence } from './contact.js';
 import { moveFloes } from './floes.js';
 import { prepareWildlife, updateWildlife } from './wildlife.js';
+import { createGuide, updateGuide } from './guide.js';
 import { preparePirates, updatePirates } from './pirates.js';
 import { prepareOpenSea, updateOpenSea, reachGate, endRun, PEARL_TIME } from './opensea.js';
 import { prepareRace, updateRace, shadeWind, finishRace } from './regatta.js';
@@ -68,6 +69,7 @@ export function createGame(def, options = {}) {
     sea: null, // the endless open sea's clock and gates
     race: null, // the regatta fleet and standings
     castaways: prepareCastaways(def), // sailors adrift, waiting for a line
+    guide: createGuide(options.guide), // dolphins that show a lost sailor the way
   };
   if (def.endless) prepareOpenSea(game);
   if (def.race) prepareRace(game);
@@ -195,6 +197,7 @@ function tick(game, input, dt) {
   if (game.castaways.length) updateCastaways(game, dt);
   checkCheckpoints(game);
   checkTips(game);
+  updateGuide(game, dt);
 
   if (game.hull <= 0) {
     game.status = 'sinking';

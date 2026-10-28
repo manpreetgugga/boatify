@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0] - 2026-10-28
+
+Follow the dolphins.
+
+- **Dolphin hints.** If you're stuck head to wind with the sail flapping, or sailing well off away from B, three dolphins now surface off your bow on the side you should turn to. Then they swim off the way to go, leaping, with a dashed line of foam curving from your bow to them. "This way!" pops up over them. The first time on each voyage a message says what to do.
+- **Where the way comes from.** It's the same chart the autopilot sails by, so the dolphins tack you upwind and lead you round islands and reefs, not straight at B.
+- **Follow them or not.** Follow them up to speed and they stay to ride your bow wave. Ignore them and they swim off, and won't come back for twenty seconds.
+- **When they stay away.** They don't come when you've stopped head to wind on purpose next to a castaway. They don't come when you've turned off course to fetch one, or to run from a pirate brig.
+- **Settings** has a new "Dolphin hints" switch. They're off while the autopilot sails.
+- **The prologue** shows the hint at work. Stuck in irons, the dolphins come up and swim off across the wind. She follows them onto the reach, "Follow the dolphins across it, and she flies.", and they ride her bow.
+- **Title screen fits on a phone.** On a landscape phone, a two-line piece of harbor talk pushed the top and bottom of the title screen off the edges. It's tighter on short screens now, and with large text it scrolls rather than cutting anything off.
+- The README has screenshots.
+
 ## [0.15.0] - 2026-10-28
 
 Curiosity: what's out there?
