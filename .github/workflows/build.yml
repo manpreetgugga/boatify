@@ -1,0 +1,76 @@
+name: Build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test and bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit tests
+        run: npm test
+      - name: Bundle the game
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boatify-web
+          path: dist/index.html
+
+  android:
+    name: Android APK
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --stacktrace
+      - name: Name the APK
+        id: apk
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/boatify-v${VERSION}.apk"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "file=out/boatify-v${VERSION}.apk" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boatify-v${{ steps.apk.outputs.version }}-apk
+          path: ${{ steps.apk.outputs.file }}
+      - name: Publish pre-release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.apk.outputs.version }}
+          FILE: ${{ steps.apk.outputs.file }}
+        run: |
+          TAG="v${VERSION}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists; bump the version in package.json to publish a new one."
+          else
+            node scripts/release-notes.mjs "$VERSION" > notes.md
+            gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" --title "Boatify $TAG" --notes-file notes.md --prerelease
+          fi

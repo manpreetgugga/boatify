@@ -1,0 +1,542 @@
+// Instruments and on-screen controls, drawn in screen space (CSS pixels).
+
+import { clamp, DEG, formatTime, compassPoint } from '../core/math.js';
+import { beaufort, toKnots, toMeters } from '../physics/sailing.js';
+import { HEEL_WARNING, CAPSIZE_ANGLE, boatSpeed } from '../physics/boat.js';
+import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.js';
+import { windFromBearing } from '../world/wind.js';
+import { worldToScreen } from './camera.js';
+import { C, font, FONT } from './palette.js';
+
+function panel(ctx, x, y, w, h, r = 12) {
+  ctx.fillStyle = C.panel;
+  ctx.strokeStyle = C.panelEdge;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function text(ctx, str, x, y, size, color = C.text, align = 'left', weight = 700, family = FONT.display, italic = false) {
+  ctx.font = font(size, weight, family, italic);
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(str, x, y);
+}
+
+export function createHud() {
+  return { minimap: null, minimapKey: '', flashT: 0 };
+}
+
+export function drawHud(ctx, hud, game, cam, layout, controls, time) {
+  const L = layout;
+  drawTopLeft(ctx, game, L);
+  drawMinimap(ctx, hud, game, cam, L, time);
+  drawHull(ctx, game, L);
+  drawPointers(ctx, game, cam, L, time);
+  drawInstruments(ctx, game, L, controls, time);
+  if (controls.touch) drawTouchControls(ctx, game, L, controls, time);
+  else drawKeyHints(ctx, game, L, controls);
+  drawStatus(ctx, game, L, time);
+}
+
+function drawTopLeft(ctx, game, L) {
+  const p = L.pause;
+  panel(ctx, p.x, p.y, p.w, p.h, 10);
+  ctx.fillStyle = C.text;
+  ctx.fillRect(p.x + 15, p.y + 13, 5, 18);
+  ctx.fillRect(p.x + 25, p.y + 13, 5, 18);
+
+  const x = L.timer.x;
+  const y = L.timer.y;
+  const w = L.compact ? 150 : 176;
+  panel(ctx, x, y, w, 44, 10);
+  text(ctx, game.level.name.toUpperCase(), x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
+  text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
+  const par = game.level.par;
+  const target = game.time <= par.gold ? par.gold : game.time <= par.silver ? par.silver : null;
+  const starColor = game.time <= par.gold ? C.brass : game.time <= par.silver ? '#c9d3d6' : C.textDim;
+  text(ctx, target ? `★ ${formatTime(target)}` : '★', x + w - 10, y + 13, 11, starColor, 'right', 600, FONT.body);
+  // Pearls.
+  ctx.fillStyle = '#fbf6ee';
+  ctx.beginPath();
+  ctx.arc(x + w - 46, y + 30, 5, 0, Math.PI * 2);
+  ctx.fill();
+  text(ctx, `${game.pearls}/${game.pearlsTotal}`, x + w - 10, y + 31, 16, C.text, 'right', 700);
+}
+
+function minimapScale(game, L) {
+  const { level } = game;
+  const k = Math.min(L.minimap.w / level.width, (L.minimap.w * 0.75) / level.height);
+  return { k, w: level.width * k, h: level.height * k };
+}
+
+function buildMinimap(game, L) {
+  const { level } = game;
+  const { k, w, h } = minimapScale(game, L);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(w * dpr);
+  c.height = Math.ceil(h * dpr);
+  const m = c.getContext('2d');
+  m.scale(dpr * k, dpr * k);
+  m.fillStyle = 'rgba(15, 76, 92, 0.9)';
+  m.fillRect(0, 0, level.width, level.height);
+  for (const cz of level.calms) {
+    m.fillStyle = 'rgba(170, 222, 226, 0.25)';
+    m.beginPath();
+    m.arc(cz.x, cz.y, cz.r, 0, Math.PI * 2);
+    m.fill();
+  }
+  for (const s of level.storms) {
+    m.fillStyle = 'rgba(6, 12, 20, 0.35)';
+    m.beginPath();
+    m.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    m.fill();
+  }
+  for (const cur of level.currents) {
+    m.save();
+    m.translate(cur.x, cur.y);
+    m.rotate(Math.atan2(cur.dirY, cur.dirX));
+    m.fillStyle = 'rgba(120, 210, 225, 0.18)';
+    m.fillRect(-cur.halfL, -cur.halfW, cur.halfL * 2, cur.halfW * 2);
+    m.strokeStyle = 'rgba(200, 240, 245, 0.5)';
+    m.lineWidth = 1 / k;
+    for (let x = -cur.halfL + 60; x < cur.halfL; x += 140) {
+      m.beginPath();
+      m.moveTo(x - 30, -30);
+      m.lineTo(x, 0);
+      m.lineTo(x - 30, 30);
+      m.stroke();
+    }
+    m.restore();
+  }
+  for (const wp of level.whirlpools) {
+    m.strokeStyle = 'rgba(232, 244, 242, 0.55)';
+    m.lineWidth = 1.2 / k;
+    m.beginPath();
+    m.arc(wp.x, wp.y, wp.r, 0, Math.PI * 2);
+    m.stroke();
+    m.fillStyle = 'rgba(2, 10, 16, 0.6)';
+    m.beginPath();
+    m.arc(wp.x, wp.y, wp.r * 0.35, 0, Math.PI * 2);
+    m.fill();
+  }
+  for (const kr of level.krakens) {
+    m.strokeStyle = 'rgba(255, 77, 77, 0.7)';
+    m.lineWidth = 1.2 / k;
+    m.setLineDash([6 / k, 4 / k]);
+    m.beginPath();
+    m.arc(kr.x, kr.y, kr.r, 0, Math.PI * 2);
+    m.stroke();
+    m.setLineDash([]);
+  }
+  for (const isl of level.islands) {
+    m.fillStyle = isl.kind === 'rock' ? '#8d867c' : C.sand;
+    m.beginPath();
+    isl.pts.forEach(([x, y], i) => (i ? m.lineTo(x, y) : m.moveTo(x, y)));
+    m.closePath();
+    m.fill();
+  }
+  for (const r of level.rocks) {
+    m.fillStyle = r.material === 'coral' ? C.coral : '#cfc7bb';
+    m.beginPath();
+    m.arc(r.x, r.y, Math.max(r.r, 1.2 / k), 0, Math.PI * 2);
+    m.fill();
+  }
+  return { canvas: c, w, h, k };
+}
+
+function drawMinimap(ctx, hud, game, cam, L, time) {
+  const key = `${game.level.id}:${Math.round(L.minimap.w)}`;
+  if (!hud.minimap || hud.minimapKey !== key) {
+    hud.minimap = buildMinimap(game, L);
+    hud.minimapKey = key;
+  }
+  const mm = hud.minimap;
+  const x = L.minimap.x + (L.minimap.w - mm.w);
+  const y = L.minimap.y;
+  L.minimap.drawn = { x, y, w: mm.w, h: mm.h };
+  panel(ctx, x - 5, y - 5, mm.w + 10, mm.h + 10, 8);
+  ctx.drawImage(mm.canvas, x, y, mm.w, mm.h);
+  const k = mm.k;
+  const { level, boat } = game;
+  // View rectangle.
+  const vw = cam.w / cam.scale;
+  const vh = cam.h / cam.scale;
+  ctx.strokeStyle = 'rgba(232, 244, 242, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + (cam.x - vw / 2) * k, y + (cam.y - vh / 2) * k, vw * k, vh * k);
+  for (const c of level.checkpoints) {
+    ctx.fillStyle = c.reached ? C.ok : C.warn;
+    ctx.beginPath();
+    ctx.arc(x + c.x * k, y + c.y * k, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const f = level.finish;
+  ctx.fillStyle = C.signal;
+  ctx.beginPath();
+  ctx.arc(x + f.x * k, y + f.y * k, 3.5 + Math.sin(time * 4), 0, Math.PI * 2);
+  ctx.fill();
+  text(ctx, 'B', x + f.x * k, y + f.y * k - 9, 10, C.signal, 'center', 800);
+  // Boat arrow.
+  ctx.save();
+  ctx.translate(x + boat.x * k, y + boat.y * k);
+  ctx.rotate(boat.heading);
+  ctx.fillStyle = C.foam;
+  ctx.beginPath();
+  ctx.moveTo(6, 0);
+  ctx.lineTo(-4, -3.5);
+  ctx.lineTo(-2, 0);
+  ctx.lineTo(-4, 3.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  // North-up wind arrow in the corner.
+  const ax = x + 12;
+  const ay = y + 12;
+  ctx.save();
+  ctx.translate(ax, ay);
+  ctx.rotate(game.wind.angle);
+  ctx.strokeStyle = C.foam;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-7, 0);
+  ctx.lineTo(6, 0);
+  ctx.moveTo(2, -3.5);
+  ctx.lineTo(6, 0);
+  ctx.lineTo(2, 3.5);
+  ctx.stroke();
+  ctx.restore();
+  text(ctx, 'N', x + mm.w - 8, y + 9, 9, C.textDim, 'center', 700);
+}
+
+function drawHull(ctx, game, L) {
+  const d = L.minimap.drawn || L.minimap;
+  const x = d.x - 5;
+  const y = d.y + d.h + 12;
+  const w = d.w + 10;
+  panel(ctx, x, y, w, 26, 8);
+  const hull = clamp(game.hull / 100, 0, 1);
+  text(ctx, 'HULL', x + 9, y + 13.5, 11, C.textDim, 'left', 700);
+  const bx = x + 44;
+  const bw = w - 44 - 40;
+  ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
+  ctx.fillRect(bx, y + 9, bw, 8);
+  ctx.fillStyle = hull > 0.5 ? C.ok : hull > 0.25 ? C.warn : C.danger;
+  ctx.fillRect(bx, y + 9, bw * hull, 8);
+  text(ctx, `${Math.ceil(game.hull)}%`, x + w - 8, y + 13.5, 13, C.text, 'right', 700);
+}
+
+// Edge-of-screen arrows toward B and the next checkpoint.
+function drawPointers(ctx, game, cam, L, time) {
+  const targets = [];
+  const f = game.level.finish;
+  targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
+  const next = game.level.checkpoints[game.nextCheckpoint];
+  if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: '', dist: 0 });
+  // Pointers ride the edge of the open water between the HUD bands.
+  const m = 30;
+  const x0 = L.insets.l + m;
+  const x1 = L.w - L.insets.r - m;
+  const y0 = L.insets.t + 72;
+  const y1 = Math.max(y0 + 40, L.panel.y - 18);
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  for (const t of targets) {
+    const [sx, sy] = worldToScreen(cam, t.x, t.y);
+    if (sx > x0 && sx < x1 && sy > y0 && sy < y1) continue;
+    const a = Math.atan2(sy - cy, sx - cx);
+    const s = Math.min((x1 - x0) / 2 / Math.abs(Math.cos(a) || 1e-6), (y1 - y0) / 2 / Math.abs(Math.sin(a) || 1e-6));
+    let px = cx + Math.cos(a) * s;
+    const py = cy + Math.sin(a) * s;
+    const mm = L.minimap;
+    if (px > mm.x - 24 && py < mm.y + mm.h + 44) px = mm.x - 24;
+    ctx.save();
+    ctx.translate(px, py);
+    const pulse = 1 + 0.08 * Math.sin(time * 5);
+    ctx.scale(pulse, pulse);
+    ctx.rotate(a);
+    ctx.fillStyle = t.color;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-6, -10);
+    ctx.lineTo(-2, 0);
+    ctx.lineTo(-6, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    if (t.label) {
+      const lx = px - Math.cos(a) * 26;
+      const ly = py - Math.sin(a) * 22;
+      text(ctx, t.label, lx, ly - 7, 15, t.color, 'center', 800, FONT.display, true);
+      text(ctx, `${Math.round(toMeters(t.dist))} m`, lx, ly + 8, 11, C.text, 'center', 600, FONT.body);
+    }
+  }
+}
+
+function drawInstruments(ctx, game, L, controls, time) {
+  const P = L.panel;
+  panel(ctx, P.x, P.y, P.w, P.h, 14);
+  const { boat } = game;
+  const cy = P.y + P.h / 2;
+
+  // Wind dial, heading-up.
+  const R = P.h * 0.38;
+  const dx = P.x + R + 14;
+  ctx.save();
+  ctx.translate(dx, cy);
+  ctx.strokeStyle = 'rgba(232, 244, 242, 0.25)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const inner = i % 3 === 0 ? R - 6 : R - 3;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+    ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+    ctx.stroke();
+  }
+  const rel = relativeWindAngle(game);
+  const windA = -Math.PI / 2 + rel;
+  const inIrons = Math.abs(rel) < 34 * DEG;
+  ctx.fillStyle = inIrons ? `rgba(255, 77, 77, ${0.35 + 0.2 * Math.sin(time * 8)})` : 'rgba(214, 62, 169, 0.22)';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, R - 1, windA - 34 * DEG, windA + 34 * DEG);
+  ctx.closePath();
+  ctx.fill();
+  // Boat silhouette pointing up.
+  ctx.fillStyle = C.foam;
+  ctx.beginPath();
+  ctx.moveTo(0, -R * 0.42);
+  ctx.quadraticCurveTo(R * 0.2, -R * 0.05, R * 0.13, R * 0.38);
+  ctx.lineTo(-R * 0.13, R * 0.38);
+  ctx.quadraticCurveTo(-R * 0.2, -R * 0.05, 0, -R * 0.42);
+  ctx.fill();
+  // True wind arrow from the rim inward.
+  const ux = Math.cos(windA);
+  const uy = Math.sin(windA);
+  ctx.strokeStyle = C.brass;
+  ctx.fillStyle = C.brass;
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(ux * (R + 2), uy * (R + 2));
+  ctx.lineTo(ux * R * 0.55, uy * R * 0.55);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ux * R * 0.45, uy * R * 0.45);
+  ctx.lineTo(ux * R * 0.7 - uy * 5, uy * R * 0.7 + ux * 5);
+  ctx.lineTo(ux * R * 0.7 + uy * 5, uy * R * 0.7 - ux * 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  const knots = toKnots(game.windHere.speed);
+  const bf = beaufort(knots);
+  const tx = dx + R + 14;
+  text(ctx, 'WIND', tx, P.y + 16, 11, C.textDim, 'left', 700);
+  text(ctx, `${knots.toFixed(0)} kn`, tx, P.y + 34, 19, C.text, 'left', 700);
+  text(ctx, `from ${compassPoint(windFromBearing(game.wind))}`, tx, P.y + 51, 12, C.textDim, 'left', 600, FONT.body);
+  text(ctx, `F${bf.force} ${bf.name}`, tx, P.y + 66, 11, C.textDim, 'left', 600, FONT.body);
+
+  // Speed and VMG.
+  const sx = P.x + P.w * 0.52;
+  const kn = toKnots(boatSpeed(boat));
+  const vmg = toKnots(vmgToFinish(game));
+  text(ctx, 'SPEED', sx, P.y + 16, 11, C.textDim, 'left', 700);
+  text(ctx, kn.toFixed(1), sx, P.y + 40, L.compact ? 30 : 34, C.text, 'left', 800, FONT.display, true);
+  ctx.font = font(L.compact ? 30 : 34, 800, FONT.display, true);
+  const numW = ctx.measureText(kn.toFixed(1)).width;
+  text(ctx, 'kn', sx + numW + 4, P.y + 46, 13, C.textDim, 'left', 600, FONT.body);
+  const vmgColor = vmg > 0.5 ? C.ok : vmg < -0.5 ? C.danger : C.warn;
+  text(ctx, `to B ${vmg >= 0 ? '▲' : '▼'} ${Math.abs(vmg).toFixed(1)}`, sx, P.y + P.h - 16, 13, vmgColor, 'left', 700);
+
+  // Sail trim and heel.
+  const gx = P.x + P.w * 0.74;
+  const gw = P.x + P.w - 14 - gx;
+  let state = 'GOOD';
+  let stateColor = C.ok;
+  if (boat.luffing) {
+    state = 'LUFFING';
+    stateColor = C.warn;
+  } else if (boat.trim < boat.optimalTrim - 0.12) {
+    state = 'STALLED';
+    stateColor = C.warn;
+  } else if (boat.trimQuality < 0.75) {
+    state = 'TRIM';
+    stateColor = C.warn;
+  }
+  if (inIrons) {
+    state = 'IN IRONS';
+    stateColor = C.danger;
+  }
+  text(ctx, controls.manual ? 'SAIL' : 'SAIL · AUTO', gx, P.y + 16, 11, C.textDim, 'left', 700);
+  text(ctx, state, gx + gw, P.y + 16, 11, stateColor, 'right', 800);
+  const by = P.y + 28;
+  ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
+  ctx.fillRect(gx, by, gw, 10);
+  const opt = clamp(boat.optimalTrim, 0, 1);
+  ctx.fillStyle = 'rgba(61, 220, 151, 0.45)';
+  ctx.fillRect(gx + gw * clamp(opt - 0.07, 0, 1), by, gw * 0.14, 10);
+  const tm = gx + gw * clamp(boat.trim, 0, 1);
+  ctx.fillStyle = C.foam;
+  ctx.beginPath();
+  ctx.moveTo(tm, by - 1);
+  ctx.lineTo(tm - 5, by - 7);
+  ctx.lineTo(tm + 5, by - 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillRect(tm - 1, by, 2, 10);
+  text(ctx, 'IN', gx, by + 18, 9, C.textDim, 'left', 600, FONT.body);
+  text(ctx, 'OUT', gx + gw, by + 18, 9, C.textDim, 'right', 600, FONT.body);
+
+  // Heel meter.
+  const hy = P.y + P.h - 18;
+  const heelDeg = Math.abs(boat.heel) / DEG;
+  const hc = Math.abs(boat.heel) > HEEL_WARNING ? C.danger : Math.abs(boat.heel) > HEEL_WARNING * 0.75 ? C.warn : C.text;
+  text(ctx, 'HEEL', gx, hy, 11, C.textDim, 'left', 700);
+  const mx0 = gx + 34;
+  const mw = gw - 34 - 30;
+  ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
+  ctx.fillRect(mx0, hy - 3, mw, 6);
+  const warnFrac = HEEL_WARNING / CAPSIZE_ANGLE;
+  ctx.fillStyle = 'rgba(255, 77, 77, 0.5)';
+  ctx.fillRect(mx0 + mw * warnFrac, hy - 3, mw * (1 - warnFrac), 6);
+  ctx.fillStyle = hc;
+  ctx.fillRect(mx0, hy - 3, mw * clamp(Math.abs(boat.heel) / CAPSIZE_ANGLE, 0, 1), 6);
+  text(ctx, `${heelDeg.toFixed(0)}°`, gx + gw, hy, 13, hc, 'right', 700);
+}
+
+function drawTouchControls(ctx, game, L, controls, time) {
+  // Helm.
+  const h = L.helm;
+  const active = controls.helm && controls.helm.active;
+  const ax = active ? controls.helm.ax : h.x;
+  const ay = active ? controls.helm.ay : h.y;
+  ctx.globalAlpha = active ? 0.95 : 0.6;
+  ctx.strokeStyle = 'rgba(232, 244, 242, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgba(6, 20, 29, 0.35)';
+  ctx.beginPath();
+  ctx.arc(ax, ay, h.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // Wheel spokes rotate with the rudder.
+  ctx.save();
+  ctx.translate(ax, ay);
+  ctx.rotate(game.boat.rudder * 1.6);
+  ctx.strokeStyle = C.brass;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0, 0, h.r * 0.55, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * h.r * 0.12, Math.sin(a) * h.r * 0.12);
+    ctx.lineTo(Math.cos(a) * h.r * 0.72, Math.sin(a) * h.r * 0.72);
+    ctx.stroke();
+  }
+  ctx.fillStyle = C.brass;
+  ctx.beginPath();
+  ctx.arc(0, 0, h.r * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  if (active) {
+    ctx.fillStyle = C.foam;
+    ctx.beginPath();
+    ctx.arc(ax + clamp(controls.steer, -1, 1) * h.r * 0.8, ay, 9, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    text(ctx, '◀ STEER ▶', ax, ay + h.r + 14, 12, C.textDim, 'center', 700);
+  }
+  ctx.globalAlpha = 1;
+
+  // Gust jar button.
+  const g = L.gust;
+  const has = game.gustJars > 0;
+  const boosting = game.boat.boostTime > 0;
+  ctx.fillStyle = boosting ? 'rgba(120, 220, 240, 0.45)' : has ? 'rgba(120, 220, 240, 0.22)' : 'rgba(6, 20, 29, 0.35)';
+  ctx.strokeStyle = has ? '#bff3ff' : 'rgba(232, 244, 242, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.globalAlpha = has ? 1 : 0.45;
+  ctx.save();
+  ctx.translate(g.x, g.y - 4);
+  ctx.scale(1.5, 1.5);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 0; i <= 16; i++) {
+    const a = time * (boosting ? 12 : 3) + i * 0.6;
+    const r = 0.5 + i * 0.32;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r * 0.8;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+  text(ctx, `GUST ×${game.gustJars}`, g.x, g.y + g.r * 0.55, 11, C.text, 'center', 800);
+  ctx.globalAlpha = 1;
+
+  // Sheet slider when trimming by hand.
+  if (controls.manual) {
+    const s = L.sheet;
+    panel(ctx, s.x - s.w / 2, s.y, s.w, s.h, s.w / 2);
+    const opt = clamp(game.boat.optimalTrim, 0, 1);
+    ctx.fillStyle = 'rgba(61, 220, 151, 0.4)';
+    ctx.fillRect(s.x - s.w / 2 + 4, s.y + 8 + (s.h - 16) * clamp(opt - 0.07, 0, 1), s.w - 8, (s.h - 16) * 0.14);
+    const ty = s.y + 8 + (s.h - 16) * clamp(controls.trimTarget, 0, 1);
+    ctx.fillStyle = controls.sheet && controls.sheet.active ? C.signal : C.foam;
+    ctx.beginPath();
+    ctx.arc(s.x, ty, s.w / 2 + 3, 0, Math.PI * 2);
+    ctx.fill();
+    text(ctx, 'IN', s.x, s.y - 9, 10, C.textDim, 'center', 700);
+    text(ctx, 'OUT', s.x, s.y + s.h + 10, 10, C.textDim, 'center', 700);
+  }
+}
+
+function drawKeyHints(ctx, game, L, controls) {
+  const y = L.panel.y - 12;
+  const hint = controls.manual
+    ? 'A/D steer · W/S sheet in/out · SPACE gust · P pause'
+    : 'A/D or ←/→ steer · SPACE gust jar · T trim by hand · P pause';
+  text(ctx, hint, L.w / 2, y, 12, 'rgba(232, 244, 242, 0.5)', 'center', 600, FONT.body);
+  if (game.gustJars > 0) text(ctx, `Gust jars: ${game.gustJars}  (SPACE)`, L.w / 2, y - 18, 13, '#bff3ff', 'center', 700);
+}
+
+function drawStatus(ctx, game, L, time) {
+  let msg = null;
+  let color = C.warn;
+  if (game.status === 'capsized') {
+    msg = 'CAPSIZED! Righting the boat…';
+    color = C.danger;
+  } else if (game.status === 'sinking') {
+    msg = 'HULL BREACHED! Back to the last buoy…';
+    color = C.danger;
+  } else if (Math.abs(game.boat.heel) > HEEL_WARNING && game.status === 'sailing') {
+    msg = 'HEELING HARD: ease the sail or bear away!';
+    color = C.danger;
+  } else if (game.waterHere.vortex > 0.45 && game.status === 'sailing') {
+    msg = 'WHIRLPOOL! Sail hard out of the swirl';
+  }
+  if (!msg) return;
+  const y = L.insets.t + L.pad + 66;
+  ctx.font = font(L.compact ? 17 : 20, 800, FONT.display, true);
+  const w = ctx.measureText(msg).width + 32;
+  ctx.globalAlpha = 0.85 + 0.15 * Math.sin(time * 8);
+  panel(ctx, L.w / 2 - w / 2, y - 17, w, 34, 17);
+  text(ctx, msg, L.w / 2, y, L.compact ? 17 : 20, color, 'center', 800, FONT.display, true);
+  ctx.globalAlpha = 1;
+}

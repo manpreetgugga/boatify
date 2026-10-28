@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sea_deep">#0B2A3C</color>
+    <color name="sea">#0F4C5C</color>
+    <color name="foam">#E8F4F2</color>
+    <color name="signal">#FF6B35</color>
+    <color name="brass">#D9A441</color>
+</resources>
