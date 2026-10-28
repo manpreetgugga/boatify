@@ -34,7 +34,7 @@ from that source. Android 8.0 or newer.
 - **Regatta.** Race three rival boats round two marks and into the harbor. Round the marks in order, keep out of the dirty air in a rival's lee, and don't bump into the fleet. Win and the next race steps up from the Club fleet to the Open and then the Championship.
 - **Castaways.** On every voyage after the first, someone is clinging to wreckage, waving. Turn into the wind to stop, drift alongside until the ring fills, and they climb aboard. Their weight on the rail means a little less heel and a touch less speed. Bring them home to the harbor and they're rescued, and they're written into your logbook.
 - **Shipyard.** Earn stars to unlock the Reed Skiff, Twin Proa and Lantern Junk. Each boat trades speed, upwind ability, stability, agility and toughness differently.
-- **Medals.** Twenty-five goals beyond the stars: thread a coral reef without a dent, dodge the kraken, ride with dolphins, escape the pirates without a scratch, cross the ice untouched, find every bottle, sail a week of daily voyages, win a regatta, bring every castaway home. The Medals screen shows how close you are to each one.
+- **Medals.** Twenty-five goals beyond the stars: thread a coral reef without a dent, dodge the kraken, ride with dolphins, escape the pirates without a scratch, cross the ice untouched, find every bottle, sail a week of daily voyages, win a regatta, bring every castaway home. The Medals screen shows how close you are to each one. Some are secrets: until you reach the waters they're won in, all you get is a riddle.
 - **Sail Locker.** Every medal unlocks a sail design or a hull paint: the Jolly Roger, a rainbow sail, Admiral's Blue, a gilded hull and more. Looks only: they never change how a boat sails.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
 - **Pirates.** On Pirate Waters a square-rigged brig hunts you. It's fast downwind but can't sail close to the wind, so reach across the wind, get upwind, or thread a reef gap too narrow for it. Dodge the cannonballs: a red ring marks where each will land.
@@ -54,6 +54,8 @@ from that source. Android 8.0 or newer.
 9. **Drift Ice**: snow, icebergs and floes that drift across the channel.
 10. **Pirate Waters**: outsail a pirate brig, or lose it in the reef.
 
+Each voyage you haven't sailed yet has a line on its card hinting at what's out there, and the title screen passes on harbor talk about something you haven't found yet.
+
 Finish under the gold time for three stars. Collect pearls, gust jars, repair
 crates and messages in bottles along the way.
 
@@ -63,7 +65,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # the prologue film, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
+npm test            # the prologue film, harbor talk and secret medals, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```
@@ -74,7 +76,7 @@ The game is plain JavaScript modules in `web/src`:
 - `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
-- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta course and its fleet; `world/castaways.js`: castaways and hauling them aboard; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/locker.js`: the Sail Locker's sails and hull paints
+- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta course and its fleet; `world/castaways.js`: castaways and hauling them aboard; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/rumors.js`: the title screen's harbor talk; `data/locker.js`: the Sail Locker's sails and hull paints
 
 ### Android
 

@@ -1,5 +1,6 @@
 // Voyage definitions. Coordinates are world units, y grows southward.
 // Wind `from` and headings are compass bearings in degrees.
+// `teaser` is the line on a voyage's card until it's been sailed.
 
 import { blob, ridge, rockField, rockLine, pearlLine } from '../world/shapes.js';
 
@@ -8,6 +9,7 @@ export const LEVELS = [
     id: 'lost-oar',
     name: 'Lost Oar',
     blurb: 'The squall took your oar. Let the westerly carry you home.',
+    teaser: 'Where it all began: no oar, and a long way home.',
     size: [1400, 820],
     start: { x: 140, y: 380, heading: 100 },
     finish: { x: 1260, y: 470, r: 46, kind: 'harbor' },
@@ -37,6 +39,7 @@ export const LEVELS = [
     id: 'beam-reach',
     name: 'Beam Reach Bay',
     blurb: 'Wind on the beam is the fastest ride. Weave the islands and chase the gusts.',
+    teaser: 'Islands, gusts, and someone waving from a plank.',
     size: [1800, 1000],
     start: { x: 120, y: 500, heading: 90 },
     finish: { x: 1690, y: 520, r: 48, kind: 'harbor' },
@@ -69,6 +72,7 @@ export const LEVELS = [
     id: 'into-the-wind',
     name: 'Into the Wind',
     blurb: 'Home lies dead upwind. You cannot sail into the wind, so zig-zag.',
+    teaser: 'Home lies exactly where the wind comes from.',
     size: [1400, 1000],
     start: { x: 690, y: 900, heading: 315 },
     finish: { x: 700, y: 120, r: 48, kind: 'lighthouse' },
@@ -101,6 +105,7 @@ export const LEVELS = [
     id: 'coral-maze',
     name: 'Coral Maze',
     blurb: 'Reef walls with narrow gaps, and a current running across the channel.',
+    teaser: 'The reef has a way through. Somewhere.',
     size: [1700, 1150],
     start: { x: 110, y: 230, heading: 120 },
     finish: { x: 1580, y: 930, r: 46, kind: 'harbor' },
@@ -140,6 +145,7 @@ export const LEVELS = [
     id: 'whirlpool-strait',
     name: 'Whirlpool Strait',
     blurb: 'Two whirlpools guard the strait. Keep speed up or get pulled into the eye.',
+    teaser: 'Here the sea itself goes round and round.',
     size: [1800, 1150],
     start: { x: 140, y: 1000, heading: 45 },
     finish: { x: 1660, y: 150, r: 46, kind: 'lighthouse' },
@@ -180,6 +186,7 @@ export const LEVELS = [
     id: 'wind-shadow',
     name: 'Wind Shadow Isles',
     blurb: 'Big islands steal the wind behind them. Find the breeze or drift in the doldrums.',
+    teaser: 'Behind the tall islands, the air goes still.',
     size: [2000, 1200],
     start: { x: 120, y: 620, heading: 90 },
     finish: { x: 1880, y: 600, r: 48, kind: 'harbor' },
@@ -217,6 +224,7 @@ export const LEVELS = [
     id: 'storm-front',
     name: 'Storm Front',
     blurb: 'Squalls, lightning and gusts that can knock you flat. Ease the sail or capsize.',
+    teaser: 'Thunder on the horizon, and getting closer.',
     size: [1700, 1500],
     start: { x: 220, y: 1380, heading: 20 },
     finish: { x: 1480, y: 140, r: 50, kind: 'lighthouse' },
@@ -256,6 +264,7 @@ export const LEVELS = [
     id: 'kraken-fog',
     name: 'Kraken Fog',
     blurb: 'Night fog hides the rocks, and something big stirs below. Follow the lighthouse.',
+    teaser: "Fishermen won't say what lives in this fog.",
     size: [1700, 1250],
     start: { x: 150, y: 150, heading: 135 },
     finish: { x: 1560, y: 1080, r: 50, kind: 'lighthouse' },
@@ -299,6 +308,7 @@ export const LEVELS = [
     id: 'drift-ice',
     name: 'Drift Ice',
     blurb: 'A channel between two ice shelves, and slabs of drift ice that slide across it with the tide.',
+    teaser: 'The water is cold, and the floor of it floats.',
     size: [2100, 1100],
     start: { x: 150, y: 560, heading: 90 },
     finish: { x: 1960, y: 560, r: 50, kind: 'harbor' },
@@ -344,6 +354,7 @@ export const LEVELS = [
     id: 'pirate-waters',
     name: 'Pirate Waters',
     blurb: 'A pirate brig lurks behind Skull Rock. Square sails are fast downwind and useless against the wind.',
+    teaser: 'A black flag was seen behind Skull Rock.',
     size: [2200, 1300],
     start: { x: 150, y: 800, heading: 90 },
     finish: { x: 2050, y: 700, r: 50, kind: 'harbor' },

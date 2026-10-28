@@ -11,7 +11,8 @@ import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
-import { MEDALS, isEarned, medalsEarned, medalProgress } from '../data/medals.js';
+import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
+import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { icon } from './icons.js';
 
@@ -474,7 +475,8 @@ export function createUI(root, levels, handlers) {
         <div class="title-wrap">
           <div class="eyebrow">A sailing voyage</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
-          <p class="tagline">A squall snapped your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it, ride it, and don't capsize.</p>
+          <p class="tagline">A squall took your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it. Ride it. Don't capsize.</p>
+          <p class="rumor"><span>Harbor talk</span> ${esc(pickRumor(save, levels))}</p>
           <div class="title-buttons">
             <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? 'Set sail' : 'Start voyage'}</button>
             <button class="btn" data-act="voyages">Voyages</button>
@@ -557,7 +559,7 @@ export function createUI(root, levels, handlers) {
             <span class="num">${String(i + 1).padStart(2, '0')}</span>
             <span class="name">${esc(l.name)}</span>
             <span class="stars">${stars(rec ? rec.stars : 0)}</span>
-            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ◆ ${rec.pearls}/${rec.pearlsTotal ?? '?'}` : open ? 'Not sailed yet' : 'Finish the last voyage'}</span>
+            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ◆ ${rec.pearls}/${rec.pearlsTotal ?? '?'}` : `<em class="teaser">${esc(l.teaser)}</em>`}</span>
           </button>`;
         })
         .join('');
@@ -601,7 +603,7 @@ export function createUI(root, levels, handlers) {
       click(node, '.voyage[data-i]', (e, b) => {
         const i = Number(b.dataset.i);
         if (!isUnlocked(save, levels, i)) {
-          ui.toast('Finish the previous voyage to unlock this one.');
+          ui.toast(`Finish ${levels[i - 1].name} to sail on to ${levels[i].name}.`);
           return;
         }
         ui.briefing(i, save);
@@ -993,7 +995,8 @@ export function createUI(root, levels, handlers) {
       const card = (kind, g) => {
         const open = isGearUnlocked(save, g);
         const medal = medalFor(g);
-        const sub = !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? esc(medal.name) : `${icon('lock', 13)}${esc(medal.name)}`;
+        const name = medal && isSealed(medal, save, levels) ? 'A secret medal' : medal && esc(medal.name);
+        const sub = !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
         return `<button class="gear ${open ? '' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${open ? '' : ', locked'}">
             <canvas class="gear-art" aria-hidden="true"></canvas><b>${esc(g.name)}</b><small>${sub}</small></button>`;
       };
@@ -1030,7 +1033,9 @@ export function createUI(root, levels, handlers) {
         const g = (kind === 'sail' ? SAILS : HULLS).find((x) => x.id === id);
         if (!isGearUnlocked(save, g)) {
           const medal = medalFor(g);
-          ui.toast(`Earn the ${medal.name} medal for the ${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}. ${medal.text}`);
+          const what = `the ${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}`;
+          if (isSealed(medal, save, levels)) ui.toast(`A secret medal unlocks ${what}. “${medal.riddle}”`);
+          else ui.toast(`Earn the ${medal.name} medal for ${what}. ${medal.text}`);
           return;
         }
         handlers.onGear(kind, id);
@@ -1153,8 +1158,19 @@ export function createUI(root, levels, handlers) {
 
     medals(save) {
       const got = medalsEarned(save);
+      let sealed = 0;
       const cards = MEDALS.map((m) => {
         const earned = isEarned(save, m.id);
+        const gear = rewardFor(m.id);
+        const reward = gear ? `<span class="medal-reward">Sail Locker: ${esc(gear.label)}</span>` : '';
+        if (isSealed(m, save, levels)) {
+          // A secret: only its riddle, until you reach the waters it's won in.
+          sealed += 1;
+          return `<div class="medal sealed">
+            <span class="medal-disc" aria-hidden="true">?</span>
+            <span class="medal-text"><b><span aria-hidden="true">???</span><span class="sr-only">Secret medal</span></b><small class="riddle">“${esc(m.riddle)}”</small>${reward}</span>
+          </div>`;
+        }
         const p = earned ? null : medalProgress(m, save, levels);
         const meter =
           p && p[1] > 1
@@ -1162,8 +1178,6 @@ export function createUI(root, levels, handlers) {
             : '';
         const day = save.medals[m.id];
         const when = earned && /^\d{4}-\d\d-\d\d$/.test(day) ? `<span class="medal-count">${esc(dayLabel(day))}</span>` : '';
-        const gear = rewardFor(m.id);
-        const reward = gear ? `<span class="medal-reward">Sail Locker: ${esc(gear.label)}</span>` : '';
         return `<div class="medal ${earned ? 'earned' : ''}">
             <span class="medal-disc">${icon(m.icon, 26)}</span>
             <span class="medal-text"><b>${esc(m.name)}</b><small>${esc(m.text)}</small>${reward}${meter}${when}</span>
@@ -1171,8 +1185,8 @@ export function createUI(root, levels, handlers) {
       }).join('');
       const node = el(`<section class="screen dim" aria-label="Medals">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Medals</h2><span class="eyebrow">${got} / ${MEDALS.length}</span><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><div class="medal-grid">${cards}</div></div>
+          <div class="sheet-head"><h2>Medals</h2><span class="eyebrow">${got} / ${MEDALS.length}${sealed ? ` · ${sealed} secret` : ''}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">${sealed ? `<p class="sheet-note">${sealed} medal${sealed > 1 ? 's are' : ' is'} still a secret. Each one breaks its seal when you reach the waters it's won in.</p>` : ''}<div class="medal-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       show('medals', node, { push: true });

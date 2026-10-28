@@ -3,7 +3,7 @@
 
 import { BOAT_ORDER } from '../physics/boat.js';
 import { toMeters } from '../physics/sailing.js';
-import { totalStars, unlockedBoats } from '../platform/save.js';
+import { totalStars, unlockedBoats, isUnlocked, isDailyUnlocked } from '../platform/save.js';
 import { dateKey } from './daily.js';
 
 const LONG_HAUL_KM = 25;
@@ -24,6 +24,9 @@ function campaignNotes(levels) {
 
 // `run(r)` decides a single voyage, with r = { def, result, improved }.
 // `progress(save, levels)` returns [have, need] for medals that add up.
+// A medal with a `seal` is a secret until you reach the waters it's won in
+// (a voyage's id, or 'daily' for the daily voyage, Open Sea and Regatta).
+// Until then it shows only its riddle.
 export const MEDALS = [
   {
     id: 'cast-off',
@@ -54,6 +57,8 @@ export const MEDALS = [
     name: 'Not a Scratch',
     icon: 'shield',
     text: 'Thread a coral reef without a single dent.',
+    seal: 'coral-maze',
+    riddle: 'Pass through the teeth of the reef and come out without a mark.',
     run: ({ def, result }) => (def.rocks || []).some((r) => r.material === 'coral') && result.hull >= 100,
   },
   {
@@ -75,6 +80,8 @@ export const MEDALS = [
     name: 'Storm Rider',
     icon: 'bolt',
     text: 'Sail through the squalls without capsizing.',
+    seal: 'storm-front',
+    riddle: 'Dance with the lightning and keep your mast pointing at the sky.',
     run: ({ def, result }) => has(def.storms) && result.capsizes === 0,
   },
   {
@@ -82,6 +89,8 @@ export const MEDALS = [
     name: 'Kraken Dodger',
     icon: 'tentacle',
     text: 'Get past the kraken without it laying a tentacle on you.',
+    seal: 'kraken-fog',
+    riddle: "Something with too many arms waits in the fog. Don't shake hands.",
     run: ({ def, result }) => has(def.krakens) && !(result.hits || {}).kraken,
   },
   {
@@ -89,6 +98,8 @@ export const MEDALS = [
     name: 'Ice Pilot',
     icon: 'snow',
     text: 'Cross the drift ice without touching it.',
+    seal: 'drift-ice',
+    riddle: 'Where the sea floor floats, never touch the floor.',
     run: ({ def, result }) => has(def.floes) && !(result.hits || {}).ice,
   },
   {
@@ -96,6 +107,8 @@ export const MEDALS = [
     name: 'Bow Rider',
     icon: 'dolphin',
     text: 'Have dolphins ride your bow wave for 10 seconds in one voyage.',
+    seal: 'beam-reach',
+    riddle: 'Sail fast enough and friends will race you for a while.',
     run: ({ result }) => (result.escort || 0) >= 10,
   },
   {
@@ -103,6 +116,8 @@ export const MEDALS = [
     name: 'Whale Watcher',
     icon: 'whale',
     text: 'See a whale breach up close without it landing on you.',
+    seal: 'whirlpool-strait',
+    riddle: 'The biggest sailor in the sea jumps. Be close, but not underneath.',
     run: ({ result }) => (result.whales || 0) >= 1 && !(result.hits || {}).whale,
   },
   {
@@ -110,6 +125,8 @@ export const MEDALS = [
     name: 'Clean Getaway',
     icon: 'skull',
     text: 'Get away from a pirate chase without taking a single cannonball or ram.',
+    seal: 'pirate-waters',
+    riddle: 'A black flag gives chase. Leave it nothing to boast about.',
     run: ({ def, result }) => has(def.pirates) && (result.chases || 0) >= 1 && !(result.hits || {}).cannon && !(result.hits || {}).pirate,
   },
   {
@@ -162,6 +179,8 @@ export const MEDALS = [
     name: 'Day Sailor',
     icon: 'sun',
     text: 'Finish a daily voyage.',
+    seal: 'daily',
+    riddle: 'Every sunrise charts a new sea. Sail one.',
     progress: (save) => [Math.min(1, Object.keys(save.daily).length), 1],
   },
   {
@@ -169,6 +188,8 @@ export const MEDALS = [
     name: 'Week at Sea',
     icon: 'flame',
     text: `Sail the daily voyage ${STREAK_DAYS} days in a row.`,
+    seal: 'daily',
+    riddle: 'Seven sunrises, seven seas, and not a day ashore.',
     progress: (save) => [Math.min(save.streak.best, STREAK_DAYS), STREAK_DAYS],
   },
   {
@@ -184,6 +205,8 @@ export const MEDALS = [
     name: 'Far Horizon',
     icon: 'horizon',
     text: `Sail ${FAR_HORIZON_KM} km east in one Open Sea run.`,
+    seal: 'daily',
+    riddle: 'Past the last harbor, keep the sunrise on your bow.',
     unit: 'km',
     progress: (save) => [Math.min(FAR_HORIZON_KM, Math.floor(toMeters(save.openSea ? save.openSea.best : 0) / 100) / 10), FAR_HORIZON_KM],
   },
@@ -192,6 +215,8 @@ export const MEDALS = [
     name: 'Line Honours',
     icon: 'trophy',
     text: 'Win a regatta: first home of the fleet.',
+    seal: 'daily',
+    riddle: 'Three rivals, two marks, one harbor. Be first.',
     progress: (save) => [Math.min(1, save.regatta ? save.regatta.wins : 0), 1],
   },
   {
@@ -199,6 +224,8 @@ export const MEDALS = [
     name: 'Lifeline',
     icon: 'lifebuoy',
     text: `Bring ${LIFELINE} castaways home safe.`,
+    seal: 'beam-reach',
+    riddle: 'Someone out there is waving. Wave back, three times over.',
     progress: (save) => [Math.min(LIFELINE, save.stats.rescued || 0), LIFELINE],
   },
   {
@@ -206,6 +233,8 @@ export const MEDALS = [
     name: 'No One Left Behind',
     icon: 'hand',
     text: 'Rescue the castaway on every voyage.',
+    seal: 'beam-reach',
+    riddle: 'Every sea hides one soul adrift. Bring them all home.',
     progress: (save, levels) => {
       const adrift = levels.filter((l) => has(l.castaways));
       return [count(adrift, (l) => save.levels[l.id] && save.levels[l.id].rescued >= l.castaways.length), adrift.length];
@@ -219,6 +248,14 @@ export function isEarned(save, id) {
 
 export function medalsEarned(save) {
   return MEDALS.filter((m) => isEarned(save, m.id)).length;
+}
+
+// A medal stays sealed until it's earned or its waters are reached.
+export function isSealed(medal, save, levels) {
+  if (!medal.seal || isEarned(save, medal.id)) return false;
+  if (medal.seal === 'daily') return !isDailyUnlocked(save, levels);
+  const index = levels.findIndex((l) => l.id === medal.seal);
+  return index !== -1 && !isUnlocked(save, levels, index);
 }
 
 export function medalProgress(medal, save, levels) {

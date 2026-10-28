@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.15.0] - 2026-10-28
+
+Curiosity: what's out there?
+
+- **Voyage teasers.** Each voyage you haven't sailed yet has a line on its card hinting at what's out there, instead of "Not sailed yet" or "Finish the last voyage". Kraken Fog's says "Fishermen won't say what lives in this fog." and Pirate Waters' says "A black flag was seen behind Skull Rock." Tapping a locked voyage names the voyage you have to finish first.
+- **Secret medals.** Thirteen medals are now secrets until you reach the waters they're won in. Until then the Medals screen shows "???" and a riddle, such as "Something with too many arms waits in the fog. Don't shake hands." The header counts how many are still secret. Earning one early breaks its seal too. In the Sail Locker, gear behind a secret medal says "A secret medal", and tapping it gives the riddle.
+- **Harbor talk.** The title screen passes on one rumor each time you see it, always about something you haven't found yet: a voyage not yet sailed, a secret medal, a boat the shipwright is building and how many stars it costs, or a castaway still waving from a plank. Once you've found everything there is to find, it repeats old sailors' sayings instead.
+- A livelier tagline on the title screen.
+
 ## [0.14.0] - 2026-10-28
 
 The prologue: a short film before the first voyage.

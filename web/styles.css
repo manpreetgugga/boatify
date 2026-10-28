@@ -229,6 +229,34 @@ button:focus-visible {
   max-width: 34ch;
 }
 
+.rumor {
+  margin: -6px 0 0;
+  max-width: 46ch;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: calc(clamp(14px, 2.9vh, 17px) * var(--text, 1));
+  line-height: 1.35;
+  color: var(--foam);
+  animation: rumor 0.8s 0.4s ease-out both;
+}
+
+.rumor span {
+  margin-right: 6px;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.78em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+@keyframes rumor {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 .title-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -385,6 +413,15 @@ button:focus-visible {
 
 .voyage.locked {
   opacity: 0.45;
+}
+
+.voyage .teaser {
+  font-family: var(--display);
+  font-style: italic;
+}
+
+.voyage.locked .teaser {
+  color: var(--foam);
 }
 
 .voyage.daily {
@@ -692,6 +729,36 @@ button:focus-visible {
   color: rgba(232, 244, 242, 0.42);
   background: rgba(232, 244, 242, 0.06);
   border: 2px dashed rgba(232, 244, 242, 0.2);
+}
+
+/* Read out, but not shown. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A secret medal: a question mark and a riddle. */
+.medal.sealed .medal-disc {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  color: var(--brass);
+  border-color: rgba(217, 164, 65, 0.45);
+}
+
+.medal.sealed .medal-text b {
+  letter-spacing: 0.2em;
+  color: var(--foam-dim);
+}
+
+.medal-text small.riddle {
+  font-family: var(--display);
+  font-style: italic;
+  color: var(--foam);
 }
 
 .medal.earned {

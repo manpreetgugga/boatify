@@ -73,6 +73,9 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.waitForSelector('section[aria-label="Title"].open');
   if ((await tab.evaluate(() => window.__boatify.state().mode)) !== 'title') throw new Error('skip did not land on the title');
   await tab.waitForTimeout(1500);
+  const rumor = await tab.locator('.rumor').innerText();
+  if (!/^harbor talk\s+\S.{15,}/i.test(rumor)) throw new Error(`harbor talk reads ${JSON.stringify(rumor)}`);
+  step(`harbor talk: ${rumor.replace(/^harbor talk\s+/i, '')}`);
   await snap('01-title');
 
   await tab.getByRole('button', { name: 'Start voyage' }).click();
@@ -120,6 +123,9 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
 
   await tab.getByRole('button', { name: 'Voyages' }).click();
   await tab.waitForSelector('section[aria-label="Voyages"].open');
+  const fog = await tab.locator('.voyage.locked[data-i="7"] .teaser').innerText();
+  if (!/fog/i.test(fog)) throw new Error(`Kraken Fog's card teases ${JSON.stringify(fog)}`);
+  step(`locked voyages tease what's out there: "${fog}"`);
   await snap('08-voyages');
 
   step('daily voyage: locked card, then charted and sailed');
@@ -174,6 +180,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   const gear = await tab.locator('.gear').count();
   if (gear !== 27) throw new Error(`sail locker shows ${gear} items`);
   await tab.getByRole('button', { name: 'Jolly Roger, locked' }).click();
+  await tab.waitForFunction(() => /secret medal unlocks the Jolly Roger sail\. “.+”/.test(document.querySelector('#toasts').textContent));
   await tab.getByRole('button', { name: 'Harbor Stripe' }).click();
   const fitted = await tab.evaluate(() => [window.__boatify.save.settings.sail, document.querySelector('.gear.picked[data-kind=sail]').dataset.id]);
   if (fitted.join() !== 'harbor,harbor') throw new Error(`fitted sail ${fitted}`);
@@ -190,6 +197,10 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   const medals = await tab.locator('.medal').count();
   const earned = await tab.locator('.medal.earned').count();
   if (medals < 10 || earned < 1) throw new Error(`medals screen shows ${earned} of ${medals}`);
+  const secrets = await tab.locator('.medal.sealed').count();
+  const riddle = await tab.locator('.medal.sealed .riddle').first().innerText();
+  if (secrets < 5 || !riddle.startsWith('“')) throw new Error(`${secrets} secret medals, the first riddle ${JSON.stringify(riddle)}`);
+  step(`${secrets} secret medals, each with a riddle`);
   await tab.waitForTimeout(300);
   await snap('12-medals');
 
