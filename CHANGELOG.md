@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-10-28
+
+Pick your boat.
+
+- **Shipyard.** Three new boats unlock with campaign stars, each handling the wind its own way:
+  - **Reed Skiff** (6 ★): light and quick to turn and tack, but it tips over easily and takes more damage from rocks.
+  - **Twin Proa** (12 ★): two hulls, so it almost never capsizes and flies on a reach, but it slides sideways upwind and turns slowly.
+  - **Lantern Junk** (18 ★): a stout hull and a battened red sail. It points higher into the wind and shrugs off rocks, but it is no sprinter.
+- Every boat looks the part: its own colors, twin hulls with a trampoline on the proa, bamboo battens on the junk's sail.
+- Choose a boat from the title screen or straight from the briefing. The results card tells you when a new boat is waiting in the Shipyard.
+- Ghosts remember which boat set the time and race you in it.
+- Sailing dead downwind no longer gybes back and forth: the boom stays put until the wind is clearly on the other side.
+- Back from a screen opened on top of the briefing returns to the briefing with the right history.
+
 ## [0.3.0] - 2026-10-28
 
 A new sea every day.

@@ -4,7 +4,9 @@
 import { formatTime, compassPoint, DEG } from '../core/math.js';
 import { beaufort, toKnots } from '../physics/sailing.js';
 import { POLAR } from '../world/autopilot.js';
-import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK } from '../platform/save.js';
+import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
+import { drawBoat } from '../render/boat.js';
+import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -53,6 +55,52 @@ function dayLabel(key) {
 const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
 
 // Comparison with the previous best, or nothing on a first run.
+const BOAT_STATS = [
+  ['speed', 'Speed'],
+  ['pointing', 'Upwind'],
+  ['stability', 'Stability'],
+  ['agility', 'Agility'],
+  ['toughness', 'Toughness'],
+];
+
+function statBar(n) {
+  let dots = '';
+  for (let i = 1; i <= 5; i++) dots += `<i class="${i <= n ? 'on' : ''}"></i>`;
+  return `<span class="bar" aria-label="${n} of 5">${dots}</span>`;
+}
+
+// A boat on a reach over a patch of open water, for the Shipyard cards.
+function paintBoat(canvas, type) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = canvas.clientWidth || 160;
+  const h = canvas.clientHeight || 84;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const sea = ctx.createLinearGradient(0, 0, 0, h);
+  sea.addColorStop(0, '#0f4a5c');
+  sea.addColorStop(1, '#0a3442');
+  ctx.fillStyle = sea;
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(190, 235, 240, 0.12)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 7; i++) {
+    const y = ((i * 37) % h) + 6;
+    const x = (i * 53) % w;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + 9, y - 3, x + 18, y);
+    ctx.stroke();
+  }
+  // The sail swings out to the lower side, so the hull sits high.
+  const scale = Math.min(w / 24, h / 15);
+  ctx.translate(w * 0.5, h * 0.36);
+  ctx.scale(scale / 1.45, scale / 1.45);
+  const boat = { type, x: 0, y: 0, vx: 0, vy: 0, heading: -0.3, heel: 0.42, boom: 0.7, drive: 4, luffing: false, rudder: 0, boostTime: 0 };
+  drawBoat(ctx, boat, 0);
+}
+
 function vsBest(time, prev) {
   if (prev === null || prev === undefined) return '';
   const d = time - prev;
@@ -302,10 +350,12 @@ export function createUI(root, levels, handlers) {
     setTimeout(() => node.remove(), 260);
   }
 
-  function show(name, node, { push = false } = {}) {
+  // `push` remembers the current screen for Back; `keep` leaves the history
+  // alone (used when Back returns to a screen that has to be redrawn).
+  function show(name, node, { push = false, keep = false } = {}) {
     if (current && current !== name) {
       if (push) stack.push(current);
-      else stack = [];
+      else if (!keep) stack = [];
       close(current);
     }
     current = name;
@@ -359,6 +409,7 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="title-buttons">
             ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
+            <button class="btn small" data-act="shipyard">Shipyard</button>
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small" data-act="settings">Settings</button>
           </div>
@@ -369,6 +420,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=voyages]', () => ui.voyages(save, true));
       click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
       click(node, '[data-act=howto]', () => ui.howto(save));
+      click(node, '[data-act=shipyard]', () => ui.shipyard(save));
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
       show('title', node);
@@ -424,7 +476,9 @@ export function createUI(root, levels, handlers) {
       show('voyages', node, { push });
     },
 
-    briefing(index, save, replace = false) {
+    // `how`: 'push' from a menu, 'replace' to take the current screen's
+    // place, 'restore' when coming back to it.
+    briefing(index, save, how = 'push') {
       const def = defOf(index);
       const rec = recordOf(save, def);
       const streak = def.daily ? currentStreak(save, def.daily) : 0;
@@ -443,6 +497,7 @@ export function createUI(root, levels, handlers) {
                 <dt>Wind</dt><dd>${windSentence(def)}</dd>
                 <dt>Goal</dt><dd>Reach the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'} at <b style="color:var(--signal)">B</b></dd>
                 <dt>Pearls</dt><dd>${pearls}</dd>
+                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
               </dl>
               <div class="chips">${chips}</div>
             </div>
@@ -460,8 +515,9 @@ export function createUI(root, levels, handlers) {
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       click(node, '[data-act=go]', () => handlers.onPlay(index));
+      click(node, '[data-act=shipyard]', () => ui.shipyard(save));
       lastBriefing = index;
-      show('briefing', node, { push: !replace });
+      show('briefing', node, { push: how === 'push', keep: how === 'restore' });
     },
 
     pause(game, save) {
@@ -523,6 +579,7 @@ export function createUI(root, levels, handlers) {
               <span class="k">Hull</span><span class="v">${Math.ceil(result.hull)}%</span>
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
               <span class="k">Next star</span><span class="v">${result.stars >= 3 ? 'Got them all' : `under ${formatTime(result.stars === 2 ? def.par.gold : def.par.silver)}`}</span>
+              ${(improved.newBoats || []).map((name) => `<span class="k">Shipyard</span><span class="v">${esc(name)}<span class="badge">NEW BOAT</span></span>`).join('')}
               ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
           </div>
@@ -545,6 +602,45 @@ export function createUI(root, levels, handlers) {
           }, 350 + i * 320);
         }
       });
+    },
+
+    shipyard(save) {
+      const chosen = selectedBoat(save);
+      const have = totalStars(save);
+      const cards = BOAT_ORDER.map((id) => {
+        const t = BOAT_TYPES[id];
+        const open = isBoatUnlocked(save, id);
+        const picked = id === chosen;
+        const action = picked
+          ? '<button class="btn small" disabled>Sailing</button>'
+          : open
+            ? `<button class="btn small primary" data-boat="${id}">Choose</button>`
+            : `<button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button>`;
+        return `<div class="boat-card ${open ? '' : 'locked'} ${picked ? 'picked' : ''}">
+            <canvas class="boat-art" data-type="${id}" aria-hidden="true"></canvas>
+            <div class="boat-head"><h3>${esc(t.name)}</h3><span class="tag">${esc(t.tag)}</span></div>
+            <p class="boat-blurb">${esc(t.blurb)}</p>
+            <dl class="boat-stats">${BOAT_STATS.map(([k, label]) => `<dt>${label}</dt><dd>${statBar(t.stats[k])}</dd>`).join('')}</dl>
+            ${action}
+          </div>`;
+      }).join('');
+      const node = el(`<section class="screen dim" aria-label="Shipyard">
+        <div class="sheet wide">
+          <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
+        </div></section>`);
+      click(node, '[data-boat]', (e, b) => {
+        const t = BOAT_TYPES[b.dataset.boat];
+        if (!isBoatUnlocked(save, t.id)) {
+          ui.toast(`Earn ${t.unlock - have} more ★ to unlock the ${t.name}.`);
+          return;
+        }
+        handlers.onBoat(t.id);
+        ui.back();
+      });
+      click(node, '[data-act=back]', () => ui.back());
+      show('shipyard', node, { push: true });
+      node.querySelectorAll('canvas.boat-art').forEach((c) => paintBoat(c, BOAT_TYPES[c.dataset.type]));
     },
 
     settings(save) {
@@ -630,7 +726,7 @@ export function createUI(root, levels, handlers) {
       const finish = () => {
         save.seenIntro = true;
         handlers.onSeenIntro();
-        if (thenPlay) ui.briefing(playIndex, save, true);
+        if (thenPlay) ui.briefing(playIndex, save, 'replace');
         else ui.back();
       };
       click(node, '[data-act=prev]', () => {

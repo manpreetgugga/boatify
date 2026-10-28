@@ -66,23 +66,43 @@ export function drawWake(ctx, wake, time) {
   }
 }
 
-function hullPath(L, B) {
-  const p = new Path2D();
-  p.moveTo(L * 0.5, 0);
-  p.bezierCurveTo(L * 0.3, -B * 0.5, -L * 0.2, -B * 0.55, -L * 0.48, -B * 0.4);
-  p.lineTo(-L * 0.5, B * 0.4);
-  p.bezierCurveTo(-L * 0.2, B * 0.55, L * 0.3, B * 0.5, L * 0.5, 0);
+function addHull(p, L, B, dy = 0) {
+  p.moveTo(L * 0.5, dy);
+  p.bezierCurveTo(L * 0.3, dy - B * 0.5, -L * 0.2, dy - B * 0.55, -L * 0.48, dy - B * 0.4);
+  p.lineTo(-L * 0.5, dy + B * 0.4);
+  p.bezierCurveTo(-L * 0.2, dy + B * 0.55, L * 0.3, dy + B * 0.5, L * 0.5, dy);
   p.closePath();
   return p;
 }
 
-let hullCache = null;
+// Hull outline and deck for a boat type; a twin-hulled boat gets two slim
+// hulls a beam apart.
+const hulls = new Map();
+function hullShapes(type) {
+  let h = hulls.get(type.id);
+  if (!h) {
+    const L = type.length * VISUAL;
+    const B = type.beam * VISUAL;
+    if (type.twin) {
+      const off = B * 0.36;
+      const path = addHull(addHull(new Path2D(), L, B * 0.28, -off), L, B * 0.28, off);
+      const deck = addHull(addHull(new Path2D(), L * 0.8, B * 0.16, -off), L * 0.8, B * 0.16, off);
+      h = { path, deck, off };
+    } else {
+      h = { path: addHull(new Path2D(), L, B), deck: addHull(new Path2D(), L * 0.86, B * 0.72), off: 0 };
+    }
+    hulls.set(type.id, h);
+  }
+  return h;
+}
 
 // `state` carries game status flags used for capsize/sink looks.
 export function drawBoat(ctx, boat, time, state = {}) {
-  const L = boat.type.length * VISUAL;
-  const B = boat.type.beam * VISUAL;
-  if (!hullCache || hullCache.L !== L) hullCache = { L, path: hullPath(L, B), deck: hullPath(L * 0.86, B * 0.72) };
+  const type = boat.type;
+  const look = type.look;
+  const L = type.length * VISUAL;
+  const B = type.beam * VISUAL;
+  const hull = hullShapes(type);
   const heel = boat.heel;
   const cosHeel = Math.cos(heel);
   const sinHeel = Math.sin(heel);
@@ -100,7 +120,7 @@ export function drawBoat(ctx, boat, time, state = {}) {
   ctx.save();
   ctx.translate(1.5, 2.5 + sinHeel * 3);
   ctx.fillStyle = 'rgba(0, 10, 18, 0.35)';
-  ctx.fill(hullCache.path);
+  ctx.fill(hull.path);
   ctx.restore();
 
   // Bow wave.
@@ -120,41 +140,59 @@ export function drawBoat(ctx, boat, time, state = {}) {
   ctx.save();
   ctx.scale(1, Math.max(0.35, Math.abs(cosHeel)));
   ctx.translate(0, sinHeel * 1.2);
-  ctx.fillStyle = C.hull;
-  ctx.fill(hullCache.path);
-  ctx.strokeStyle = C.hullDark;
-  ctx.lineWidth = 0.9;
-  ctx.stroke(hullCache.path);
-  ctx.fillStyle = C.deck;
-  ctx.fill(hullCache.deck);
-  ctx.strokeStyle = 'rgba(94, 59, 37, 0.5)';
-  ctx.lineWidth = 0.5;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.moveTo(-L * 0.38, i * B * 0.12);
-    ctx.lineTo(L * 0.3, i * B * 0.08);
-    ctx.stroke();
+  if (type.twin) {
+    // Trampoline net and cross beams between the hulls.
+    ctx.fillStyle = 'rgba(30, 40, 38, 0.55)';
+    ctx.fillRect(-L * 0.28, -hull.off, L * 0.46, hull.off * 2);
+    ctx.strokeStyle = look.deck;
+    ctx.lineWidth = 1.1;
+    for (const x of [-L * 0.28, L * 0.18]) {
+      ctx.beginPath();
+      ctx.moveTo(x, -hull.off);
+      ctx.lineTo(x, hull.off);
+      ctx.stroke();
+    }
   }
-  // Cockpit and the empty oarlock where the oar used to be.
-  ctx.fillStyle = C.hullDark;
-  ctx.fillRect(-L * 0.36, -B * 0.18, L * 0.2, B * 0.36);
-  ctx.fillStyle = '#3a2416';
-  ctx.beginPath();
-  ctx.arc(-L * 0.12, -B * 0.42, 0.7, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = look.hull;
+  ctx.fill(hull.path);
+  ctx.strokeStyle = look.hullDark;
+  ctx.lineWidth = 0.9;
+  ctx.stroke(hull.path);
+  ctx.fillStyle = look.deck;
+  ctx.fill(hull.deck);
+  if (!type.twin) {
+    ctx.strokeStyle = 'rgba(94, 59, 37, 0.5)';
+    ctx.lineWidth = 0.5;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-L * 0.38, i * B * 0.12);
+      ctx.lineTo(L * 0.3, i * B * 0.08);
+      ctx.stroke();
+    }
+    // Cockpit and the empty oarlock where the oar used to be.
+    ctx.fillStyle = look.hullDark;
+    ctx.fillRect(-L * 0.36, -B * 0.18, L * 0.2, B * 0.36);
+    ctx.fillStyle = '#3a2416';
+    ctx.beginPath();
+    ctx.arc(-L * 0.12, -B * 0.42, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 
-  // Rudder.
-  ctx.strokeStyle = C.hullDark;
+  // Rudder (one per hull).
+  ctx.strokeStyle = look.hullDark;
   ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-L * 0.5, 0);
-  ctx.lineTo(-L * 0.5 - Math.cos(boat.rudder * 0.6) * 3, Math.sin(-boat.rudder * 0.6) * 3);
-  ctx.stroke();
+  for (const dy of type.twin ? [-hull.off, hull.off] : [0]) {
+    ctx.beginPath();
+    ctx.moveTo(-L * 0.5, dy);
+    ctx.lineTo(-L * 0.5 - Math.cos(boat.rudder * 0.6) * 3, dy + Math.sin(-boat.rudder * 0.6) * 3);
+    ctx.stroke();
+  }
 
   if (state.capsized) {
     // Sail lies flat in the water.
-    ctx.fillStyle = 'rgba(245, 240, 228, 0.75)';
+    ctx.fillStyle = look.sail;
+    ctx.globalAlpha *= 0.75;
     const side = Math.sign(heel || 1);
     ctx.beginPath();
     ctx.moveTo(L * 0.1, 0);
@@ -193,7 +231,7 @@ export function drawBoat(ctx, boat, time, state = {}) {
   const midLeechX = (topX + bx) / 2 + nX * (belly * 0.6 - flutter);
   const midLeechY = (topY + by) / 2 + nY * (belly * 0.6 - flutter);
 
-  ctx.fillStyle = boat.luffing ? C.sailShade : C.sail;
+  ctx.fillStyle = boat.luffing ? look.sailShade : look.sail;
   ctx.strokeStyle = 'rgba(80, 70, 55, 0.55)';
   ctx.lineWidth = 0.6;
   ctx.beginPath();
@@ -203,10 +241,12 @@ export function drawBoat(ctx, boat, time, state = {}) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  // Sail seams.
-  ctx.strokeStyle = 'rgba(120, 110, 95, 0.25)';
-  for (let i = 1; i < 3; i++) {
-    const t = i / 3;
+  // Sail seams, or the stiff bamboo battens of a junk rig.
+  const seams = type.battens ? 5 : 3;
+  ctx.strokeStyle = type.battens ? 'rgba(60, 25, 12, 0.7)' : 'rgba(120, 110, 95, 0.25)';
+  ctx.lineWidth = type.battens ? 0.8 : 0.6;
+  for (let i = 1; i < seams; i++) {
+    const t = i / seams;
     ctx.beginPath();
     ctx.moveTo(mx, topY * t);
     ctx.lineTo(mx + (bx - mx) * (1 - t), by * (1 - t) + topY * t);
@@ -269,8 +309,7 @@ export function drawBoat(ctx, boat, time, state = {}) {
 // The best run's boat: a pale outline with a sail, no physics.
 export function drawGhost(ctx, pose, type, time) {
   const L = type.length * VISUAL;
-  const B = type.beam * VISUAL;
-  if (!hullCache || hullCache.L !== L) hullCache = { L, path: hullPath(L, B), deck: hullPath(L * 0.86, B * 0.72) };
+  const hull = hullShapes(type);
   ctx.save();
   ctx.translate(pose.x, pose.y);
   ctx.rotate(pose.heading);
@@ -278,11 +317,11 @@ export function drawGhost(ctx, pose, type, time) {
   ctx.save();
   ctx.scale(1, Math.max(0.35, Math.abs(Math.cos(pose.heel))));
   ctx.fillStyle = 'rgba(160, 235, 255, 0.4)';
-  ctx.fill(hullCache.path);
+  ctx.fill(hull.path);
   ctx.strokeStyle = 'rgba(200, 245, 255, 0.95)';
   ctx.lineWidth = 1.1;
   ctx.setLineDash([2.5, 2]);
-  ctx.stroke(hullCache.path);
+  ctx.stroke(hull.path);
   ctx.setLineDash([]);
   ctx.restore();
   // A simple sail wedge along the centreline, leaning with the heel.

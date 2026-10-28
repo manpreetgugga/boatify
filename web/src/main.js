@@ -4,6 +4,7 @@
 import { LEVELS } from './data/levels.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
+import { BOAT_TYPES } from './physics/boat.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
 import { createRecorder, recordGhost, finishGhost, isValidGhost, ghostAt, ghostGap } from './world/ghost.js';
 import { createRenderer, resize, resetView, renderFrame } from './render/renderer.js';
@@ -13,7 +14,7 @@ import { C } from './render/palette.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI } from './ui/screens.js';
-import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked } from './platform/save.js';
+import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
 const root = document.getElementById('boatify');
@@ -31,7 +32,7 @@ let autopilot = null;
 let botDriving = false;
 let recorder = null;
 let ghost = null; // best run of the current voyage, if any
-let ghostView = null; // { pose, gap } for this frame
+let ghostView = null; // { pose, gap, type } for this frame
 let demoTimer = 0;
 let demoIndex = 0;
 let finishTimer = 0;
@@ -134,10 +135,14 @@ const ui = createUI(root, LEVELS, {
   },
   onReset: () => resetProgress(save),
   onSeenIntro: () => writeSave(save),
+  onBoat: (id) => {
+    save.settings.boat = id;
+    writeSave(save);
+  },
   onBackToTitle: () => showTitle(),
   onBackTo: (name) => {
     if (name === 'voyages') ui.voyages(save);
-    else if (name === 'briefing') ui.briefing(ui.lastBriefing, save);
+    else if (name === 'briefing') ui.briefing(ui.lastBriefing, save, 'restore');
     else showTitle();
   },
   onStar: (i) => {
@@ -154,7 +159,7 @@ function startDemo() {
   const unlocked = LEVELS.filter((l, i) => i === 0 || save.levels[LEVELS[i - 1].id]);
   const def = unlocked[demoIndex % unlocked.length];
   demoIndex += 1;
-  game = createGame(def, { seed: demoIndex * 7 });
+  game = createGame(def, { seed: demoIndex * 7, boat: selectedBoat(save) });
   game.tipsShown = new Set(def.tips.map((t, i) => i));
   autopilot = createAutopilot(game);
   demoTimer = 70;
@@ -178,7 +183,7 @@ function startLevel(ref) {
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
   levelIndex = ref;
-  game = createGame(def);
+  game = createGame(def, { boat: selectedBoat(save) });
   autopilot = botDriving ? createAutopilot(game) : null;
   recorder = createRecorder(game);
   const g = loadGhost(def.id);
@@ -220,7 +225,9 @@ function finishVoyage(result) {
   const hadGhost = !!ghost;
   const daily = game.def.daily;
   if (daily) markDaily(save, daily);
+  const boatsBefore = unlockedBoats(save).length;
   const improved = recordResult(save, game.def.id, result, game.notes, daily ? 'daily' : 'levels');
+  improved.newBoats = unlockedBoats(save).slice(boatsBefore).map((id) => BOAT_TYPES[id].name);
   // Keep the fastest run as the ghost (or the first one we see for a voyage).
   if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
     storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
@@ -393,7 +400,7 @@ function frame(now) {
   ghostView = null;
   if (ghost && mode !== 'title' && save.settings.ghost) {
     const gap = game.status === 'finished' ? null : ghostGap(ghost, game.boat.x, game.boat.y, game.time);
-    ghostView = { pose: ghostAt(ghost, game.time), gap };
+    ghostView = { pose: ghostAt(ghost, game.time), gap, type: BOAT_TYPES[ghost.boat] || game.boat.type };
   }
   renderFrame(renderer, game, dt, clock, {
     ghost: ghostView,
@@ -482,6 +489,7 @@ window.__boatify = {
       mode,
       screen: ui.current,
       level: game && game.def.id,
+      boat: game && game.boat.type.id,
       status: game && game.status,
       time: game && game.time,
       x: game && game.boat.x,

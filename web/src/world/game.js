@@ -3,7 +3,7 @@
 
 import { clamp, dist, wrapAngle, angleDiff } from '../core/math.js';
 import { hashString } from '../core/rng.js';
-import { createBoat, stepBoat, hullCircles, boatSpeed, CAPSIZE_ANGLE, HEEL_WARNING, BOOST_DURATION } from '../physics/boat.js';
+import { createBoat, stepBoat, hullCircles, boatSpeed, CAPSIZE_ANGLE, HEEL_WARNING, BOOST_DURATION, BOAT_TYPES } from '../physics/boat.js';
 import { buildLevel, pearlCount } from './level.js';
 import { createWind, updateWind, sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
@@ -17,7 +17,7 @@ export function createGame(def, options = {}) {
   const level = buildLevel(def);
   const seed = hashString(def.id) ^ (options.seed || 0);
   const wind = createWind(def.wind, seed, level.islands, { calms: level.calms, storms: level.storms });
-  const boat = createBoat(level.start.x, level.start.y, level.start.heading);
+  const boat = createBoat(level.start.x, level.start.y, level.start.heading, BOAT_TYPES[options.boat] || BOAT_TYPES.sloop);
   boat.trim = boat.trimTarget = 0.45;
   const game = {
     def,
@@ -201,6 +201,7 @@ function respawn(game) {
 }
 
 function damage(game, amount, cause) {
+  amount /= game.boat.type.toughness;
   if (amount <= 0) return;
   game.hull = Math.max(0, game.hull - amount);
   if (amount >= 2) emit(game, 'damage', { amount, cause });

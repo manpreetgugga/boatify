@@ -2,6 +2,7 @@
 // (private windows, blocked site data), so every access is guarded and the
 // game keeps working from memory.
 
+import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { dateKey } from '../data/daily.js';
 
 const KEY = 'boatify.save.v1';
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   steerSensitivity: 1,
   quality: 'high',
   ghost: true,
+  boat: 'sloop',
 };
 
 function blank() {
@@ -128,6 +130,22 @@ export function markDaily(save, key) {
 export function currentStreak(save, today) {
   const s = save.streak;
   return s.last === today || s.last === dayBefore(today) ? s.count : 0;
+}
+
+// Boats in the Shipyard unlock with campaign stars.
+export function isBoatUnlocked(save, id) {
+  const type = BOAT_TYPES[id];
+  return !!type && totalStars(save) >= type.unlock;
+}
+
+export function unlockedBoats(save) {
+  return BOAT_ORDER.filter((id) => isBoatUnlocked(save, id));
+}
+
+// The chosen boat, or the sloop if that choice is no longer unlocked (say,
+// after a progress reset).
+export function selectedBoat(save) {
+  return isBoatUnlocked(save, save.settings.boat) ? save.settings.boat : 'sloop';
 }
 
 export function totalStars(save) {

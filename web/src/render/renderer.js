@@ -87,7 +87,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawIslands(ctx, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
-  if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, game.boat.type, time);
+  if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, ui.ghost.type || game.boat.type, time);
   const boatState = {
     capsized: game.status === 'capsized',
     sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : 0,

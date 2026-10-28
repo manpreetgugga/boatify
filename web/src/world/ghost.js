@@ -13,7 +13,7 @@ export function levelSignature(def) {
 }
 
 export function createRecorder(game) {
-  return { sig: levelSignature(game.def), data: [], next: 0 };
+  return { sig: levelSignature(game.def), boat: game.boat.type.id, data: [], next: 0 };
 }
 
 // Call after each simulation step; samples whenever a slot has passed.
@@ -26,7 +26,7 @@ export function recordGhost(rec, game) {
 }
 
 export function finishGhost(rec, time) {
-  return { v: 1, sig: rec.sig, dt: GHOST_DT, time, data: rec.data.slice() };
+  return { v: 1, sig: rec.sig, boat: rec.boat, dt: GHOST_DT, time, data: rec.data.slice() };
 }
 
 export function isValidGhost(ghost, def) {
