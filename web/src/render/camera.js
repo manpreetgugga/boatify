@@ -3,6 +3,7 @@
 
 import { approach, clamp } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
+import { chasingShip } from '../world/pirates.js';
 
 export function createCamera() {
   return { x: 0, y: 0, scale: 1.5, zoom: 1, shake: 0, still: false, ox: 0, oy: 0, w: 1, h: 1 };
@@ -29,11 +30,19 @@ export function updateCamera(cam, game, dt, w, h) {
   const lead = game.status === 'finished' ? 0 : 1.5;
   let tx = boat.x + boat.vx * lead;
   let ty = boat.y + boat.vy * lead;
-  const targetScale = baseScale(w, h) * cam.zoom * (1 - 0.12 * clamp(speed / 18, 0, 1));
+  // A pirate on your tail: pull back and swing the view toward it, so you can
+  // see it coming while the boat stays near the middle.
+  const ship = game.status === 'sailing' ? chasingShip(game) : null;
+  const near = ship ? clamp(1 - (Math.hypot(ship.x - boat.x, ship.y - boat.y) - 180) / 300, 0, 1) : 0;
+  const targetScale = baseScale(w, h) * cam.zoom * (1 - 0.12 * clamp(speed / 18, 0, 1)) * (1 - 0.14 * near);
   cam.scale = approach(cam.scale, targetScale, 1.2, dt);
   // Keep the chart edge from filling more than a sliver of the screen.
   const halfW = w / 2 / cam.scale;
   const halfH = h / 2 / cam.scale;
+  if (near > 0) {
+    tx += clamp((ship.x - tx) * 0.4, -halfW * 0.4, halfW * 0.4) * near;
+    ty += clamp((ship.y - ty) * 0.4, -halfH * 0.3, halfH * 0.3) * near;
+  }
   const m = 60;
   tx = level.width + 2 * m > halfW * 2 ? clamp(tx, halfW - m, level.width - halfW + m) : level.width / 2;
   ty = level.height + 2 * m > halfH * 2 ? clamp(ty, halfH - m, level.height - halfH + m) : level.height / 2;

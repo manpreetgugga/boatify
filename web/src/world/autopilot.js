@@ -32,7 +32,7 @@ export function effectiveSpeed(twa) {
   return v;
 }
 
-export function createNavGrid(level, wind = null) {
+export function createNavGrid(level, wind = null, clearance = CLEARANCE) {
   const sample = {};
   const cols = Math.ceil(level.width / CELL);
   const rows = Math.ceil(level.height / CELL);
@@ -43,7 +43,7 @@ export function createNavGrid(level, wind = null) {
       const x = (c + 0.5) * CELL;
       const y = (r + 0.5) * CELL;
       const i = r * cols + c;
-      if (!isClear(level, x, y, CLEARANCE)) blocked[i] = 1;
+      if (!isClear(level, x, y, clearance)) blocked[i] = 1;
       let h = 0;
       for (const w of level.whirlpools) {
         const d = Math.hypot(x - w.x, y - w.y);
@@ -59,7 +59,7 @@ export function createNavGrid(level, wind = null) {
         if (d < cz.r) h += 3 * (1 - d / cz.r);
       }
       // Prefer to cross the lanes drifting ice floes sweep where they're short.
-      if (!blocked[i] && level.floes.length && inFloeLane(level, x, y, CLEARANCE)) h += 4;
+      if (!blocked[i] && level.floes.length && inFloeLane(level, x, y, clearance)) h += 4;
       // Wind shadows cost time too: steer clear of the lee of islands.
       if (wind && !blocked[i]) h += 2.5 * sampleWind(wind, x, y, sample).shade;
       hazard[i] = h;
@@ -94,7 +94,8 @@ function nearestOpen(grid, idx) {
 
 // A* over the grid; edge cost is travel time at the polar speed for that
 // direction relative to the wind (windFrom is the world angle wind comes from).
-export function findPath(grid, sx, sy, tx, ty, windFrom) {
+// `speedFn(twa)` gives that speed; the default is this boat's polar.
+export function findPath(grid, sx, sy, tx, ty, windFrom, speedFn = effectiveSpeed) {
   const start = nearestOpen(grid, cellOf(grid, sx, sy));
   const goal = nearestOpen(grid, cellOf(grid, tx, ty));
   const n = grid.cols * grid.rows;
@@ -140,7 +141,7 @@ export function findPath(grid, sx, sy, tx, ty, windFrom) {
       if (!dr && !dc) continue;
       const a = Math.atan2(dr, dc);
       const twa = Math.abs(angleDiff(a, windFrom));
-      dirs.push([dc, dr, Math.hypot(dc, dr) / effectiveSpeed(twa)]);
+      dirs.push([dc, dr, Math.hypot(dc, dr) / speedFn(twa)]);
     }
   }
   g[start] = 0;

@@ -103,6 +103,13 @@ export const MEDALS = [
     run: ({ result }) => (result.whales || 0) >= 1 && !(result.hits || {}).whale,
   },
   {
+    id: 'clean-getaway',
+    name: 'Clean Getaway',
+    icon: 'skull',
+    text: 'Get away from a pirate chase without taking a single cannonball or ram.',
+    run: ({ def, result }) => has(def.pirates) && (result.chases || 0) >= 1 && !(result.hits || {}).cannon && !(result.hits || {}).pirate,
+  },
+  {
     id: 'navigator',
     name: 'Navigator',
     icon: 'map',

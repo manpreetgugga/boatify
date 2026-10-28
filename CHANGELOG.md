@@ -1,8 +1,15 @@
 # Changelog
 
-## [Unreleased]
+## [0.9.0] - 2026-10-28
+
+Pirates, and a new name.
 
 - **Boatify is now called No Paddle.** New name on the title screen, the phone's home screen and the release downloads. It's the same app underneath, so the update installs over the old one and keeps your progress.
+- **New voyage: Pirate Waters.** A pirate brig lurks behind Skull Rock. Sail too close and it gives chase. Its square sails make it fast downwind, but it can't point within seventy degrees of the wind and it's slow on a beam reach. Keep the wind on your beam to outrun it, get upwind of it, or slip through the narrow gap in the reef, where its deep hull can't follow.
+- **Cannon fire.** In range, the brig fires broadsides from its side and a bow gun straight ahead. A red ring on the water marks where each cannonball will land, so you can dodge. A hit dents the hull, and so does getting rammed.
+- While a pirate is chasing you, the camera pulls back to show it, a red arrow points to it when it's off screen, and it shows as a red dot on the minimap. A dashed ring shows how far its guns reach.
+- New medal: **Clean Getaway** (escape a pirate chase without taking a hit). That makes twenty-one.
+- New sounds for the alarm bell, cannon fire, splashes and hits.
 
 ## [0.8.0] - 2026-10-28
 

@@ -10,6 +10,7 @@ import { sampleWater } from './water.js';
 import { circlePolygon, circleCircle } from './collision.js';
 import { moveFloes, floeContact } from './floes.js';
 import { prepareWildlife, updateWildlife } from './wildlife.js';
+import { preparePirates, updatePirates } from './pirates.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
@@ -56,8 +57,10 @@ export function createGame(def, options = {}) {
     lightningTimer: 3 + (seed % 5),
     flash: 0,
     life: prepareWildlife(def, seed),
+    pirates: preparePirates(def, seed, level),
     escortTime: 0, // seconds spent riding a dolphin pod's bow wave
     closeBreaches: 0, // whale breaches seen up close
+    chases: 0, // times a pirate ship came after you
   };
   return game;
 }
@@ -88,6 +91,7 @@ function tick(game, input, dt) {
     boat.y += boat.vy * dt;
     updateWind(wind, dt);
     updateWildlife(game, dt);
+    updatePirates(game, dt);
     return;
   }
 
@@ -95,6 +99,7 @@ function tick(game, input, dt) {
   updateWind(wind, dt);
   updateKrakens(game);
   updateWildlife(game, dt);
+  updatePirates(game, dt);
   updateWeather(game, dt);
 
   const w = sampleWind(wind, boat.x, boat.y, game.windHere);
@@ -384,6 +389,7 @@ function finish(game) {
     distance: game.distanceSailed,
     escort: game.escortTime,
     whales: game.closeBreaches,
+    chases: game.chases,
   };
   emit(game, 'finish', { ...game.result });
 }

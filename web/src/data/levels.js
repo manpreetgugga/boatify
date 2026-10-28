@@ -332,6 +332,45 @@ export const LEVELS = [
       { near: [1050, 550, 280], text: 'Ice dents a hull badly, and a moving floe can ram you. Give it room.' },
     ],
   },
+  {
+    id: 'pirate-waters',
+    name: 'Pirate Waters',
+    blurb: 'A pirate brig lurks behind Skull Rock. Square sails are fast downwind and useless against the wind.',
+    size: [2200, 1300],
+    start: { x: 150, y: 800, heading: 90 },
+    finish: { x: 2050, y: 700, r: 50, kind: 'harbor' },
+    wind: { from: 0, speed: 15, gust: 0.2, shift: 8, period: 40 },
+    pirates: [{ x: 1050, y: 510, heading: 180, spot: 450 }],
+    dolphins: [{ x: 1800, y: 900, r: 70 }],
+    par: { gold: 130, silver: 180 },
+    islands: [
+      { pts: blob(1050, 340, 85, 271, 0.32), kind: 'rock' },
+      { pts: ridge([[1520, -80], [1500, 180], [1510, 380]], 190, 273, 0.3), kind: 'rock' },
+      { pts: blob(560, 1110, 80, 277, 0.3), kind: 'sand' },
+    ],
+    rocks: [
+      ...rockLine(1505, 300, 1505, 1340, 18, 281, 11, [[0.47, 0.495]]),
+      ...rockField(420, 560, 40, 4, 283),
+      ...rockField(1860, 480, 40, 4, 287),
+    ],
+    pickups: [
+      ...pearlLine(420, 800, 760, 790, 3),
+      { x: 1180, y: 800, kind: 'pearl' },
+      { x: 820, y: 1040, kind: 'pearl' },
+      { x: 1050, y: 1120, kind: 'pearl' },
+      { x: 1280, y: 1060, kind: 'pearl' },
+      { x: 1760, y: 720, kind: 'pearl' },
+      { x: 1300, y: 940, kind: 'repair' },
+      { x: 880, y: 660, kind: 'gust' },
+      { x: 1700, y: 560, kind: 'bottle', note: "Square sails can't point closer than seventy degrees to the wind. Get upwind of a pirate and it can never reach you." },
+    ],
+    checkpoints: [{ x: 700, y: 800 }, { x: 1504, y: 802 }, { x: 1800, y: 700 }],
+    tips: [
+      { at: 0, text: 'Pirate waters. Their brig is fast downwind but barely sails across the wind, and not at all into it.' },
+      { at: 8, text: 'Keep the wind on your beam to outrun it, or slip through the reef gap: the brig is too wide to follow.' },
+      { near: [1504, 802, 220], text: 'The gap in the reef! Thread it and the pirates are stuck on the wrong side.' },
+    ],
+  },
 ];
 
 function coral(r) {

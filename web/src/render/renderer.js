@@ -1,5 +1,6 @@
 // Draws a frame: sea, flows, shallows, wake, islands, marks, pickups, sea
-// life, boat, birds and spray, weather and lighting, then the HUD on top.
+// life, pirates, boat, birds, cannonballs and spray, weather and lighting,
+// then the HUD on top.
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
@@ -18,6 +19,7 @@ import {
   drawLightning,
 } from './effects.js';
 import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
+import { drawPirates, drawCannonballs } from './pirates.js';
 import { createLighting, drawLighting } from './lighting.js';
 import { createHud, drawHud } from './hud.js';
 
@@ -95,6 +97,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
   drawSeaLife(ctx, game, cam, time);
+  drawPirates(ctx, game, cam, time);
   if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, ui.ghost.type || game.boat.type, time);
   const boatState = {
     capsized: game.status === 'capsized',
@@ -103,6 +106,7 @@ export function renderFrame(r, game, dt, time, ui) {
   };
   drawBoat(ctx, game.boat, time, boatState);
   drawSkyLife(ctx, r.life, game, cam, time);
+  drawCannonballs(ctx, game);
   drawParticles(ctx, r.fx, cam);
   drawStormClouds(ctx, game, time);
   ctx.restore();

@@ -406,6 +406,52 @@ function handleEvents(events, live) {
         audio.sfx.swell(e.strength);
         buzz(Math.round(30 + 50 * e.strength));
         break;
+      case 'pirate':
+        if (e.phase === 'spotted') floatText(fx, e.x, e.y - 26, '!', C.danger);
+        if (!live) break;
+        audio.sfx.pirates(e.phase);
+        if (e.phase === 'spotted') {
+          buzz(60);
+          ui.toast(
+            save.sightings.pirates
+              ? 'The pirates are after you again!'
+              : "Pirates! Their brig is fast downwind but can't sail close to the wind. Keep the wind on your beam, or slip through the reef!",
+            'alert',
+            save.sightings.pirates ? 2600 : 6500,
+            true,
+          );
+          save.sightings.pirates = true;
+          writeSave(save);
+        } else if (e.reason === 'reef') {
+          ui.toast("The brig can't follow you through the reef!", 'good', 3000, true);
+        } else if (e.reason === 'outran' || e.reason === 'harbor') {
+          ui.toast(e.reason === 'outran' ? 'You outran the pirates!' : 'The pirates turn back from the harbor guns!', 'good', 3000, true);
+        }
+        break;
+      case 'cannon': {
+        const d = Math.hypot(e.x - game.boat.x, e.y - game.boat.y);
+        if (e.phase === 'fire') {
+          const w = game.windHere;
+          burst(fx, e.x, e.y, { count: 10, speed: 10, color: 'rgba(200, 204, 210, 0.75)', size: 5, life: 1.6, vx: w.wx * 0.5, vy: w.wy * 0.5 });
+        } else if (e.phase === 'hit') {
+          burst(fx, e.x, e.y, { count: 22, speed: 45, color: '#a87a52', size: 2.2 });
+          burst(fx, e.x, e.y, { count: 14, speed: 30, color: C.foam, size: 2.4 });
+          cam.shake = Math.min(1, cam.shake + 0.6);
+        } else {
+          burst(fx, e.x, e.y, { count: 16, speed: 32, color: C.foam, size: 2.4 });
+          ring(fx, e.x, e.y, C.foam, 22, 0.9);
+          if (e.near) cam.shake = Math.min(1, cam.shake + 0.12);
+        }
+        if (!live) break;
+        audio.sfx.cannon(e.phase, Math.min(1, Math.max(0.2, 1 - d / 500)));
+        if (e.phase === 'hit') {
+          buzz(140);
+          floatText(fx, game.boat.x, game.boat.y - 14, 'HIT!', C.danger);
+        } else if (e.phase === 'splash' && e.near) {
+          buzz(25);
+        }
+        break;
+      }
       case 'finish':
         burst(fx, game.boat.x, game.boat.y, { count: 40, speed: 50, color: C.warn, size: 2.6 });
         ring(fx, game.level.finish.x, game.level.finish.y, C.signal, game.level.finish.r + 30, 1.2);

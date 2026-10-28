@@ -6,6 +6,7 @@ import { HEEL_WARNING, CAPSIZE_ANGLE, boatSpeed } from '../physics/boat.js';
 import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.js';
 import { windFromBearing } from '../world/wind.js';
 import { ESCORT_TIME } from '../world/wildlife.js';
+import { chasingShip } from '../world/pirates.js';
 import { worldToScreen } from './camera.js';
 import { C, font, FONT, rgba } from './palette.js';
 
@@ -251,6 +252,14 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
     ctx.arc(x + c.x * k, y + c.y * k, 2.5, 0, Math.PI * 2);
     ctx.fill();
   }
+  // Pirates: a dull mark in their cove, a pulsing one while they chase you.
+  for (const ship of game.pirates ? game.pirates.ships : []) {
+    const chasing = ship.state === 'chase';
+    ctx.fillStyle = chasing ? C.danger : rgba(C.danger, 0.55);
+    ctx.beginPath();
+    ctx.arc(x + ship.x * k, y + ship.y * k, chasing ? 3.2 + Math.sin(time * 8) * 0.8 : 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
   const f = level.finish;
   ctx.fillStyle = C.signal;
   ctx.beginPath();
@@ -306,9 +315,11 @@ function drawHull(ctx, game, L) {
   text(ctx, `${Math.ceil(game.hull)}%`, x + w - 8, y + 13.5, 13, C.text, 'right', 700);
 }
 
-// Edge-of-screen arrows toward B and the next checkpoint.
+// Edge-of-screen arrows toward B, the next checkpoint and a pirate on your tail.
 function drawPointers(ctx, game, cam, L, time) {
   const targets = [];
+  const ship = chasingShip(game);
+  if (ship) targets.push({ x: ship.x, y: ship.y, color: C.danger, label: 'PIRATE', dist: Math.hypot(ship.x - game.boat.x, ship.y - game.boat.y) });
   const f = game.level.finish;
   targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
   const next = game.level.checkpoints[game.nextCheckpoint];

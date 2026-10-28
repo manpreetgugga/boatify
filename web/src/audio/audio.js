@@ -242,6 +242,32 @@ export function createAudio() {
     swell(strength = 1) {
       hiss({ type: 'lowpass', freq: 500, peak: 0.3 * strength, attack: 0.2, decay: 0.9, sweep: 1.8 });
     },
+    pirates(phase) {
+      if (phase === 'spotted') {
+        // A ship's bell rung in alarm over a low minor drone.
+        [0, 0.28, 0.56].forEach((at) => [1, 2.76].forEach((m, i) => tone(midi(81) * m, { type: 'sine', peak: 0.1 / (i + 1), attack: 0.002, decay: 0.5, at })));
+        [45, 48, 52].forEach((n, i) => tone(midi(n), { type: 'sawtooth', peak: 0.035, attack: 0.15, decay: 1.4, at: 0.1 + i * 0.05 }));
+      } else {
+        // They give up: a falling horn.
+        tone(midi(57), { type: 'triangle', peak: 0.1, attack: 0.05, decay: 0.9, glide: 0.75 });
+        tone(midi(52), { type: 'triangle', peak: 0.07, attack: 0.05, decay: 0.9, glide: 0.75, at: 0.25 });
+      }
+    },
+    cannon(phase, vol = 1) {
+      if (phase === 'fire') {
+        // A distant boom: a thump with a rumble behind it.
+        tone(55, { type: 'sine', peak: 0.5 * vol, attack: 0.003, decay: 0.6, glide: 0.5 });
+        hiss({ type: 'lowpass', freq: 700, peak: 0.45 * vol, attack: 0.003, decay: 0.9, sweep: 0.4 });
+      } else if (phase === 'hit') {
+        tone(80, { type: 'sine', peak: 0.55, attack: 0.002, decay: 0.4, glide: 0.5 });
+        hiss({ type: 'bandpass', freq: 1600, q: 0.7, peak: 0.45, attack: 0.002, decay: 0.3 });
+        tone(170, { type: 'square', peak: 0.12, decay: 0.15, glide: 0.5 });
+      } else {
+        // A splash.
+        hiss({ type: 'bandpass', freq: 900, q: 0.6, peak: 0.32 * vol, attack: 0.01, decay: 0.5, sweep: 0.5 });
+        tone(140, { type: 'sine', peak: 0.12 * vol, attack: 0.005, decay: 0.2, glide: 0.4 });
+      }
+    },
     medal() {
       // A rising fanfare that ends on a ringing bell.
       [67, 72, 76, 79].forEach((n, i) => tone(midi(n), { type: 'triangle', peak: 0.13, decay: 0.35, at: i * 0.08 }));
