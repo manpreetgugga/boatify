@@ -1,7 +1,9 @@
 // Prints the CHANGELOG section for a version, plus install notes, for a GitHub release.
+// --bundle notes the Google Play bundle attached beside the APK.
 import { readFileSync } from 'node:fs';
 
 const version = process.argv[2];
+const bundle = process.argv.includes('--bundle');
 const log = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
 const start = log.search(new RegExp(`^## \\[?${version.replace(/\./g, '\\.')}\\]?`, 'm'));
 let section = 'See CHANGELOG.md.';
@@ -14,4 +16,8 @@ console.log(`${section}
 
 ---
 
-**Install on Android:** download \`no-paddle-v${version}.apk\` below on your phone, open it and allow installing from this source. Android 8.0 or newer. Releases are signed with the same development key, so a new version installs over the old one and keeps your progress.`);
+**Install on Android:** download \`no-paddle-v${version}.apk\` below on your phone, open it and allow installing from this source. Android 8.0 or newer. Releases are signed with the same development key, so a new version installs over the old one and keeps your progress.${
+  bundle
+    ? `\n\n\`no-paddle-v${version}.aab\` is the same build for the Google Play Console, signed with the upload key. Phones can't install it.`
+    : ''
+}`);

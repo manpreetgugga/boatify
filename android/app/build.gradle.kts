@@ -44,12 +44,12 @@ val bundleWeb = tasks.register<BundleWebTask>("bundleWeb") {
 
 android {
     namespace = "io.github.manpreetgugga.boatify"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "io.github.manpreetgugga.boatify"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
         versionName = appVersion
     }

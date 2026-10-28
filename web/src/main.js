@@ -52,6 +52,7 @@ let pending = null;
 let guideTold = {}; // which dolphin hints this voyage has explained
 let cancelCountdown = null;
 let timeScale = 1;
+let hudOff = false; // the store art's clean frames
 let insets = { top: 0, right: 0, bottom: 0, left: 0 };
 let layout = null;
 let clock = 0;
@@ -706,7 +707,7 @@ function frame(now) {
     }
   }
 
-  const showHud = mode === 'playing' || mode === 'countdown' || mode === 'paused';
+  const showHud = !hudOff && (mode === 'playing' || mode === 'countdown' || mode === 'paused');
   if (mode === 'countdown' || mode === 'paused') input.read(0);
   ghostView = null;
   if (ghost && mode !== 'title' && save.settings.ghost) {
@@ -814,6 +815,16 @@ window.__boatify = {
   },
   setTimeScale(n) {
     timeScale = Math.max(1, Math.round(n));
+  },
+  // The store's feature graphic shows the sea without the controls.
+  setHud(on) {
+    hudOff = !on;
+  },
+  // Where the boat is drawn, in CSS pixels, to frame it.
+  boatOnScreen() {
+    const c = renderer.cam;
+    if (!game) return null;
+    return { x: c.w / 2 + c.ox + (game.boat.x - c.x) * c.scale, y: c.h / 2 + c.oy + (game.boat.y - c.y) * c.scale, scale: c.scale };
   },
   // Wind the Open Sea clock down to see a run end.
   setSeaClock(s) {
