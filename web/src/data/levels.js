@@ -50,6 +50,7 @@ export const LEVELS = [
       { pts: blob(1360, 690, 95, 61, 0.3), kind: 'sand' },
     ],
     rocks: [...rockField(620, 520, 45, 4, 9), ...rockField(1210, 520, 40, 4, 19), ...rockField(1500, 330, 50, 4, 29)],
+    castaways: [{ x: 824, y: 440, name: 'Old Tomas', line: 'Two days on this plank. I had started naming the gulls.' }],
     pickups: [
       ...pearlLine(250, 520, 400, 520, 3),
       ...pearlLine(860, 520, 980, 540, 3),
@@ -80,6 +81,7 @@ export const LEVELS = [
       { pts: blob(700, 520, 66, 91, 0.3), kind: 'sand' },
     ],
     rocks: [...rockField(480, 760, 36, 3, 5), ...rockField(930, 320, 36, 3, 15)],
+    castaways: [{ x: 540, y: 471, name: 'Ines', line: 'My galley went down in the squall. Fish supper is on me at the lighthouse.' }],
     pickups: [
       { x: 470, y: 520, kind: 'pearl' },
       { x: 930, y: 520, kind: 'pearl' },
@@ -117,6 +119,7 @@ export const LEVELS = [
       ...rockField(1400, 640, 50, 5, 41).map(coral),
     ],
     currents: [{ x: 960, y: 580, length: 1150, width: 220, toward: 180, speed: 3.5 }],
+    castaways: [{ x: 1044, y: 600, name: 'Little Pip', line: "I wasn't scared. Well. Maybe of the eels." }],
     pickups: [
       { x: 380, y: 420, kind: 'pearl' },
       { x: 560, y: 520, kind: 'pearl' },
@@ -155,6 +158,7 @@ export const LEVELS = [
       { x: 1180, y: 500, r: 110, strength: 7.5, spin: -1 },
     ],
     currents: [{ x: 980, y: 590, length: 900, width: 240, toward: 75, speed: 3.5 }],
+    castaways: [{ x: 1222, y: 749, name: 'Bosun Haldor', line: 'Watched my ketch go round that whirlpool like a cork. Steer wide, friend.' }],
     pickups: [
       { x: 560, y: 560, kind: 'pearl' },
       { x: 760, y: 430, kind: 'pearl' },
@@ -193,6 +197,7 @@ export const LEVELS = [
       { x: 900, y: 1050, r: 160 },
       { x: 1520, y: 150, r: 150 },
     ],
+    castaways: [{ x: 1010, y: 712, name: 'Marguerite', line: 'Not a breath of wind behind those isles. I could have waited forever.' }],
     pickups: [
       ...pearlLine(320, 380, 520, 400, 3),
       ...pearlLine(860, 450, 1000, 520, 3),
@@ -229,6 +234,7 @@ export const LEVELS = [
       { x: 900, y: 1100, r: 330, power: 0.75 },
       { x: 1000, y: 450, r: 300, power: 0.85 },
     ],
+    castaways: [{ x: 957, y: 779, name: 'Captain Okafor', line: 'Thirty years at sea and a squall still caught me napping. Thank you.' }],
     pickups: [
       { x: 420, y: 1150, kind: 'pearl' },
       { x: 880, y: 1000, kind: 'pearl' },
@@ -272,6 +278,7 @@ export const LEVELS = [
       { x: 800, y: 300, r: 95, period: 7, offset: 0 },
       { x: 1180, y: 720, r: 110, period: 8, offset: 3 },
     ],
+    castaways: [{ x: 1247, y: 538, name: 'Sora', line: 'Something big kept circling under me in the fog. Please, let us go.' }],
     pickups: [
       { x: 330, y: 420, kind: 'pearl' },
       { x: 760, y: 520, kind: 'pearl' },
@@ -315,6 +322,7 @@ export const LEVELS = [
       ...rockField(1700, 680, 40, 4, 263),
       ...rockField(1270, 420, 30, 3, 267),
     ],
+    castaways: [{ x: 1138, y: 406, name: 'Fenwick', line: 'I charted this ice last spring. It moved. Charts never do.' }],
     pickups: [
       { x: 380, y: 620, kind: 'pearl' },
       { x: 840, y: 640, kind: 'pearl' },
@@ -353,6 +361,7 @@ export const LEVELS = [
       ...rockField(420, 560, 40, 4, 283),
       ...rockField(1860, 480, 40, 4, 287),
     ],
+    castaways: [{ x: 1204, y: 961, name: 'Wren', line: 'The pirates took my boat and left me the oar. Funny, that.' }],
     pickups: [
       ...pearlLine(420, 800, 760, 790, 3),
       { x: 1180, y: 800, kind: 'pearl' },

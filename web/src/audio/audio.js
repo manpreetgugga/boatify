@@ -222,6 +222,17 @@ export function createAudio() {
     note() {
       tone(midi(79), { type: 'sine', peak: 0.08, decay: 0.8 });
     },
+    castaway(phase) {
+      if (phase === 'sighted') {
+        // A far-off shout: two falling whistles.
+        tone(1500, { type: 'sine', peak: 0.05, attack: 0.04, decay: 0.3, glide: 0.75 });
+        tone(1500, { type: 'sine', peak: 0.05, attack: 0.04, decay: 0.3, glide: 0.75, at: 0.4 });
+      } else {
+        // Hauled over the gunwale with a splash, then a bright rising arpeggio.
+        hiss({ type: 'lowpass', freq: 1400, peak: 0.3, attack: 0.01, decay: 0.45, sweep: 0.4 });
+        [67, 71, 74, 79].forEach((n, i) => tone(midi(n), { type: 'triangle', peak: 0.13, decay: 0.45, at: 0.15 + i * 0.09 }));
+      }
+    },
     dolphins() {
       // A burst of clicks, then two rising whistles.
       [0, 0.05, 0.09, 0.12].forEach((at) => tone(2600, { type: 'square', peak: 0.025, decay: 0.02, at }));

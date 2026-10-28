@@ -119,6 +119,7 @@ export function createBoat(x, y, heading, type = BOAT_TYPES.sloop) {
     heel: 0,
     boostTime: 0,
     escort: 0, // 0..1, how well a dolphin pod is riding the bow wave
+    crew: 0, // castaways hauled aboard, sitting out on the rail
     // Derived values the renderer, HUD and audio read every frame.
     beta: 0,
     side: 1,
@@ -183,7 +184,9 @@ export function stepBoat(boat, input, env, dt) {
   const u = rvx * fx + rvy * fy;
   const w = rvx * sx + rvy * sy;
   const rudderDrag = 1 + 0.35 * Math.abs(boat.rudder);
-  const dragU = (t.surgeDrag * u * Math.abs(u) + t.surgeDragLinear * u) * rudderDrag;
+  // Every castaway aboard is a little more weight to push through the water.
+  const load = 1 + 0.04 * boat.crew;
+  const dragU = (t.surgeDrag * u * Math.abs(u) + t.surgeDragLinear * u) * rudderDrag * load;
   const dragW = t.swayDrag * w * Math.abs(w) + t.swayDragLinear * w;
 
   let accU = driveF - dragU;
@@ -206,8 +209,8 @@ export function stepBoat(boat, input, env, dt) {
   boat.yawRate = approach(boat.yawRate, targetYaw, 5, dt);
   boat.heading = wrapAngle(boat.heading + boat.yawRate * dt);
 
-  // Heel follows the heeling force with some lag.
-  const heelTarget = Math.atan(leeF / t.rightingMoment) * side;
+  // Heel follows the heeling force with some lag. Crew on the rail hold her up.
+  const heelTarget = Math.atan(leeF / (t.rightingMoment * (1 + 0.15 * boat.crew))) * side;
   boat.heel = approach(boat.heel, heelTarget, 2.6, dt);
 
   boat.x += boat.vx * dt;

@@ -340,6 +340,19 @@ export function drawBoat(ctx, boat, time, state = {}) {
     ctx.arc(-L * 0.12, -B * 0.42, 0.7, 0, Math.PI * 2);
     ctx.fill();
   }
+  // Castaways hauled aboard sit in the cockpit, or out on a proa's net.
+  (state.crew || []).forEach((sailor, i) => {
+    const cx = type.twin ? -L * 0.18 + i * L * 0.12 : -L * 0.31 + i * L * 0.08;
+    const cy = (i % 2 ? 1 : -1) * (type.twin ? hull.off * 0.45 : B * 0.08);
+    ctx.fillStyle = sailor.shirt;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 1.7, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = sailor.skin;
+    ctx.beginPath();
+    ctx.arc(cx + 0.5, cy, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
   ctx.restore();
 
   // Rudder (one per hull).

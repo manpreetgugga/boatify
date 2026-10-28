@@ -133,7 +133,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.getByRole('button', { name: 'Sail Locker' }).click();
   await tab.waitForSelector('section[aria-label="Sail Locker"].open');
   const gear = await tab.locator('.gear').count();
-  if (gear !== 25) throw new Error(`sail locker shows ${gear} items`);
+  if (gear !== 27) throw new Error(`sail locker shows ${gear} items`);
   await tab.getByRole('button', { name: 'Jolly Roger, locked' }).click();
   await tab.getByRole('button', { name: 'Harbor Stripe' }).click();
   const fitted = await tab.evaluate(() => [window.__boatify.save.settings.sail, document.querySelector('.gear.picked[data-kind=sail]').dataset.id]);
@@ -173,6 +173,29 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   }
   await tab.waitForTimeout(300);
   await snap('13-settings');
+
+  step('castaway: heave to alongside, haul them aboard and bring them home');
+  await tab.evaluate(() => window.__boatify.startLevel(1));
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
+  await tab.evaluate(() => window.__boatify.setTimeScale(1));
+  await tab.waitForTimeout(800);
+  const castaway = await tab.evaluate(() => window.__boatify.heaveTo());
+  await tab.waitForTimeout(600);
+  await snap('14-hauling');
+  await tab.waitForFunction(() => window.__boatify.state().aboard === 1, null, { timeout: 6000 });
+  await tab.waitForTimeout(900);
+  await snap('15-aboard');
+  await tab.evaluate(() => {
+    window.__boatify.setAutopilot(true);
+    window.__boatify.setTimeScale(10);
+  });
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'results', null, { timeout: 90000 });
+  await tab.waitForTimeout(1600);
+  await snap('16-rescued');
+  const home = await tab.evaluate(() => [window.__boatify.state().result.rescued.map((c) => c.name), window.__boatify.save.crew.map((c) => c.name)]);
+  const rescuedRow = await tab.locator('section[aria-label="Voyage complete"] .stat-rows').textContent();
+  if (home.join('|') !== `${castaway}|${castaway}` || !rescuedRow.includes(castaway)) throw new Error(`rescue of ${castaway}: ${JSON.stringify(home)} / ${rescuedRow}`);
+  step(`${castaway} is safe ashore and in the logbook`);
 
   await browser.close();
   if (errors.length) {

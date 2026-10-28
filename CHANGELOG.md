@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.13.0] - 2026-10-28
+
+Castaways: no one left behind.
+
+- **Castaways.** Every voyage after the first now has a sailor adrift on a broken plank: Old Tomas in Beam Reach Bay, Little Pip in the Coral Maze, Captain Okafor in the Storm Front, and more. The daily voyage has one too. Ripples pulse around them, an SOS pointer shows where they are when they're close, and a white dot blinks on the minimap.
+- **Hauling them aboard.** You have to stop alongside, and you have no oar. Turn up into the wind to slow down and drift into the ring around them. A green arc fills as you haul them in. Come in too fast and the ring turns yellow with SLOW DOWN, and they shout that they can't grab the line.
+- Once aboard they sit in the cockpit, or on the net of the Twin Proa, and say thank you. A chip under the hull bar shows how many are aboard. Their weight on the rail heels the boat less but makes it a touch slower.
+- Bring them into the harbor and they're rescued. The results card names who you brought home. The briefing and pause screens show who is still adrift. The Logbook keeps a page of every sailor you've rescued and what they said.
+- New medals: **Lifeline** (rescue three castaways) unlocks the Lifebuoy sail, and **No One Left Behind** (bring every voyage's castaway home) unlocks Rescue Orange hull paint. That makes twenty-five.
+
 ## [0.12.0] - 2026-10-28
 
 Regatta: race the fleet.

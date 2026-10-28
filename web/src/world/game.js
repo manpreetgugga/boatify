@@ -13,6 +13,7 @@ import { prepareWildlife, updateWildlife } from './wildlife.js';
 import { preparePirates, updatePirates } from './pirates.js';
 import { prepareOpenSea, updateOpenSea, reachGate, endRun, PEARL_TIME } from './opensea.js';
 import { prepareRace, updateRace, shadeWind, finishRace } from './regatta.js';
+import { prepareCastaways, updateCastaways, castawaysAboard } from './castaways.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
@@ -66,6 +67,7 @@ export function createGame(def, options = {}) {
     chases: 0, // times a pirate ship came after you
     sea: null, // the endless open sea's clock and gates
     race: null, // the regatta fleet and standings
+    castaways: prepareCastaways(def), // sailors adrift, waiting for a line
   };
   if (def.endless) prepareOpenSea(game);
   if (def.race) prepareRace(game);
@@ -190,6 +192,7 @@ function tick(game, input, dt) {
   resolveCollisions(game, false);
   fence(boat, level, dt);
   checkPickups(game);
+  if (game.castaways.length) updateCastaways(game, dt);
   checkCheckpoints(game);
   checkTips(game);
 
@@ -380,6 +383,9 @@ function finish(game) {
     escort: game.escortTime,
     whales: game.closeBreaches,
     chases: game.chases,
+    // Castaways count as rescued once they are ashore.
+    rescued: castawaysAboard(game).map((c) => ({ name: c.name, line: c.line })),
+    castaways: game.castaways.length,
   };
   if (game.race) Object.assign(game.result, finishRace(game));
   emit(game, 'finish', { ...game.result });

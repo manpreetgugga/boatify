@@ -129,6 +129,18 @@ export const SAILS = [
       { disc: [0.3, 0.5, 0.07], color: '#f5f0e4' },
     ],
   },
+  {
+    id: 'lifebuoy',
+    name: 'Lifebuoy',
+    medal: 'lifeline',
+    cloth: '#f5f0e4',
+    shade: '#d9d2c2',
+    marks: [
+      { panel: [0, 0.25], color: '#e0503a' },
+      { panel: [0.5, 0.75], color: '#e0503a' },
+      { band: [0.5, 0.58], color: '#f2b33d' },
+    ],
+  },
 ];
 
 export const HULLS = [
@@ -143,6 +155,7 @@ export const HULLS = [
   { id: 'sunset', name: 'Sunset', medal: 'day-sailor', hull: '#f08a3c', hullDark: '#a85a20', trim: '#ffe1a8' },
   { id: 'seafoam', name: 'Seafoam', medal: 'week-at-sea', hull: '#7fc8b8', hullDark: '#3f8a7b', trim: '#f5f0e4' },
   { id: 'copper', name: 'Copper Bottom', medal: 'long-haul', hull: '#b06a3b', hullDark: '#6e3c1c', trim: '#58b39a' },
+  { id: 'rescue', name: 'Rescue Orange', medal: 'no-one-left-behind', hull: '#f26a21', hullDark: '#a8430f', trim: '#f5f0e4' },
 ];
 
 const LISTS = { sail: SAILS, hull: HULLS };

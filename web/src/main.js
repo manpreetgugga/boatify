@@ -331,6 +331,25 @@ function handleEvents(events, live) {
         }
         break;
       }
+      case 'castaway': {
+        if (e.phase === 'aboard') {
+          burst(fx, e.x, e.y, { count: 22, speed: 34, color: C.foam, size: 2.4 });
+          ring(fx, e.x, e.y, C.ok, 30, 0.7);
+        }
+        if (!live) break;
+        if (e.phase === 'sighted') {
+          audio.sfx.castaway('sighted');
+          firstSight('castaway', 'A castaway! Turn into the wind to slow right down, then drift alongside to haul them aboard.');
+        } else if (e.phase === 'fast') {
+          ui.toast(`Too fast for ${e.name} to grab the line. Turn into the wind to stop.`, 'tip', 3600);
+        } else {
+          audio.sfx.castaway('aboard');
+          buzz(30);
+          floatText(fx, e.x, e.y - 14, `${e.name.toUpperCase()} ABOARD`, C.ok);
+          ui.toast(`${e.name}: “${e.line}” Now get them home.`, 'note rescue', 6500);
+        }
+        break;
+      }
       case 'checkpoint': {
         const c = game.level.checkpoints[e.index];
         ring(fx, c.x, c.y, game.sea ? C.ok : C.warn, 50, 1);
@@ -676,6 +695,15 @@ window.__boatify = {
   setSeaClock(s) {
     if (game && game.sea) game.sea.clock = s;
   },
+  // Heave to just upwind of the first castaway still adrift, bow to the
+  // wind, and let the drift carry the boat alongside. Returns their name.
+  heaveTo() {
+    const c = game && game.castaways.find((k) => k.state !== 'aboard');
+    if (!c) return null;
+    const into = game.wind.angle + Math.PI;
+    Object.assign(game.boat, { x: c.x + Math.cos(into) * 10, y: c.y + Math.sin(into) * 10, vx: 0, vy: 0, heading: into, yawRate: 0 });
+    return c.name;
+  },
   state() {
     return {
       mode,
@@ -689,6 +717,7 @@ window.__boatify = {
       speed: game && speedOf(game),
       hull: game && game.hull,
       pearls: game && game.pearls,
+      aboard: game && game.boat.crew,
       sea: game && game.sea && { clock: game.sea.clock, gates: game.sea.gates, missed: game.sea.missed, best: game.sea.best },
       race: game && game.race && { place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
       result: game && game.result,

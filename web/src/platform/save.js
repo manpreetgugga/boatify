@@ -39,7 +39,8 @@ function blank() {
     streak: { count: 0, best: 0, last: null },
     settings: { ...DEFAULT_SETTINGS },
     notes: [],
-    stats: { voyages: 0, distance: 0, capsizes: 0, pearls: 0 },
+    stats: { voyages: 0, distance: 0, capsizes: 0, pearls: 0, rescued: 0 },
+    crew: [], // castaways brought home: { name, line }, once each
     medals: {}, // medal id -> day it was earned
     medalsSeen: 0, // how many medals the Medals screen last showed
     gearSeen: 0, // how many Sail Locker items the locker last showed
@@ -72,6 +73,7 @@ export function loadSave() {
     levels: isObj(data.levels) ? data.levels : {},
     daily: isObj(data.daily) ? data.daily : {},
     notes: Array.isArray(data.notes) ? data.notes : [],
+    crew: Array.isArray(data.crew) ? data.crew : [],
     medals: isObj(data.medals) ? data.medals : {},
     medalsSeen: Number(data.medalsSeen) || 0,
     gearSeen: Number(data.gearSeen) || 0,
@@ -94,20 +96,27 @@ export function writeSave(save) {
 export function recordResult(save, levelId, result, notes = [], bucket = 'levels') {
   const records = save[bucket];
   const prev = records[levelId] || { best: null, stars: 0, pearls: 0, runs: 0 };
+  const rescued = result.rescued || [];
   const improved = {
     time: prev.best === null || result.time < prev.best,
     stars: result.stars > prev.stars,
     pearls: result.pearls > prev.pearls,
     first: prev.best === null,
     prevBest: prev.best,
+    // Someone not met before, now safe ashore.
+    crew: rescued.filter((c) => !save.crew.some((k) => k.name === c.name)).map((c) => c.name),
   };
   records[levelId] = {
     best: improved.time ? result.time : prev.best,
     stars: Math.max(prev.stars, result.stars),
     pearls: Math.max(prev.pearls, result.pearls),
     pearlsTotal: result.pearlsTotal,
+    rescued: Math.max(prev.rescued || 0, rescued.length),
+    castaways: result.castaways || 0,
     runs: (prev.runs || 0) + 1,
   };
+  for (const c of rescued) if (!save.crew.some((k) => k.name === c.name)) save.crew.push({ name: c.name, line: c.line });
+  save.stats.rescued += rescued.length;
   if (bucket === 'daily') {
     const keys = Object.keys(records).sort();
     for (const k of keys.slice(0, Math.max(0, keys.length - DAILY_KEEP))) delete records[k];

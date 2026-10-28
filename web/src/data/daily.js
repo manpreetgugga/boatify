@@ -8,10 +8,11 @@ import { buildLevel } from '../world/level.js';
 import { isClear } from '../world/collision.js';
 import { createGame, stepGame, drainEvents } from '../world/game.js';
 import { createAutopilot, autopilotInput } from '../world/autopilot.js';
+import { DRIFTERS } from '../world/castaways.js';
 import { angleDiff, toBearing } from '../core/math.js';
 
 // Bump when the generator changes so cached courses are regenerated.
-export const DAILY_VERSION = 1;
+export const DAILY_VERSION = 2;
 
 const FIRST = ['Saltwind', 'Gull', 'Driftwood', 'Cormorant', 'Brine', 'Kelp', 'Sundown', 'Mackerel', 'Lantern', 'Pelican', 'Squall', 'Coral'];
 const SECOND = ['Passage', 'Run', 'Crossing', 'Sound', 'Reach', 'Narrows', 'Shoals', 'Channel', 'Skerries', 'Roads'];
@@ -185,6 +186,9 @@ export function dailyCandidate(key, attempt) {
   }
   const crate = openSpot(0.4, 0.7, 220, 16);
   if (crate) def.pickups.push({ ...crate, kind: 'repair' });
+  // Placed last, so the rest of the course is what it was before castaways.
+  const spot = openSpot(0.3, 0.75, 280, 45);
+  if (spot) def.castaways = [{ ...spot, ...rng.pick(DRIFTERS) }];
 
   const startClear = isClear(level, start.x, start.y, 40) && isClear(level, finish.x, finish.y, 30);
   return startClear ? def : null;

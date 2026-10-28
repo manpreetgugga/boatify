@@ -593,6 +593,7 @@ export function createUI(root, levels, handlers) {
                 <dt>Wind</dt><dd>${windSentence(def)}</dd>
                 <dt>Goal</dt><dd>Reach the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'} at <b style="color:var(--signal)">B</b></dd>
                 <dt>Pearls</dt><dd>${pearls}</dd>
+                ${(def.castaways || []).map((c) => `<dt>Castaway</dt><dd>${esc(c.name)} ${rec && rec.rescued ? '<span style="color:var(--ok)">rescued ✓</span>' : 'is adrift. Stop alongside'}</dd>`).join('')}
                 <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
               </dl>
               <div class="chips">${chips}</div>
@@ -704,7 +705,8 @@ export function createUI(root, levels, handlers) {
               <span class="k">Place</span><span class="v">${ordinal(race.place || 1)} of ${race.rivals.length + 1}</span>
               <span class="k">Leg</span><span class="v">${game.nextCheckpoint < marks ? `To mark ${game.nextCheckpoint + 1}` : 'To the harbor'}</span>`
           : `<span class="k">Time</span><span class="v">${formatTime(game.time)}</span>
-              <span class="k">Pearls</span><span class="v">${game.pearls} / ${game.pearlsTotal}</span>`;
+              <span class="k">Pearls</span><span class="v">${game.pearls} / ${game.pearlsTotal}</span>
+              ${game.castaways.map((c) => `<span class="k">${esc(c.name)}</span><span class="v">${c.state === 'aboard' ? 'Aboard' : 'Adrift'}</span>`).join('')}`;
       const node = el(`<section class="screen dim" aria-label="Paused">
         <div class="sheet narrow">
           <div class="sheet-head"><h2>Paused</h2><span class="eyebrow">${esc(game.level.name)}</span></div>
@@ -760,6 +762,7 @@ export function createUI(root, levels, handlers) {
               <span class="k">Best</span><span class="v">${formatTime(rec.best)}</span>
               ${vsBest(result.time, improved.prevBest)}
               <span class="k">Pearls</span><span class="v">${result.pearls} / ${result.pearlsTotal}${result.pearls === result.pearlsTotal && result.pearlsTotal ? '<span class="badge">ALL</span>' : ''}</span>
+              ${result.castaways ? `<span class="k">Rescued</span><span class="v">${result.rescued.length ? `${esc(result.rescued.map((c) => c.name).join(', '))}<span class="badge">SAFE</span>` : 'Left adrift'}</span>` : ''}
               <span class="k">Hull</span><span class="v">${Math.ceil(result.hull)}%</span>
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
               <span class="k">Next star</span><span class="v">${result.stars >= 3 ? 'Got them all' : `under ${formatTime(result.stars === 2 ? def.par.gold : def.par.silver)}`}</span>
@@ -1128,6 +1131,9 @@ export function createUI(root, levels, handlers) {
       const notes = save.notes.length
         ? save.notes.map((n) => `<p class="note-card">“${esc(n)}”</p>`).join('')
         : '<p class="empty">No bottles found yet. Keep an eye on the water.</p>';
+      const crew = save.crew.length
+        ? save.crew.map((c) => `<p class="note-card crew"><b>${esc(c.name)}</b> “${esc(c.line)}”</p>`).join('')
+        : '<p class="empty">Nobody hauled from the water yet. Listen for shouts.</p>';
       const s = save.stats;
       const node = el(`<section class="screen dim" aria-label="Logbook">
         <div class="sheet narrow">
@@ -1137,9 +1143,12 @@ export function createUI(root, levels, handlers) {
               <span class="k">Voyages finished</span><span class="v">${s.voyages}</span>
               <span class="k">Distance sailed</span><span class="v">${(s.distance * 0.000309).toFixed(2)} km</span>
               <span class="k">Capsizes</span><span class="v">${s.capsizes}</span>
+              <span class="k">Castaways rescued</span><span class="v">${s.rescued}</span>
             </div>
             <div class="eyebrow" style="margin-bottom:8px">Messages in bottles · ${save.notes.length}</div>
             ${notes}
+            <div class="eyebrow" style="margin:16px 0 8px">Sailors you brought home · ${save.crew.length}</div>
+            ${crew}
           </div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
@@ -1159,7 +1168,7 @@ export function createUI(root, levels, handlers) {
       return true;
     },
 
-    // kind: '' | 'good' | 'warn' | 'note' | 'tip' (one at a time, queued) |
+    // kind: '' | 'good' | 'warn' | 'note' | 'note rescue' | 'tip' (one at a time, queued) |
     // 'alert' (danger right now, never waits).
     // `soon` puts a tip at the head of the queue, for news that can't wait.
     toast(text, kind = '', ms = 3200, soon = false) {

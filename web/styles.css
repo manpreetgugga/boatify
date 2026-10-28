@@ -1128,6 +1128,17 @@ button:focus-visible {
   font-style: italic;
 }
 
+/* A rescued sailor's thanks: a lifebuoy stripe instead of parchment. */
+.note-card.crew {
+  background: #f5f0e4;
+  border-left: 6px solid #e0503a;
+}
+
+.note-card.crew b {
+  font-style: normal;
+  margin-right: 4px;
+}
+
 .empty {
   color: var(--foam-dim);
   text-align: center;
@@ -1203,6 +1214,15 @@ button:focus-visible {
   text-transform: uppercase;
   color: #8a6a3c;
   margin-bottom: 3px;
+}
+
+.toast.note.rescue {
+  border-left: 5px solid #e0503a;
+}
+
+.toast.note.rescue::before {
+  content: 'Hauled aboard';
+  color: #c0412b;
 }
 
 .toast.good {

@@ -25,6 +25,8 @@ const PATHS = {
   trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1.5A3 3 0 0 0 7.4 10.5M17 6h3v1.5a3 3 0 0 1-3.4 3"/><path d="M12 14v4M8 20.5h8M9.5 18h5"/>',
   horizon: '<path d="M2 16.5h20M5 20h14"/><path d="M6.5 16.5a5.5 5.5 0 0 1 11 0"/><path d="M12 4.5v3M5.3 7.8l2 2M18.7 7.8l-2 2"/>',
   compass: '<circle cx="12" cy="12" r="9.5"/><path d="M15.8 8.2l-2 5.6-5.6 2 2-5.6z"/>',
+  lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M18.4 5.6l-3.6 3.6M5.6 18.4l3.6-3.6M18.4 18.4l-3.6-3.6"/>',
+  hand: '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10.5V5.5a1.5 1.5 0 0 1 3 0V13c0 4.5-2.5 8-6.5 8-2.5 0-4-1.5-5.5-4l-2-3.5a1.5 1.5 0 0 1 2.5-1.5L8 14"/>',
 };
 
 export function icon(name, size = 24) {

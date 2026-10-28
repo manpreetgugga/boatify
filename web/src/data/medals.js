@@ -10,6 +10,7 @@ const LONG_HAUL_KM = 25;
 const FAR_HORIZON_KM = 1.5;
 const STREAK_DAYS = 7;
 const BEST_BY = 5; // seconds off a best time for Personal Best
+const LIFELINE = 3; // castaways brought home for Lifeline
 
 const finished = (rec) => !!rec && rec.best !== null && rec.best !== undefined;
 const records = (save, levels) => levels.map((l) => save.levels[l.id]);
@@ -192,6 +193,23 @@ export const MEDALS = [
     icon: 'trophy',
     text: 'Win a regatta: first home of the fleet.',
     progress: (save) => [Math.min(1, save.regatta ? save.regatta.wins : 0), 1],
+  },
+  {
+    id: 'lifeline',
+    name: 'Lifeline',
+    icon: 'lifebuoy',
+    text: `Bring ${LIFELINE} castaways home safe.`,
+    progress: (save) => [Math.min(LIFELINE, save.stats.rescued || 0), LIFELINE],
+  },
+  {
+    id: 'no-one-left-behind',
+    name: 'No One Left Behind',
+    icon: 'hand',
+    text: 'Rescue the castaway on every voyage.',
+    progress: (save, levels) => {
+      const adrift = levels.filter((l) => has(l.castaways));
+      return [count(adrift, (l) => save.levels[l.id] && save.levels[l.id].rescued >= l.castaways.length), adrift.length];
+    },
   },
 ];
 

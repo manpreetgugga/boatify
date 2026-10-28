@@ -1,6 +1,6 @@
-// Draws a frame: sea, flows, shallows, wake, islands, marks, pickups, sea
-// life, pirates, the regatta fleet and its dirty air, boat, birds,
-// cannonballs and spray, weather and lighting, then the HUD on top.
+// Draws a frame: sea, flows, shallows, wake, islands, marks, pickups,
+// castaways, sea life, pirates, the regatta fleet and its dirty air, boat,
+// birds, cannonballs and spray, weather and lighting, then the HUD on top.
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
@@ -21,6 +21,7 @@ import {
 } from './effects.js';
 import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
 import { drawPirates, drawCannonballs } from './pirates.js';
+import { drawCastaways, shirtOf, skinOf } from './castaways.js';
 import { createLighting, drawLighting } from './lighting.js';
 import { createHud, drawHud } from './hud.js';
 
@@ -102,6 +103,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawFloes(ctx, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
+  drawCastaways(ctx, game, cam, time);
   drawSeaLife(ctx, game, cam, time);
   drawPirates(ctx, game, cam, time);
   if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, ui.ghost.type || game.boat.type, time);
@@ -111,6 +113,7 @@ export function renderFrame(r, game, dt, time, ui) {
     sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : game.result && game.result.reason === 'sunk' ? 1 : 0,
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
     look: ui && ui.look,
+    crew: game.castaways.filter((c) => c.state === 'aboard').map((c) => ({ shirt: shirtOf(c), skin: skinOf(c) })),
   };
   drawFleet(ctx, game, time);
   drawBoat(ctx, game.boat, time, boatState);

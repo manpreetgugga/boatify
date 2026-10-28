@@ -58,6 +58,7 @@ export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = nul
   drawEscort(ctx, game, L, time, ghost && ghost.gap !== null && game.time >= 2);
   drawMinimap(ctx, hud, game, cam, L, time);
   drawHull(ctx, game, L);
+  if (game.castaways.length) drawRescue(ctx, game, L, time);
   drawPointers(ctx, game, cam, L, time);
   drawInstruments(ctx, game, L, controls, time);
   if (controls.touch) drawTouchControls(ctx, game, L, controls, time);
@@ -371,6 +372,14 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
     ctx.arc(x + r.boat.x * k, y + r.boat.y * k, 2.8, 0, Math.PI * 2);
     ctx.fill();
   }
+  // Castaways still adrift blink white.
+  for (const c of game.castaways) {
+    if (c.state === 'aboard') continue;
+    ctx.fillStyle = rgba(C.foam, 0.55 + 0.45 * Math.sin(time * 6));
+    ctx.beginPath();
+    ctx.arc(x + c.x * k, y + c.y * k, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
   const f = level.finish;
   if (!game.sea) {
     ctx.fillStyle = C.signal;
@@ -429,7 +438,35 @@ function drawHull(ctx, game, L) {
   text(ctx, `${Math.ceil(game.hull)}%`, x + w - 8, y + 13.5, 13, C.text, 'right', 700);
 }
 
-// Edge-of-screen arrows toward B, the next checkpoint and a pirate on your tail.
+// Under the hull bar: how many castaways are aboard, out of those adrift here.
+function drawRescue(ctx, game, L, time) {
+  const d = L.minimap.drawn || L.minimap;
+  const x = d.x - 5;
+  const y = d.y + d.h + 44;
+  const w = d.w + 10;
+  const aboard = game.castaways.filter((c) => c.state === 'aboard').length;
+  const all = aboard === game.castaways.length;
+  panel(ctx, x, y, w, 26, 8);
+  // A lifebuoy: red and white quarters.
+  const cx = x + 16;
+  const cy = y + 13;
+  for (let i = 0; i < 4; i++) {
+    ctx.strokeStyle = i % 2 ? C.foam : '#e0503a';
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, (i * Math.PI) / 2, ((i + 1) * Math.PI) / 2);
+    ctx.stroke();
+  }
+  const hauling = game.castaways.some((c) => c.state !== 'aboard' && c.haul > 0);
+  const label = hauling ? 'HAULING IN' : all ? 'ALL ABOARD' : aboard ? 'ABOARD' : 'CASTAWAY ADRIFT';
+  const color = hauling ? rgba(C.ok, 0.7 + 0.3 * Math.sin(time * 10)) : all ? C.ok : C.textDim;
+  const fit = fitText(ctx, label, 11, w - 70, 700, FONT.display);
+  text(ctx, fit.str, x + 28, y + 13.5, fit.size, color, 'left', 700);
+  text(ctx, `${aboard}/${game.castaways.length}`, x + w - 8, y + 13.5, 13, all ? C.ok : C.text, 'right', 700);
+}
+
+// Edge-of-screen arrows toward B, the next checkpoint, a castaway in sight and
+// a pirate on your tail.
 function drawPointers(ctx, game, cam, L, time) {
   const targets = [];
   const ship = chasingShip(game);
@@ -442,6 +479,10 @@ function drawPointers(ctx, game, cam, L, time) {
   // regatta the next mark.
   const markLabel = game.sea ? 'GATE' : game.race && next ? `MARK ${next.label}` : '';
   if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: markLabel, dist: distanceToFinish(game) });
+  for (const c of game.castaways) {
+    const d = Math.hypot(c.x - game.boat.x, c.y - game.boat.y);
+    if (c.state !== 'aboard' && d < 900) targets.push({ x: c.x, y: c.y, color: C.foam, label: 'SOS', dist: d });
+  }
   // Pointers ride the edge of the open water between the HUD bands.
   const m = 30;
   const x0 = L.insets.l + m;
@@ -459,7 +500,7 @@ function drawPointers(ctx, game, cam, L, time) {
     let px = cx + Math.cos(a) * s;
     let py = cy + Math.sin(a) * s;
     const mm = L.minimap;
-    const underMap = (qx, qy) => qx > mm.x - 24 && qy < mm.y + mm.h + 44;
+    const underMap = (qx, qy) => qx > mm.x - 24 && qy < mm.y + mm.h + (game.castaways.length ? 76 : 44);
     if (underMap(px, py)) px = mm.x - 24;
     // Two targets in the same direction: slide the second pointer along the
     // edge so it doesn't sit on top of the first one and its label.
