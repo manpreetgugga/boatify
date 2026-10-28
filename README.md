@@ -31,6 +31,7 @@ from that source. Android 8.0 or newer.
 - **Daily voyage.** After the first three voyages, a new course is charted every day: the same one for everyone that day. Sail it on consecutive days to build a streak.
 - **Shipyard.** Earn stars to unlock the Reed Skiff, Twin Proa and Lantern Junk. Each boat trades speed, upwind ability, stability, agility and toughness differently.
 - **Medals.** Twenty-one goals beyond the stars: thread a coral reef without a dent, dodge the kraken, ride with dolphins, escape the pirates without a scratch, cross the ice untouched, find every bottle, sail a week of daily voyages. The Medals screen shows how close you are to each one.
+- **Sail Locker.** Every medal unlocks a sail design or a hull paint: the Jolly Roger, a rainbow sail, Admiral's Blue, a gilded hull and more. Looks only: they never change how a boat sails.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
 - **Pirates.** On Pirate Waters a square-rigged brig hunts you. It's fast downwind but can't sail close to the wind, so reach across the wind, get upwind, or thread a reef gap too narrow for it. Dodge the cannonballs: a red ring marks where each will land.
 - **Sea life.** Dolphins ride your bow wave and push you along if you sail fast enough. Whales spout, dive and breach, sending out a swell that rocks your boat. Flying fish skim past and gulls land on the stern when you stop.
@@ -58,7 +59,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), medals, accessibility, save and bundle tests
+npm test            # physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), medals, the Sail Locker, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```
@@ -69,7 +70,7 @@ The game is plain JavaScript modules in `web/src`:
 - `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
-- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `data/medals.js`: the medals
+- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `data/medals.js`: the medals; `data/locker.js`: the Sail Locker's sails and hull paints
 
 ### Android
 

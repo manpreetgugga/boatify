@@ -1,4 +1,4 @@
-// Line icons for the medals, drawn on a 24-unit grid in the current text colour.
+// Line icons for the medals and menus, drawn on a 24-unit grid in the current text colour.
 
 const PATHS = {
   anchor: '<circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V21M8 11h8M4 13a8 8 0 0 0 16 0"/>',
@@ -21,6 +21,7 @@ const PATHS = {
   dolphin: '<path d="M2.5 14c2-.3 3.4-1.4 4.6-3C10 7.5 15.5 7 19 10.5l2.5-2-.5 4 1.5 3.5-3.5-1.5C15.5 11.5 11 11.5 8 14.5z"/><path d="M12 8l1.5-3.5 1.5 3.8"/><path d="M3 19.5c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5"/>',
   whale: '<path d="M2.5 13c0-3.5 3-5.5 7-5.5 4.5 0 7 2.5 8.5 4.5l3.5-3.5-.5 4 1 3-3.5-.5c-2 2.5-5.5 4-9 4-4.5 0-7-2.5-7-6z"/><path d="M3 15c3 1 6 1 8.5-.5"/><path d="M9.5 7.5V4.5M9.5 4.5C8.5 3 7 3 6 3.5M9.5 4.5c1-1.5 2.5-1.5 3.5-1"/>',
   skull: '<path d="M12 3c-4 0-7 2.6-7 6.2 0 2 .9 3.6 2.5 4.6V16h9v-2.2c1.6-1 2.5-2.6 2.5-4.6C19 5.6 16 3 12 3z"/><circle cx="9.3" cy="9.6" r="1.4"/><circle cx="14.7" cy="9.6" r="1.4"/><path d="M10.6 16v-1.7M13.4 16v-1.7M4.5 18l15 3.5M19.5 18l-15 3.5"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
   compass: '<circle cx="12" cy="12" r="9.5"/><path d="M15.8 8.2l-2 5.6-5.6 2 2-5.6z"/>',
 };
 

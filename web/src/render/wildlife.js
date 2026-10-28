@@ -7,6 +7,7 @@ import { clamp, dist } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
 import { WHALE } from '../world/wildlife.js';
 import { viewBounds } from './camera.js';
+import { VISUAL } from './boat.js';
 
 const TAU = Math.PI * 2;
 
@@ -80,9 +81,10 @@ function leave(g, boat) {
   g.heading = boat.heading + (Math.random() < 0.5 ? 1 : -1) * (1.2 + Math.random() * 0.6);
 }
 
+// On the stern of the boat as drawn.
 function perchPoint(boat) {
-  const L = boat.type.length;
-  return { x: boat.x - Math.cos(boat.heading) * L * 0.36, y: boat.y - Math.sin(boat.heading) * L * 0.36 };
+  const L = boat.type.length * VISUAL;
+  return { x: boat.x - Math.cos(boat.heading) * L * 0.4, y: boat.y - Math.sin(boat.heading) * L * 0.4 };
 }
 
 function spawnFish(lf, boat) {

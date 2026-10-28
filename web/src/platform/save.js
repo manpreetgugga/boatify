@@ -23,6 +23,8 @@ export const DEFAULT_SETTINGS = {
   quality: 'high',
   ghost: true,
   boat: 'sloop',
+  sail: 'stock', // Sail Locker choices
+  hull: 'stock',
   colorblind: false,
   reduceMotion: null, // null: follow the phone's own setting
   textSize: 1,
@@ -38,6 +40,7 @@ function blank() {
     stats: { voyages: 0, distance: 0, capsizes: 0, pearls: 0 },
     medals: {}, // medal id -> day it was earned
     medalsSeen: 0, // how many medals the Medals screen last showed
+    gearSeen: 0, // how many Sail Locker items the locker last showed
     sailed: [], // boats that have finished a voyage
     sightings: {}, // sea life the player has had the first-meeting tip for
     seenIntro: false,
@@ -67,6 +70,7 @@ export function loadSave() {
     notes: Array.isArray(data.notes) ? data.notes : [],
     medals: isObj(data.medals) ? data.medals : {},
     medalsSeen: Number(data.medalsSeen) || 0,
+    gearSeen: Number(data.gearSeen) || 0,
     sailed: Array.isArray(data.sailed) ? data.sailed : [],
     sightings: isObj(data.sightings) ? data.sightings : {},
   };

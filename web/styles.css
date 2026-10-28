@@ -530,6 +530,108 @@ button:focus-visible {
   margin-top: auto;
 }
 
+/* Sail Locker */
+
+.locker-top {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.locker-fit {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(19px * var(--text, 1));
+  line-height: 1.15;
+}
+
+.locker-blurb {
+  margin: 4px 0 0;
+  font-size: calc(13px * var(--text, 1));
+  line-height: 1.35;
+  color: var(--foam-dim);
+}
+
+.locker-preview {
+  flex: none;
+  display: block;
+  width: 210px;
+  height: 104px;
+  border-radius: 10px;
+}
+
+.gear-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gear {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 6px 8px;
+  border-radius: var(--radius);
+  background: rgba(232, 244, 242, 0.06);
+  border: 1px solid var(--foam-faint);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gear.picked {
+  border-color: var(--brass);
+  box-shadow: inset 0 0 0 1px var(--brass);
+}
+
+.gear-art {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+}
+
+.gear b {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(15px * var(--text, 1));
+  line-height: 1.1;
+}
+
+.gear small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: calc(12px * var(--text, 1));
+  line-height: 1.2;
+  color: var(--foam-dim);
+}
+
+.gear.picked small {
+  color: var(--brass);
+}
+
+.gear.locked .gear-art,
+.gear.locked b {
+  opacity: 0.45;
+}
+
+@media (max-width: 560px) {
+  .locker-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .locker-preview {
+    width: 100%;
+  }
+}
+
 /* Medals */
 
 .medal-grid {
@@ -620,6 +722,15 @@ button:focus-visible {
   color: var(--brass);
 }
 
+.medal-reward {
+  font-size: calc(12px * var(--text, 1));
+  color: var(--foam-dim);
+}
+
+.medal.earned .medal-reward {
+  color: var(--brass);
+}
+
 /* New medals on the results card. */
 .medal-strip {
   display: flex;
@@ -629,6 +740,13 @@ button:focus-visible {
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--foam-faint);
+}
+
+.locker-note {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: calc(13px * var(--text, 1));
+  color: var(--brass);
 }
 
 .medal-chip {

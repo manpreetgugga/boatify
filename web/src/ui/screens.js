@@ -1,14 +1,16 @@
 // DOM menus layered over the canvas: title, voyage select, briefing, pause,
-// results, settings, how-to-sail and the logbook of bottle notes. Plus toasts.
+// results, settings, how-to-sail, the Shipyard and Sail Locker, medals and the
+// logbook of bottle notes. Plus toasts.
 
 import { formatTime, compassPoint, DEG } from '../core/math.js';
 import { beaufort, toKnots } from '../physics/sailing.js';
 import { POLAR } from '../world/autopilot.js';
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
-import { drawBoat } from '../render/boat.js';
+import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
 import { MEDALS, isEarned, medalsEarned, medalProgress } from '../data/medals.js';
+import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { icon } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -73,8 +75,9 @@ function statBar(n) {
   return `<span class="bar" aria-label="${n} of 5">${dots}</span>`;
 }
 
-// A boat on a reach over a patch of open water, for the Shipyard cards.
-function paintBoat(canvas, type) {
+// A boat on a reach over a patch of open water, for the Shipyard cards and
+// the Sail Locker.
+function paintBoat(canvas, type, look) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const w = canvas.clientWidth || 160;
   const h = canvas.clientHeight || 84;
@@ -100,9 +103,32 @@ function paintBoat(canvas, type) {
   // The sail swings out to the lower side, so the hull sits high.
   const scale = Math.min(w / 24, h / 15);
   ctx.translate(w * 0.5, h * 0.36);
-  ctx.scale(scale / 1.45, scale / 1.45);
+  ctx.scale(scale / VISUAL, scale / VISUAL);
   const boat = { type, x: 0, y: 0, vx: 0, vy: 0, heading: -0.3, heel: 0.42, boom: 0.7, drive: 4, luffing: false, rudder: 0, boostTime: 0 };
-  drawBoat(ctx, boat, 0);
+  drawBoat(ctx, boat, 0, { look });
+}
+
+// A sail hanging on the locker wall.
+function paintSail(canvas, look) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = canvas.clientWidth || 116;
+  const h = canvas.clientHeight || 56;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#3b2a1e';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+  ctx.lineWidth = 1;
+  for (let x = 9; x < w; x += 18) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  const sh = h * 0.84;
+  drawSailFlat(ctx, look, w / 2 - sh * 0.26, h * 0.07, sh);
 }
 
 function vsBest(time, prev) {
@@ -116,7 +142,9 @@ function vsBest(time, prev) {
 function medalStrip(medals = []) {
   if (!medals.length) return '';
   const chips = medals.map((m) => `<span class="medal-chip">${icon(m.icon, 18)}${esc(m.name)}</span>`).join('');
-  return `<div class="medal-strip"><span class="eyebrow">New medal${medals.length > 1 ? 's' : ''}</span>${chips}</div>`;
+  const gear = medals.map((m) => rewardFor(m.id)).filter(Boolean);
+  const note = gear.length ? `<p class="locker-note">New in the Sail Locker: ${gear.map((r) => esc(r.label)).join(', ')}</p>` : '';
+  return `<div class="medal-strip"><span class="eyebrow">New medal${medals.length > 1 ? 's' : ''}</span>${chips}${note}</div>`;
 }
 
 function polarSvg() {
@@ -439,7 +467,7 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="title-buttons">
             ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
-            <button class="btn small" data-act="shipyard">Shipyard</button>
+            <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
             <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small" data-act="settings">Settings</button>
@@ -647,9 +675,11 @@ export function createUI(root, levels, handlers) {
       }
     },
 
-    shipyard(save) {
+    // `restore` redraws it on the way back from the Sail Locker.
+    shipyard(save, restore = false) {
       const chosen = selectedBoat(save);
       const have = totalStars(save);
+      const gear = fittedGear(save);
       const cards = BOAT_ORDER.map((id) => {
         const t = BOAT_TYPES[id];
         const open = isBoatUnlocked(save, id);
@@ -669,7 +699,7 @@ export function createUI(root, levels, handlers) {
       }).join('');
       const node = el(`<section class="screen dim" aria-label="Shipyard">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="locker">Sail Locker</button><button class="btn small" data-act="back">Back</button></div>
           <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-boat]', (e, b) => {
@@ -681,9 +711,70 @@ export function createUI(root, levels, handlers) {
         handlers.onBoat(t.id);
         ui.back();
       });
+      click(node, '[data-act=locker]', () => ui.locker(save));
       click(node, '[data-act=back]', () => ui.back());
-      show('shipyard', node, { push: true });
-      node.querySelectorAll('canvas.boat-art').forEach((c) => paintBoat(c, BOAT_TYPES[c.dataset.type]));
+      show('shipyard', node, restore ? { keep: true } : { push: true });
+      node.querySelectorAll('canvas.boat-art').forEach((c) => {
+        const type = BOAT_TYPES[c.dataset.type];
+        paintBoat(c, type, boatLook(type, gear));
+      });
+    },
+
+    locker(save) {
+      const type = BOAT_TYPES[selectedBoat(save)];
+      const card = (kind, g) => {
+        const open = isGearUnlocked(save, g);
+        const medal = medalFor(g);
+        const sub = !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? esc(medal.name) : `${icon('lock', 13)}${esc(medal.name)}`;
+        return `<button class="gear ${open ? '' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${open ? '' : ', locked'}">
+            <canvas class="gear-art" aria-hidden="true"></canvas><b>${esc(g.name)}</b><small>${sub}</small></button>`;
+      };
+      const node = el(`<section class="screen dim" aria-label="Sail Locker">
+        <div class="sheet wide">
+          <div class="sheet-head"><h2>Sail Locker</h2><span class="eyebrow">${gearCount(save)} / ${GEAR_TOTAL}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">
+            <div class="locker-top"><canvas class="locker-preview" aria-hidden="true"></canvas>
+              <div><b class="locker-fit"></b><p class="locker-blurb">Every medal puts a new sail or hull paint in the locker. They change how your boat looks, never how it sails.</p></div></div>
+            <h3 class="setting-group">Sails</h3>
+            <div class="gear-grid">${SAILS.map((g) => card('sail', g)).join('')}</div>
+            <h3 class="setting-group">Hull paint</h3>
+            <div class="gear-grid">${HULLS.map((g) => card('hull', g)).join('')}</div>
+          </div>
+        </div></section>`);
+      const paint = () => {
+        const fitted = fittedGear(save);
+        paintBoat(node.querySelector('.locker-preview'), type, boatLook(type, fitted));
+        const sail = SAILS.find((g) => g.id === fitted.sail);
+        const hull = HULLS.find((g) => g.id === fitted.hull);
+        node.querySelector('.locker-fit').textContent = `${sail.name} · ${hull.name}`;
+        node.querySelectorAll('.gear').forEach((b) => {
+          const { kind, id } = b.dataset;
+          const picked = fitted[kind] === id;
+          b.classList.toggle('picked', picked);
+          b.setAttribute('aria-pressed', String(picked));
+          const look = boatLook(type, { ...fitted, [kind]: id });
+          if (kind === 'sail') paintSail(b.querySelector('canvas'), look);
+          else paintBoat(b.querySelector('canvas'), type, look);
+        });
+      };
+      click(node, '.gear', (e, b) => {
+        const { kind, id } = b.dataset;
+        const g = (kind === 'sail' ? SAILS : HULLS).find((x) => x.id === id);
+        if (!isGearUnlocked(save, g)) {
+          const medal = medalFor(g);
+          ui.toast(`Earn the ${medal.name} medal for the ${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}. ${medal.text}`);
+          return;
+        }
+        handlers.onGear(kind, id);
+        paint();
+      });
+      click(node, '[data-act=back]', () => ui.back());
+      show('locker', node, { push: true });
+      paint();
+      if (save.gearSeen !== gearCount(save)) {
+        save.gearSeen = gearCount(save);
+        handlers.onSeen();
+      }
     },
 
     settings(save) {
@@ -803,9 +894,11 @@ export function createUI(root, levels, handlers) {
             : '';
         const day = save.medals[m.id];
         const when = earned && /^\d{4}-\d\d-\d\d$/.test(day) ? `<span class="medal-count">${esc(dayLabel(day))}</span>` : '';
+        const gear = rewardFor(m.id);
+        const reward = gear ? `<span class="medal-reward">Sail Locker: ${esc(gear.label)}</span>` : '';
         return `<div class="medal ${earned ? 'earned' : ''}">
             <span class="medal-disc">${icon(m.icon, 26)}</span>
-            <span class="medal-text"><b>${esc(m.name)}</b><small>${esc(m.text)}</small>${meter}${when}</span>
+            <span class="medal-text"><b>${esc(m.name)}</b><small>${esc(m.text)}</small>${reward}${meter}${when}</span>
           </div>`;
       }).join('');
       const node = el(`<section class="screen dim" aria-label="Medals">

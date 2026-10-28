@@ -1,6 +1,7 @@
 // Browser smoke test of the bundled game: menus, a voyage sailed by the
 // autopilot at high speed, the results card, today's daily voyage, the
-// Shipyard, the medals and the accessibility settings. Fails on any page error.
+// Shipyard and Sail Locker, the medals and the accessibility settings. Fails
+// on any page error.
 //
 //   node scripts/smoke.cjs [--shots <dir>] [--level <index>] [--size 915x412]
 
@@ -101,8 +102,22 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.waitForTimeout(300);
   await snap('10-shipyard');
 
+  step('sail locker: Cast Off unlocked the Harbor Stripe, the rest are locked');
+  await tab.getByRole('button', { name: 'Sail Locker' }).click();
+  await tab.waitForSelector('section[aria-label="Sail Locker"].open');
+  const gear = await tab.locator('.gear').count();
+  if (gear !== 23) throw new Error(`sail locker shows ${gear} items`);
+  await tab.getByRole('button', { name: 'Jolly Roger, locked' }).click();
+  await tab.getByRole('button', { name: 'Harbor Stripe' }).click();
+  const fitted = await tab.evaluate(() => [window.__boatify.save.settings.sail, document.querySelector('.gear.picked[data-kind=sail]').dataset.id]);
+  if (fitted.join() !== 'harbor,harbor') throw new Error(`fitted sail ${fitted}`);
+  await tab.waitForTimeout(300);
+  await snap('11-locker');
+  await tab.locator('section[aria-label="Sail Locker"]').getByRole('button', { name: 'Back' }).click();
+  await tab.waitForSelector('section[aria-label="Shipyard"].open');
+
   step('medals: the first voyage is on the board');
-  await tab.getByRole('button', { name: 'Back' }).click();
+  await tab.locator('section[aria-label="Shipyard"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Title"].open');
   await tab.getByRole('button', { name: 'Medals' }).click();
   await tab.waitForSelector('section[aria-label="Medals"].open');
@@ -110,7 +125,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   const earned = await tab.locator('.medal.earned').count();
   if (medals < 10 || earned < 1) throw new Error(`medals screen shows ${earned} of ${medals}`);
   await tab.waitForTimeout(300);
-  await snap('11-medals');
+  await snap('12-medals');
 
   step('settings: colour-blind colours, reduced motion and large text');
   await tab.getByRole('button', { name: 'Back' }).click();
@@ -130,7 +145,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
     throw new Error(`settings did not stick: ${JSON.stringify(look)}`);
   }
   await tab.waitForTimeout(300);
-  await snap('12-settings');
+  await snap('13-settings');
 
   await browser.close();
   if (errors.length) {

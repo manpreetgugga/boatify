@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.0] - 2026-10-28
+
+The Sail Locker, and a bigger boat.
+
+- **Bigger boat.** Your boat is drawn about a quarter larger on screen, so it's easier to follow on a phone. The camera sits a little closer too. Its hull for bumping into things is the same size, so every voyage sails exactly as before.
+- **Sail Locker.** Every medal now unlocks a new look: eleven sail designs and ten hull paints. Fly the Jolly Roger after escaping the pirates, a rainbow sail for collecting every pearl, or gild your hull by finishing a voyage in every boat. Open it from the Shipyard. The designs change only how your boat looks, never how it sails, and they fit every boat.
+- Sails hang on the locker wall so you can see the whole design; hull paints show on your boat. Locked ones show which medal earns them.
+- The results card tells you when a new medal puts something in the locker, and each medal on the Medals screen names its reward. The Shipyard button lights up when there's something new to try on.
+- The gull now lands on the stern of the bigger boat, not in the cockpit.
+
 ## [0.9.0] - 2026-10-28
 
 Pirates, and a new name.

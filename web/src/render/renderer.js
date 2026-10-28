@@ -103,6 +103,7 @@ export function renderFrame(r, game, dt, time, ui) {
     capsized: game.status === 'capsized',
     sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : 0,
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
+    look: ui && ui.look,
   };
   drawBoat(ctx, game.boat, time, boatState);
   drawSkyLife(ctx, r.life, game, cam, time);

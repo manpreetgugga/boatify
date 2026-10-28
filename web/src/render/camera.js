@@ -11,7 +11,7 @@ export function createCamera() {
 
 // Pixels per world unit for a viewport, before speed zoom.
 export function baseScale(w, h) {
-  return clamp(Math.min(w / 460, h / 215), 1.1, 3.2);
+  return clamp(Math.min(w / 430, h / 200), 1.1, 3.4);
 }
 
 export function snapCamera(cam, game, w, h) {

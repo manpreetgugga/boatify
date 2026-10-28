@@ -1,11 +1,13 @@
 // The boat seen from above: hull, deck, mast, boom and a sail that bellies
 // with the wind, flutters when luffing and leans out as the boat heels.
-// Also the wake it leaves behind and the masthead pennant.
+// Also the wake it leaves behind and the masthead pennant. Sail designs and
+// hull paints from the Sail Locker come in as a `look`.
 
 import { C } from './palette.js';
+import { clamp } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
 
-const VISUAL = 1.45; // draw a touch larger than the collision hull
+export const VISUAL = 1.7; // draw larger than the collision hull, so the boat reads clearly on a phone
 
 export function createWake() {
   return { points: [], last: -Infinity };
@@ -96,10 +98,162 @@ function hullShapes(type) {
   return h;
 }
 
-// `state` carries game status flags used for capsize/sink looks.
+// Sail designs: marks painted over the cloth in sail coordinates (see
+// data/locker.js). `map(u, h)` turns them into boat coordinates.
+const K = 0.54; // foot length over luff length, so discs come out round on the cloth
+
+function trace(ctx, map, pts) {
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const [x, y] = map(pts[i][0], pts[i][1]);
+    if (i) ctx.lineTo(x, y);
+    else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function ring(u, h, r, n = 20) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push([u + Math.cos(a) * r, h + Math.sin(a) * r * K]);
+  }
+  return pts;
+}
+
+// A strip of cloth between two lines across the sail, h = f(u) +/- half.
+function ribbon(f, half, u0 = -0.15, u1 = 1.2, n = 18) {
+  const top = [];
+  const bottom = [];
+  for (let i = 0; i <= n; i++) {
+    const u = u0 + ((u1 - u0) * i) / n;
+    top.push([u, f(u) + half]);
+    bottom.push([u, f(u) - half]);
+  }
+  return top.concat(bottom.reverse());
+}
+
+// The same, running up the sail: u = u0..u1 from the foot to the head.
+function strip(u0, u1, n = 12) {
+  const a = [];
+  const b = [];
+  for (let i = 0; i <= n; i++) {
+    const h = -0.15 + (1.3 * i) / n;
+    a.push([u0, h]);
+    b.push([u1, h]);
+  }
+  return a.concat(b.reverse());
+}
+
+function drawMarks(ctx, marks, map, cloth) {
+  for (const m of marks) {
+    ctx.fillStyle = m.color || '#ffffff';
+    if (m.band) {
+      const [h0, h1] = m.band;
+      trace(ctx, map, ribbon(() => (h0 + h1) / 2, (h1 - h0) / 2));
+      ctx.fill();
+    } else if (m.panel) {
+      trace(ctx, map, strip(m.panel[0], m.panel[1]));
+      ctx.fill();
+    } else if (m.line) {
+      const [h, amp, waves] = m.line;
+      const wave = m.sharp ? (x) => (2 / Math.PI) * Math.asin(Math.sin(x)) : Math.sin;
+      trace(ctx, map, ribbon((u) => h + amp * wave(u * waves * Math.PI * 2), (m.width * K) / 2, -0.15, 1.2, 40));
+      ctx.fill();
+    } else if (m.disc) {
+      trace(ctx, map, ring(...m.disc));
+      ctx.fill();
+    } else if (m.dots) {
+      for (const [u, h] of m.dots) {
+        trace(ctx, map, ring(u, h, m.r, 12));
+        ctx.fill();
+      }
+    } else if (m.star) {
+      const [u, h, r] = m.star;
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const R = i % 2 ? r * 0.42 : r;
+        pts.push([u + Math.cos(a) * R, h - Math.sin(a) * R * K]);
+      }
+      trace(ctx, map, pts);
+      ctx.fill();
+    } else if (m.grid) {
+      ctx.fillStyle = m.color;
+      for (let i = 1; i < m.grid; i++) {
+        const t = i / m.grid;
+        trace(ctx, map, ribbon(() => t, 0.008));
+        ctx.fill();
+        trace(ctx, map, strip(t - 0.008, t + 0.008));
+        ctx.fill();
+      }
+    } else if (m.skull) {
+      const [u, h, r] = m.skull;
+      const bone = r * 0.16 * K;
+      // Crossbones behind, then the skull and its jaw, then the eyes.
+      for (const s of [-1, 1]) {
+        trace(ctx, map, [
+          [u - r * 1.3, h - s * r * K * 1.6 - bone],
+          [u + r * 1.3, h + s * r * K * 1.6 - bone],
+          [u + r * 1.3, h + s * r * K * 1.6 + bone],
+          [u - r * 1.3, h - s * r * K * 1.6 + bone],
+        ]);
+        ctx.fill();
+      }
+      trace(ctx, map, ring(u, h + r * K * 0.15, r));
+      ctx.fill();
+      trace(ctx, map, [
+        [u - r * 0.55, h - r * K * 0.6],
+        [u + r * 0.55, h - r * K * 0.6],
+        [u + r * 0.55, h - r * K * 1.15],
+        [u - r * 0.55, h - r * K * 1.15],
+      ]);
+      ctx.fill();
+      ctx.fillStyle = cloth;
+      for (const s of [-1, 1]) {
+        trace(ctx, map, ring(u + s * r * 0.4, h + r * K * 0.2, r * 0.27, 12));
+        ctx.fill();
+      }
+    }
+  }
+}
+
+// A sail hanging flat in the Sail Locker, `h` tall with its head at (x, y).
+export function drawSailFlat(ctx, look, x, y, h) {
+  const w = h * K;
+  const cloth = new Path2D();
+  cloth.moveTo(x, y + h);
+  cloth.quadraticCurveTo(x + w * 0.5, y + h * 1.03, x + w, y + h);
+  cloth.quadraticCurveTo(x + w * 0.64, y + h * 0.44, x, y);
+  cloth.closePath();
+  ctx.fillStyle = look.sail;
+  ctx.fill(cloth);
+  if (look.marks) {
+    ctx.save();
+    ctx.clip(cloth);
+    drawMarks(ctx, look.marks, (u, v) => [x + u * w, y + h - v * h], look.sail);
+    ctx.restore();
+  }
+  ctx.strokeStyle = 'rgba(80, 70, 55, 0.55)';
+  ctx.lineWidth = Math.max(0.6, h * 0.012);
+  ctx.stroke(cloth);
+  // Mast and boom.
+  ctx.strokeStyle = '#6b4a2e';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1.2, h * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(x, y - h * 0.05);
+  ctx.lineTo(x, y + h * 1.06);
+  ctx.moveTo(x - h * 0.02, y + h * 1.02);
+  ctx.lineTo(x + w * 1.06, y + h * 1.02);
+  ctx.stroke();
+}
+
+// `state` carries game status flags used for capsize/sink looks, and the
+// Sail Locker `look` to paint the boat in.
 export function drawBoat(ctx, boat, time, state = {}) {
   const type = boat.type;
-  const look = type.look;
+  const look = state.look || type.look;
   const L = type.length * VISUAL;
   const B = type.beam * VISUAL;
   const hull = hullShapes(type);
@@ -155,6 +309,15 @@ export function drawBoat(ctx, boat, time, state = {}) {
   }
   ctx.fillStyle = look.hull;
   ctx.fill(hull.path);
+  if (look.trim) {
+    // A painted stripe just inside the gunwale.
+    ctx.save();
+    ctx.clip(hull.path);
+    ctx.strokeStyle = look.trim;
+    ctx.lineWidth = 1.3;
+    ctx.stroke(hull.path);
+    ctx.restore();
+  }
   ctx.strokeStyle = look.hullDark;
   ctx.lineWidth = 0.9;
   ctx.stroke(hull.path);
@@ -231,16 +394,32 @@ export function drawBoat(ctx, boat, time, state = {}) {
   const midLeechX = (topX + bx) / 2 + nX * (belly * 0.6 - flutter);
   const midLeechY = (topY + by) / 2 + nY * (belly * 0.6 - flutter);
 
+  const cloth = new Path2D();
+  cloth.moveTo(mx, 0);
+  cloth.quadraticCurveTo(midFootX, midFootY, bx, by);
+  cloth.quadraticCurveTo(midLeechX, midLeechY, topX, topY);
+  cloth.closePath();
   ctx.fillStyle = boat.luffing ? look.sailShade : look.sail;
+  ctx.fill(cloth);
+  if (look.marks) {
+    // Sail coordinates to boat coordinates, following the belly of the cloth:
+    // the foot and leech curves above, blended across the sail.
+    const footBelly = belly + flutter;
+    const leechBelly = belly * 0.6 - flutter;
+    const map = (u, h) => {
+      const w = h < 1 ? clamp(u / (1 - h), -0.5, 1.5) : 0;
+      const bulge = (1 - h) * (2 * w * (1 - w) * footBelly + 2 * w * h * leechBelly);
+      return [mx + u * (bx - mx) + h * (topX - mx) + nX * bulge, u * by + h * topY + nY * bulge];
+    };
+    ctx.save();
+    ctx.clip(cloth);
+    if (boat.luffing) ctx.globalAlpha *= 0.82;
+    drawMarks(ctx, look.marks, map, boat.luffing ? look.sailShade : look.sail);
+    ctx.restore();
+  }
   ctx.strokeStyle = 'rgba(80, 70, 55, 0.55)';
   ctx.lineWidth = 0.6;
-  ctx.beginPath();
-  ctx.moveTo(mx, 0);
-  ctx.quadraticCurveTo(midFootX, midFootY, bx, by);
-  ctx.quadraticCurveTo(midLeechX, midLeechY, topX, topY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  ctx.stroke(cloth);
   // Sail seams, or the stiff bamboo battens of a junk rig.
   const seams = type.battens ? 5 : 3;
   ctx.strokeStyle = type.battens ? 'rgba(60, 25, 12, 0.7)' : 'rgba(120, 110, 95, 0.25)';

@@ -15,6 +15,7 @@ import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
+import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
@@ -163,9 +164,14 @@ const ui = createUI(root, LEVELS, {
     save.settings.boat = id;
     writeSave(save);
   },
+  onGear: (kind, id) => {
+    save.settings[kind] = id;
+    writeSave(save);
+  },
   onBackToTitle: () => showTitle(),
   onBackTo: (name) => {
     if (name === 'voyages') ui.voyages(save);
+    else if (name === 'shipyard') ui.shipyard(save, true);
     else if (name === 'briefing') ui.briefing(ui.lastBriefing, save, 'restore');
     else showTitle();
   },
@@ -518,6 +524,7 @@ function frame(now) {
     ghostView = { pose: ghostAt(ghost, game.time), gap, type: BOAT_TYPES[ghost.boat] || game.boat.type };
   }
   renderFrame(renderer, game, dt, clock, {
+    look: boatLook(game.boat.type, fittedGear(save)),
     ghost: ghostView,
     hud: showHud,
     layout: getLayout(),
