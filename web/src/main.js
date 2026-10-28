@@ -4,6 +4,7 @@
 import { LEVELS } from './data/levels.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
+import { createRecorder, recordGhost, finishGhost, isValidGhost, ghostAt, ghostGap } from './world/ghost.js';
 import { createRenderer, resize, resetView, renderFrame } from './render/renderer.js';
 import { hudLayout } from './render/layout.js';
 import { burst, ring, floatText } from './render/effects.js';
@@ -11,7 +12,7 @@ import { C } from './render/palette.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI } from './ui/screens.js';
-import { loadSave, writeSave, recordResult, resetProgress } from './platform/save.js';
+import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
 const root = document.getElementById('boatify');
@@ -27,6 +28,9 @@ let game = null;
 let levelIndex = 0;
 let autopilot = null;
 let botDriving = false;
+let recorder = null;
+let ghost = null; // best run of the current voyage, if any
+let ghostView = null; // { pose, gap } for this frame
 let demoTimer = 0;
 let demoIndex = 0;
 let finishTimer = 0;
@@ -149,6 +153,9 @@ function startLevel(index) {
   const def = LEVELS[index];
   game = createGame(def);
   autopilot = botDriving ? createAutopilot(game) : null;
+  recorder = createRecorder(game);
+  const g = loadGhost(def.id);
+  ghost = isValidGhost(g, def) ? g : null;
   resetView(renderer, game);
   ui.hide();
   ui.clearToasts();
@@ -183,7 +190,12 @@ function finishVoyage(result) {
   mode = 'finishing';
   finishTimer = 1.8;
   input.setEnabled(false);
+  const hadGhost = !!ghost;
   const improved = recordResult(save, game.def.id, result, game.notes);
+  // Keep the fastest run as the ghost (or the first one we see for a voyage).
+  if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
+    storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
+  }
   pending = { improved, result };
 }
 
@@ -332,6 +344,7 @@ function frame(now) {
         if (ap.boost) cmd.boost = true;
       }
       stepGame(game, cmd, dt);
+      if (recorder) recordGhost(recorder, game);
       handleEvents(drainEvents(game), true);
       if (mode !== 'playing') break;
     }
@@ -348,7 +361,13 @@ function frame(now) {
 
   const showHud = mode === 'playing' || mode === 'countdown' || mode === 'paused';
   if (mode === 'countdown' || mode === 'paused') input.read(0);
+  ghostView = null;
+  if (ghost && mode !== 'title' && save.settings.ghost) {
+    const gap = game.status === 'finished' ? null : ghostGap(ghost, game.boat.x, game.boat.y, game.time);
+    ghostView = { pose: ghostAt(ghost, game.time), gap };
+  }
   renderFrame(renderer, game, dt, clock, {
+    ghost: ghostView,
     hud: showHud,
     layout: getLayout(),
     controls: input.state.controls,

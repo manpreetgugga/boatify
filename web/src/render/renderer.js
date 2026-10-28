@@ -4,7 +4,7 @@
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
 import { drawShallows, drawIslands, drawPickups, drawMarks } from './terrain.js';
-import { createWake, updateWake, drawWake, drawBoat } from './boat.js';
+import { createWake, updateWake, drawWake, drawBoat, drawGhost } from './boat.js';
 import {
   createEffects,
   updateStreaks,
@@ -63,8 +63,8 @@ export function resetView(r, game) {
 export function renderFrame(r, game, dt, time, ui) {
   const { ctx, cam } = r;
   updateCamera(cam, game, dt, r.w, r.h);
-  updateWake(r.wake, game.boat, dt, time, game.status === 'sailing' || game.status === 'finished');
-  updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 6500));
+  updateWake(r.wake, game.boat, game.clock, game.status === 'sailing' || game.status === 'finished');
+  updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 9000));
   updateParticles(r.fx, dt);
 
   ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
@@ -82,11 +82,12 @@ export function renderFrame(r, game, dt, time, ui) {
   drawFlows(ctx, game, cam, time);
   drawShallows(ctx, game, cam, time);
   drawKrakens(ctx, game, time);
-  drawWake(ctx, r.wake, time);
+  drawWake(ctx, r.wake, game.clock);
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
+  if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, game.boat.type, time);
   const boatState = {
     capsized: game.status === 'capsized',
     sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : 0,
@@ -105,7 +106,7 @@ export function renderFrame(r, game, dt, time, ui) {
 
   if (ui && ui.hud) {
     ctx.save();
-    drawHud(ctx, r.hud, game, cam, ui.layout, ui.controls, time);
+    drawHud(ctx, r.hud, game, cam, ui.layout, ui.controls, time, ui.ghost);
     ctx.restore();
   }
 }

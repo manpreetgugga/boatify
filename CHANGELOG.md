@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0] - 2026-10-28
+
+Race yourself.
+
+- **Ghost racing.** Your fastest run of each voyage is recorded and replayed as a pale ghost boat. A chip under the timer shows whether you are ahead or behind it, and the results card compares the run with your best. Toggle it in Settings.
+- Wind streaks are now long, gently curling wisps instead of short dashes that looked like rain.
+- The wake keeps simulation time: it freezes on pause and its center line is lighter.
+- Long voyage names shrink to fit the timer panel instead of running into the star target.
+- The results card uses two columns on landscape phones, so every row fits without scrolling.
+- The How to sail polar chart no longer clips its labels.
+
 ## [0.1.0] - 2026-10-28
 
 First playable release.

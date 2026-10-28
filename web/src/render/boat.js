@@ -8,14 +8,16 @@ import { boatSpeed } from '../physics/boat.js';
 const VISUAL = 1.45; // draw a touch larger than the collision hull
 
 export function createWake() {
-  return { points: [], timer: 0 };
+  return { points: [], last: -Infinity };
 }
 
-export function updateWake(wake, boat, dt, time, active) {
+// `time` is simulation time, so the wake freezes on pause and keeps its
+// shape when playtests run the game faster than real time.
+export function updateWake(wake, boat, time, active) {
   const speed = boatSpeed(boat);
-  wake.timer -= dt;
-  if (active && speed > 1.2 && wake.timer <= 0) {
-    wake.timer = 0.07;
+  if (time < wake.last) wake.points.length = 0; // a new voyage restarted the clock
+  if (active && speed > 1.2 && time - wake.last >= 0.07) {
+    wake.last = time;
     const c = Math.cos(boat.heading);
     const s = Math.sin(boat.heading);
     const L = boat.type.length * VISUAL;
@@ -53,10 +55,10 @@ export function drawWake(ctx, wake, time) {
     const b = pts[i];
     if (b.t - a.t > 0.3) continue;
     const age = time - b.t;
-    const alpha = Math.max(0, 1 - age / 1.6) * Math.min(1, b.spd / 8) * 0.35;
+    const alpha = Math.max(0, 1 - age / 1.4) * Math.min(1, b.spd / 8) * 0.2;
     if (alpha <= 0.01) continue;
     ctx.strokeStyle = `rgba(232, 244, 242, ${alpha.toFixed(3)})`;
-    ctx.lineWidth = 3 + age * 4;
+    ctx.lineWidth = 2.5 + age * 3;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
@@ -261,5 +263,37 @@ export function drawBoat(ctx, boat, time, state = {}) {
       ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+// The best run's boat: a pale outline with a sail, no physics.
+export function drawGhost(ctx, pose, type, time) {
+  const L = type.length * VISUAL;
+  const B = type.beam * VISUAL;
+  if (!hullCache || hullCache.L !== L) hullCache = { L, path: hullPath(L, B), deck: hullPath(L * 0.86, B * 0.72) };
+  ctx.save();
+  ctx.translate(pose.x, pose.y);
+  ctx.rotate(pose.heading);
+  ctx.globalAlpha = pose.done ? 0.3 : 0.55 + Math.sin(time * 3) * 0.08;
+  ctx.save();
+  ctx.scale(1, Math.max(0.35, Math.abs(Math.cos(pose.heel))));
+  ctx.fillStyle = 'rgba(160, 235, 255, 0.4)';
+  ctx.fill(hullCache.path);
+  ctx.strokeStyle = 'rgba(200, 245, 255, 0.95)';
+  ctx.lineWidth = 1.1;
+  ctx.setLineDash([2.5, 2]);
+  ctx.stroke(hullCache.path);
+  ctx.setLineDash([]);
+  ctx.restore();
+  // A simple sail wedge along the centreline, leaning with the heel.
+  const mx = L * 0.12;
+  const lean = Math.sin(pose.heel) * L * 1.15;
+  ctx.fillStyle = 'rgba(220, 248, 255, 0.55)';
+  ctx.beginPath();
+  ctx.moveTo(mx, 0);
+  ctx.lineTo(mx - L * 0.6, lean * 0.15);
+  ctx.lineTo(mx, lean);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }

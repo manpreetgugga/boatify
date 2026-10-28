@@ -31,9 +31,24 @@ export function createHud() {
   return { minimap: null, minimapKey: '', flashT: 0 };
 }
 
-export function drawHud(ctx, hud, game, cam, layout, controls, time) {
+// Shrinks, then trims, a label so it fits `maxW` CSS pixels.
+function fitText(ctx, str, size, maxW, weight, family, minSize = 9) {
+  let s = size;
+  ctx.font = font(s, weight, family);
+  while (s > minSize && ctx.measureText(str).width > maxW) {
+    s -= 0.5;
+    ctx.font = font(s, weight, family);
+  }
+  if (ctx.measureText(str).width <= maxW) return { str, size: s };
+  let cut = str;
+  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxW) cut = cut.slice(0, -1);
+  return { str: `${cut.trimEnd()}…`, size: s };
+}
+
+export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = null) {
   const L = layout;
   drawTopLeft(ctx, game, L);
+  if (ghost) drawGhostInfo(ctx, game, cam, L, ghost);
   drawMinimap(ctx, hud, game, cam, L, time);
   drawHull(ctx, game, L);
   drawPointers(ctx, game, cam, L, time);
@@ -54,18 +69,43 @@ function drawTopLeft(ctx, game, L) {
   const y = L.timer.y;
   const w = L.compact ? 150 : 176;
   panel(ctx, x, y, w, 44, 10);
-  text(ctx, game.level.name.toUpperCase(), x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
-  text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
   const par = game.level.par;
   const target = game.time <= par.gold ? par.gold : game.time <= par.silver ? par.silver : null;
   const starColor = game.time <= par.gold ? C.brass : game.time <= par.silver ? '#c9d3d6' : C.textDim;
-  text(ctx, target ? `★ ${formatTime(target)}` : '★', x + w - 10, y + 13, 11, starColor, 'right', 600, FONT.body);
+  const starText = target ? `★ ${formatTime(target)}` : '★';
+  ctx.font = font(11, 600, FONT.body);
+  const starW = ctx.measureText(starText).width;
+  const name = fitText(ctx, game.level.name.toUpperCase(), 11, w - 22 - starW - 8, 600, FONT.body);
+  text(ctx, name.str, x + 12, y + 13, name.size, C.textDim, 'left', 600, FONT.body);
+  text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
+  text(ctx, starText, x + w - 10, y + 13, 11, starColor, 'right', 600, FONT.body);
   // Pearls.
   ctx.fillStyle = '#fbf6ee';
   ctx.beginPath();
   ctx.arc(x + w - 46, y + 30, 5, 0, Math.PI * 2);
   ctx.fill();
   text(ctx, `${game.pearls}/${game.pearlsTotal}`, x + w - 10, y + 31, 16, C.text, 'right', 700);
+}
+
+// Label over the ghost boat and a chip under the timer: ahead or behind.
+function drawGhostInfo(ctx, game, cam, L, ghost) {
+  const { pose, gap } = ghost;
+  const [sx, sy] = worldToScreen(cam, pose.x, pose.y);
+  if (sx > 0 && sx < L.w && sy > 0 && sy < L.h) {
+    ctx.globalAlpha = pose.done ? 0.45 : 0.85;
+    text(ctx, 'BEST', sx, sy - 24, 11, '#bfefff', 'center', 700, FONT.display);
+    ctx.globalAlpha = 1;
+  }
+  if (gap === null || game.time < 2) return;
+  const ahead = gap < 0;
+  const label = `${ahead ? '▲' : '▼'} ${Math.abs(gap).toFixed(1)} s ${ahead ? 'ahead' : 'behind'}`;
+  const x = L.timer.x;
+  const y = L.timer.y + 50;
+  ctx.font = font(13, 700, FONT.display);
+  const w = ctx.measureText(label).width + 50;
+  panel(ctx, x, y, w, 22, 8);
+  text(ctx, 'BEST', x + 9, y + 11.5, 10, '#bfefff', 'left', 700, FONT.display);
+  text(ctx, label, x + w - 9, y + 11.5, 13, ahead ? C.ok : C.warn, 'right', 700, FONT.display);
 }
 
 function minimapScale(game, L) {

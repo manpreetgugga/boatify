@@ -21,7 +21,8 @@ function respawnStreak(s, v, rand = Math.random) {
   s.x = v.minX + rand() * (v.maxX - v.minX);
   s.y = v.minY + rand() * (v.maxY - v.minY);
   s.life = 0;
-  s.max = 1.2 + rand() * 1.6;
+  s.max = 2 + rand() * 2;
+  s.phase = rand() * Math.PI * 2;
   s.trail.length = 0;
   s.trail.push(s.x, s.y);
 }
@@ -30,7 +31,7 @@ function respawnStreak(s, v, rand = Math.random) {
 export function updateStreaks(fx, game, cam, dt, count) {
   const v = viewBounds(cam, 30);
   while (fx.streaks.length < count) {
-    const s = { x: 0, y: 0, life: 0, max: 1, trail: [] };
+    const s = { x: 0, y: 0, life: 0, max: 1, phase: 0, trail: [] };
     respawnStreak(s, v);
     s.life = Math.random() * s.max;
     fx.streaks.push(s);
@@ -48,15 +49,18 @@ export function updateStreaks(fx, game, cam, dt, count) {
     s.vy = w.wy;
     s.speed = w.speed;
     s.gust = w.gust;
-    s.x += w.wx * 1.3 * dt;
-    s.y += w.wy * 1.3 * dt;
-    // A short trail of past positions, so streaks bend around islands.
+    // Drift with the wind plus a slow sideways sway, so the lines curl
+    // like wisps of air instead of falling like rain.
+    const sway = Math.sin(s.life * 2.2 + s.phase) * 0.28;
+    s.x += (w.wx - w.wy * sway) * 1.3 * dt;
+    s.y += (w.wy + w.wx * sway) * 1.3 * dt;
+    // A trail of past positions, so streaks bend around islands.
     const tl = s.trail;
     const lx = tl[tl.length - 2];
     const ly = tl[tl.length - 1];
-    if ((s.x - lx) ** 2 + (s.y - ly) ** 2 > 6) {
+    if ((s.x - lx) ** 2 + (s.y - ly) ** 2 > 9) {
       tl.push(s.x, s.y);
-      if (tl.length > 10) tl.splice(0, 2);
+      if (tl.length > 28) tl.splice(0, 2);
     }
   }
 }
@@ -71,9 +75,9 @@ export function drawStreaks(ctx, fx, game) {
     const t = s.life / s.max;
     const fade = Math.sin(t * Math.PI);
     const strength = clamp(s.speed / base, 0, 1.8);
-    const alpha = fade * (0.12 + 0.26 * strength);
+    const alpha = fade * (0.1 + 0.22 * strength);
     if (alpha < 0.02) continue;
-    ctx.lineWidth = 0.8 + strength * 0.5;
+    ctx.lineWidth = 0.7 + strength * 0.45;
     // Older segments fade out toward the tail.
     const n = tl.length / 2;
     let px = tl[0];

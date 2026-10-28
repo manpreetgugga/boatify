@@ -26,6 +26,7 @@ export function createGame(def, options = {}) {
     boat,
     seed,
     time: 0,
+    clock: 0, // like time, but keeps running after the finish
     status: 'sailing',
     statusTimer: 0,
     hull: 100,
@@ -70,6 +71,7 @@ export function stepGame(game, input, frameDt) {
 
 function tick(game, input, dt) {
   const { boat, level, wind } = game;
+  game.clock += dt;
   if (game.status === 'finished') {
     // Coast to a stop inside the harbor.
     boat.vx *= 1 - dt * 1.5;

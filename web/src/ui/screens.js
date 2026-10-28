@@ -43,6 +43,14 @@ function windSentence(def) {
   return `${Math.round(kn)} kn from the ${compassPoint(def.wind.from)} · ${bf.name}`;
 }
 
+// Comparison with the previous best, or nothing on a first run.
+function vsBest(time, prev) {
+  if (prev === null || prev === undefined) return '';
+  const d = time - prev;
+  const txt = Math.abs(d) < 0.05 ? 'Dead heat' : d < 0 ? `${(-d).toFixed(1)} s faster` : `${d.toFixed(1)} s slower`;
+  return `<span class="k">Vs. best</span><span class="v"${d < 0 ? ' style="color:var(--ok)"' : ''}>${txt}</span>`;
+}
+
 function polarSvg() {
   // Speed by heading, drawn as the classic polar curve with the no-go wedge.
   const cx = 110;
@@ -66,7 +74,7 @@ function polarSvg() {
     const [x, y] = p(deg, r);
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}">${txt}</text>`;
   };
-  return `<svg viewBox="0 0 220 230" role="img" aria-label="Boat speed for each heading relative to the wind">
+  return `<svg viewBox="-40 0 300 230" role="img" aria-label="Boat speed for each heading relative to the wind">
     <g font-family="Barlow Condensed, sans-serif" font-size="12" font-weight="700" fill="#e8f4f2">
     <path d="M${cx} ${cy} L${n1x.toFixed(1)} ${n1y.toFixed(1)} A${R} ${R} 0 0 1 ${n2x.toFixed(1)} ${n2y.toFixed(1)} Z" fill="rgba(255,77,77,0.25)"/>
     <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(232,244,242,0.2)"/>
@@ -439,13 +447,14 @@ export function createUI(root, levels, handlers) {
       const hasNext = index + 1 < levels.length;
       const rec = save.levels[def.id];
       const node = el(`<section class="screen dim" aria-label="Voyage complete">
-        <div class="sheet narrow">
+        <div class="sheet narrow results-sheet">
           <div class="sheet-head"><h2>${def.finish.kind === 'lighthouse' ? 'Lighthouse reached' : 'Harbor reached'}</h2></div>
           <div class="sheet-body">
             <div class="result-stars">${stars(0)}</div>
             <div class="stat-rows">
               <span class="k">Time</span><span class="v">${formatTime(result.time)}${improved.time && !improved.first ? '<span class="badge">NEW BEST</span>' : ''}</span>
               <span class="k">Best</span><span class="v">${formatTime(rec.best)}</span>
+              ${vsBest(result.time, improved.prevBest)}
               <span class="k">Pearls</span><span class="v">${result.pearls} / ${result.pearlsTotal}${result.pearls === result.pearlsTotal && result.pearlsTotal ? '<span class="badge">ALL</span>' : ''}</span>
               <span class="k">Hull</span><span class="v">${Math.ceil(result.hull)}%</span>
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
@@ -487,6 +496,7 @@ export function createUI(root, levels, handlers) {
             ${toggle('vibration', 'Vibration', 'Bumps, capsizes and pickups')}
             ${toggle('autoTrim', 'Trim the sail by hand', 'For experienced sailors: W / S or the right-hand slider', true)}
             ${toggle('leftHanded', 'Left-handed controls', 'Steer on the right, gust button on the left')}
+            ${toggle('ghost', 'Race your best run', 'A pale ghost boat replays your fastest voyage')}
             <div class="setting"><span class="label"><b>Steering</b><small>How hard a small thumb movement turns</small></span>
               <div class="seg" data-key="steerSensitivity">
                 <button data-v="0.75" aria-pressed="${s.steerSensitivity === 0.75}">Gentle</button>

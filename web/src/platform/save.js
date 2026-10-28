@@ -3,6 +3,7 @@
 // game keeps working from memory.
 
 const KEY = 'boatify.save.v1';
+const GHOST_KEY = 'boatify.ghosts.v1';
 
 export const DEFAULT_SETTINGS = {
   sound: true,
@@ -12,6 +13,7 @@ export const DEFAULT_SETTINGS = {
   leftHanded: false,
   steerSensitivity: 1,
   quality: 'high',
+  ghost: true,
 };
 
 function blank() {
@@ -55,6 +57,7 @@ export function recordResult(save, levelId, result, notes = []) {
     stars: result.stars > prev.stars,
     pearls: result.pearls > prev.pearls,
     first: prev.best === null,
+    prevBest: prev.best,
   };
   save.levels[levelId] = {
     best: improved.time ? result.time : prev.best,
@@ -86,4 +89,45 @@ export function resetProgress(save) {
   const fresh = blank();
   Object.assign(save, fresh, { settings });
   writeSave(save);
+  clearGhosts();
+}
+
+// Best-run ghosts live under their own key so the main save stays small.
+// The in-memory copy keeps them for the session when storage is blocked.
+let ghosts = null;
+
+function readGhosts() {
+  if (ghosts) return ghosts;
+  try {
+    const raw = window.localStorage.getItem(GHOST_KEY);
+    const data = raw ? JSON.parse(raw) : null;
+    ghosts = data && typeof data === 'object' ? data : {};
+  } catch {
+    ghosts = {};
+  }
+  return ghosts;
+}
+
+export function loadGhost(levelId) {
+  return readGhosts()[levelId] || null;
+}
+
+export function storeGhost(levelId, ghost) {
+  const all = readGhosts();
+  all[levelId] = ghost;
+  try {
+    window.localStorage.setItem(GHOST_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearGhosts() {
+  ghosts = {};
+  try {
+    window.localStorage.removeItem(GHOST_KEY);
+  } catch {
+    // Nothing stored, nothing to clear.
+  }
 }

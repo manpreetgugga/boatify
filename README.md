@@ -28,6 +28,7 @@ from that source. Android 8.0 or newer.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".
 - **Watch the heel.** Gusts lean the boat over. Past the red mark you capsize. Ease out or bear away.
 - **Read the water.** Dark ruffled patches are gusts, pale glassy water is a lull or an island's wind shadow. Streaks show how the air flows.
+- **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
 
 ### Voyages
 
