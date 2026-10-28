@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.0] - 2026-10-28
+
+Medals.
+
+- **Eighteen medals** to earn beyond the stars. Some come from a single voyage: thread a coral reef without a dent, earn three stars and leave every gust jar shut, ride out the squalls without capsizing, slip past the kraken, cross the drift ice untouched, or beat your best time by five seconds. Others build up over time: finish every voyage, collect every pearl, find every bottle, unlock and sail every boat, keep a seven-day daily streak, sail 25 km.
+- A new **Medals** screen on the title shows each medal, the day you earned it, and a progress bar for the ones still to come. A dot on the button means there's a new one to see.
+- New medals pop up on the results card with their own fanfare.
+- Players with progress from earlier versions get the medals they've already earned when the game starts.
+- Tips now wait their turn instead of stacking up, so they no longer cover the arrow to B. The kraken's strike warning shows in red and never waits.
+
 ## [0.5.0] - 2026-10-28
 
 Into the ice.

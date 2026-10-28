@@ -1,6 +1,6 @@
 // Browser smoke test of the bundled game: menus, a voyage sailed by the
-// autopilot at high speed, the results card and today's daily voyage. Fails on
-// any page error.
+// autopilot at high speed, the results card, today's daily voyage, the
+// Shipyard and the medals. Fails on any page error.
 //
 //   node scripts/smoke.cjs [--shots <dir>] [--level <index>] [--size 915x412]
 
@@ -74,6 +74,9 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   const st = await tab.evaluate(() => window.__boatify.state());
   step(`finished in ${st.result.time.toFixed(1)} s with ${st.result.stars} stars, ${st.result.pearls}/${st.result.pearlsTotal} pearls`);
   await snap('07-results');
+  const chips = await tab.locator('.medal-chip').allTextContents();
+  if (!chips.includes('Cast Off')) throw new Error(`results card shows medals ${JSON.stringify(chips)}`);
+  step(`new medals: ${chips.join(', ')}`);
 
   await tab.getByRole('button', { name: 'Voyages' }).click();
   await tab.waitForSelector('section[aria-label="Voyages"].open');
@@ -97,6 +100,17 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   if (cards !== 4 || picked !== 'Driftwood Sloop') throw new Error(`shipyard shows ${cards} boats, picked ${picked}`);
   await tab.waitForTimeout(300);
   await snap('10-shipyard');
+
+  step('medals: the first voyage is on the board');
+  await tab.getByRole('button', { name: 'Back' }).click();
+  await tab.waitForSelector('section[aria-label="Title"].open');
+  await tab.getByRole('button', { name: 'Medals' }).click();
+  await tab.waitForSelector('section[aria-label="Medals"].open');
+  const medals = await tab.locator('.medal').count();
+  const earned = await tab.locator('.medal.earned').count();
+  if (medals < 10 || earned < 1) throw new Error(`medals screen shows ${earned} of ${medals}`);
+  await tab.waitForTimeout(300);
+  await snap('11-medals');
 
   await browser.close();
   if (errors.length) {

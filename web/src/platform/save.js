@@ -33,6 +33,9 @@ function blank() {
     settings: { ...DEFAULT_SETTINGS },
     notes: [],
     stats: { voyages: 0, distance: 0, capsizes: 0, pearls: 0 },
+    medals: {}, // medal id -> day it was earned
+    medalsSeen: 0, // how many medals the Medals screen last showed
+    sailed: [], // boats that have finished a voyage
     seenIntro: false,
   };
 }
@@ -58,6 +61,9 @@ export function loadSave() {
     levels: isObj(data.levels) ? data.levels : {},
     daily: isObj(data.daily) ? data.daily : {},
     notes: Array.isArray(data.notes) ? data.notes : [],
+    medals: isObj(data.medals) ? data.medals : {},
+    medalsSeen: Number(data.medalsSeen) || 0,
+    sailed: Array.isArray(data.sailed) ? data.sailed : [],
   };
 }
 
@@ -94,6 +100,7 @@ export function recordResult(save, levelId, result, notes = [], bucket = 'levels
     for (const k of keys.slice(0, Math.max(0, keys.length - DAILY_KEEP))) delete records[k];
   }
   for (const n of notes) if (n && !save.notes.includes(n)) save.notes.push(n);
+  if (result.boat && !save.sailed.includes(result.boat)) save.sailed.push(result.boat);
   save.stats.voyages += 1;
   save.stats.distance += result.distance || 0;
   save.stats.capsizes += result.capsizes || 0;

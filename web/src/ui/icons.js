@@ -1,0 +1,28 @@
+// Line icons for the medals, drawn on a 24-unit grid in the current text colour.
+
+const PATHS = {
+  anchor: '<circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V21M8 11h8M4 13a8 8 0 0 0 16 0"/>',
+  star: '<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z"/>',
+  pearl: '<path d="M3.5 12a8.5 8.5 0 0 1 17 0z"/><path d="M12 3.5V12M7.5 4.8L9.5 12M16.5 4.8L14.5 12"/><circle cx="12" cy="17.5" r="3.5"/>',
+  shield: '<path d="M12 21.5s7.5-3.6 7.5-9.5V5.3L12 2.5 4.5 5.3V12c0 5.9 7.5 9.5 7.5 9.5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  wind: '<path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
+  clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M10 2.5h4M18.5 5.5l1.5 1.5"/>',
+  bolt: '<path d="M13 2.5L4.5 13.5h7l-1 8 8.5-11h-7z"/>',
+  tentacle: '<path d="M7 21c0-5 4-6 4-10.5a3.5 3.5 0 0 1 7 0c0 2-1.5 3-3 3s-2-1.2-1-2.2"/><path d="M3 21c2-1 2-3 1.5-5"/><path d="M20.5 21c-1.5-1-1.8-2.5-1.3-4.5"/>',
+  snow: '<path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6"/><path d="M9.5 4l2.5 2 2.5-2M9.5 20l2.5-2 2.5 2"/>',
+  map: '<path d="M2.5 6l6-3 7 3 6-3v15l-6 3-7-3-6 3z"/><path d="M8.5 3v15M15.5 6v15"/>',
+  gem: '<path d="M6 3.5h12l3.5 5L12 21 2.5 8.5z"/><path d="M2.5 8.5h19M9 3.5l-1.5 5L12 21l4.5-12.5L15 3.5"/>',
+  crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 15.5h14"/>',
+  bottle: '<path d="M10 2.5h4v4l2 3V20a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20V9.5l2-3z"/><path d="M10.5 12.5h3M10.5 15.5h3"/>',
+  hammer: '<path d="M13.5 7.5l-9 9a1.8 1.8 0 0 0 2.5 2.5l9-9"/><path d="M11.5 5.5l4-3 6 6-3 4-2.5-2.5-2-.5z"/>',
+  fleet: '<path d="M3 17h18l-2.5 3.5h-13z"/><path d="M12 3v12M12 4l6 9h-6M12 6l-5 7h5"/>',
+  sun: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
+  flame: '<path d="M12 21.5a6.5 6.5 0 0 0 6.5-6.5c0-4-3-6-4-10-1.5 2-2 3.5-2 5-1-1-1.5-2-1.5-3.5C8.5 9 5.5 11.5 5.5 15a6.5 6.5 0 0 0 6.5 6.5z"/><path d="M12 21.5a2.5 2.5 0 0 1-2.5-2.5c0-1.5 1.5-2.5 2.5-4 1 1.5 2.5 2.5 2.5 4a2.5 2.5 0 0 1-2.5 2.5z"/>',
+  compass: '<circle cx="12" cy="12" r="9.5"/><path d="M15.8 8.2l-2 5.6-5.6 2 2-5.6z"/>',
+};
+
+export function icon(name, size = 24) {
+  return `<svg class="icon" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.star}</svg>`;
+}
+
+export const ICONS = Object.keys(PATHS);

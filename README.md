@@ -30,6 +30,7 @@ from that source. Android 8.0 or newer.
 - **Read the water.** Dark ruffled patches are gusts, pale glassy water is a lull or an island's wind shadow. Streaks show how the air flows.
 - **Daily voyage.** After the first three voyages, a new course is charted every day: the same one for everyone that day. Sail it on consecutive days to build a streak.
 - **Shipyard.** Earn stars to unlock the Reed Skiff, Twin Proa and Lantern Junk. Each boat trades speed, upwind ability, stability, agility and toughness differently.
+- **Medals.** Eighteen goals beyond the stars: thread a coral reef without a dent, dodge the kraken, cross the ice untouched, find every bottle, sail a week of daily voyages. The Medals screen shows how close you are to each one.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
 
 ### Voyages
@@ -53,7 +54,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # physics, wind, boats, floes, levels and daily courses (the autopilot sails them), save and bundle tests
+npm test            # physics, wind, boats, floes, levels and daily courses (the autopilot sails them), medals, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```
@@ -64,7 +65,7 @@ The game is plain JavaScript modules in `web/src`:
 - `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
-- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator
+- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `data/medals.js`: the medals
 
 ### Android
 

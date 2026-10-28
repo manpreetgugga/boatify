@@ -38,6 +38,8 @@ export function createGame(def, options = {}) {
     penalties: 0,
     capsizes: 0,
     collisions: 0,
+    hits: {}, // knocks taken, by what did the knocking
+    jarsUsed: 0,
     respawn: { ...level.start },
     nextCheckpoint: 0,
     capsizeTimer: 0,
@@ -117,6 +119,7 @@ function tick(game, input, dt) {
 
   if (input.boost && game.gustJars > 0 && boat.boostTime <= 0) {
     game.gustJars -= 1;
+    game.jarsUsed += 1;
     boat.boostTime = BOOST_DURATION;
     emit(game, 'boost');
   }
@@ -249,6 +252,7 @@ function resolveCollisions(game, passive) {
       const amount = (impact - 2.5) * (DAMAGE[hit.material] || 2);
       damage(game, amount, hit.material);
       game.collisions += 1;
+      game.hits[hit.material] = (game.hits[hit.material] || 0) + 1;
       emit(game, 'collide', { impact, material: hit.material, x: boat.x - hit.nx * 6, y: boat.y - hit.ny * 6 });
       // Glancing blows twist the bow away from the obstacle.
       const fwdX = Math.cos(boat.heading);
@@ -329,6 +333,7 @@ function updateKrakens(game) {
       if (d < k.r) {
         k.hit = true;
         damage(game, 24, 'kraken');
+        game.hits.kraken = (game.hits.kraken || 0) + 1;
         const nx = (boat.x - k.x) / (d || 1);
         const ny = (boat.y - k.y) / (d || 1);
         boat.vx += nx * 14;
@@ -367,6 +372,9 @@ function finish(game) {
     hull: game.hull,
     capsizes: game.capsizes,
     collisions: game.collisions,
+    hits: { ...game.hits },
+    jars: game.jarsUsed,
+    boat: game.boat.type.id,
     distance: game.distanceSailed,
   };
   emit(game, 'finish', { ...game.result });

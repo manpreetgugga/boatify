@@ -14,6 +14,7 @@ import { C } from './render/palette.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI } from './ui/screens.js';
+import { awardMedals } from './data/medals.js';
 import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
@@ -22,6 +23,8 @@ const canvas = document.getElementById('game');
 const probe = document.getElementById('inset-probe');
 
 const save = loadSave();
+// Medals added in an update go straight to players who already earned them.
+if (awardMedals(save, LEVELS).length) writeSave(save);
 const renderer = createRenderer(canvas);
 const audio = createAudio();
 
@@ -135,6 +138,7 @@ const ui = createUI(root, LEVELS, {
   },
   onReset: () => resetProgress(save),
   onSeenIntro: () => writeSave(save),
+  onSeen: () => writeSave(save),
   onBoat: (id) => {
     save.settings.boat = id;
     writeSave(save);
@@ -148,6 +152,10 @@ const ui = createUI(root, LEVELS, {
   onStar: (i) => {
     audio.sfx.checkpoint();
     if (save.settings.vibration) vibrate(20 + i * 15);
+  },
+  onMedal: () => {
+    audio.sfx.medal();
+    if (save.settings.vibration) vibrate(40);
   },
   onCount: (i, n) => audio.sfx.count(i === n - 1),
 });
@@ -228,6 +236,8 @@ function finishVoyage(result) {
   const boatsBefore = unlockedBoats(save).length;
   const improved = recordResult(save, game.def.id, result, game.notes, daily ? 'daily' : 'levels');
   improved.newBoats = unlockedBoats(save).slice(boatsBefore).map((id) => BOAT_TYPES[id].name);
+  improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
+  if (improved.medals.length) writeSave(save);
   // Keep the fastest run as the ghost (or the first one we see for a voyage).
   if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
     storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
@@ -329,7 +339,7 @@ function handleEvents(events, live) {
       case 'kraken':
         if (!live) break;
         audio.sfx.kraken(e.phase);
-        if (e.phase === 'warning') ui.toast('The water is boiling! Get out of the red ring!', 'tip', 2200);
+        if (e.phase === 'warning') ui.toast('The water is boiling! Get out of the red ring!', 'alert', 2200);
         else buzz(160);
         cam.shake = Math.min(1, cam.shake + (e.phase === 'strike' ? 0.7 : 0.1));
         break;

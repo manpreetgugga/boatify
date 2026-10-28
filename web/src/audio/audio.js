@@ -222,6 +222,11 @@ export function createAudio() {
     note() {
       tone(midi(79), { type: 'sine', peak: 0.08, decay: 0.8 });
     },
+    medal() {
+      // A rising fanfare that ends on a ringing bell.
+      [67, 72, 76, 79].forEach((n, i) => tone(midi(n), { type: 'triangle', peak: 0.13, decay: 0.35, at: i * 0.08 }));
+      [1, 2.76, 5.4].forEach((m, i) => tone(midi(84) * m, { type: 'sine', peak: 0.12 / (i + 1), attack: 0.002, decay: 1.4, at: 0.32 }));
+    },
   };
 
   function playPad() {

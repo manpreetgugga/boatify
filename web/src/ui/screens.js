@@ -8,6 +8,8 @@ import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat } from '../render/boat.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
+import { MEDALS, isEarned, medalsEarned, medalProgress } from '../data/medals.js';
+import { icon } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -108,6 +110,13 @@ function vsBest(time, prev) {
   const d = time - prev;
   const txt = Math.abs(d) < 0.05 ? 'Dead heat' : d < 0 ? `${(-d).toFixed(1)} s faster` : `${d.toFixed(1)} s slower`;
   return `<span class="k">Vs. best</span><span class="v"${d < 0 ? ' style="color:var(--ok)"' : ''}>${txt}</span>`;
+}
+
+// The medals a voyage just earned, for the results card.
+function medalStrip(medals = []) {
+  if (!medals.length) return '';
+  const chips = medals.map((m) => `<span class="medal-chip">${icon(m.icon, 18)}${esc(m.name)}</span>`).join('');
+  return `<div class="medal-strip"><span class="eyebrow">New medal${medals.length > 1 ? 's' : ''}</span>${chips}</div>`;
 }
 
 function polarSvg() {
@@ -329,10 +338,26 @@ export function createUI(root, levels, handlers) {
     });
   }
 
+  // Tips wait their turn so they never pile up over the course.
+  let tipQueue = [];
+
   function dismiss(node) {
     clearTimeout(node._timer);
+    if (node.classList.contains('out')) return;
     node.classList.add('out');
-    setTimeout(() => node.remove(), 380);
+    setTimeout(() => {
+      node.remove();
+      if (node.classList.contains('tip') && tipQueue.length) {
+        const next = tipQueue.shift();
+        ui.toast(next.text, 'tip', next.ms);
+      }
+    }, 380);
+  }
+
+  function hold(node, ms) {
+    clearTimeout(node._timer);
+    node._until = performance.now() + ms;
+    node._timer = setTimeout(() => dismiss(node), ms);
   }
 
   function mount(name, node) {
@@ -412,10 +437,11 @@ export function createUI(root, levels, handlers) {
           <div class="title-buttons">
             ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
             <button class="btn small" data-act="shipyard">Shipyard</button>
+            <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small" data-act="settings">Settings</button>
           </div>
-          <div class="title-meta"><span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
+          <div class="title-meta"><span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
         </div>
       </section>`);
       click(node, '[data-act=play]', () => (save.seenIntro ? ui.briefing(resume, save) : ui.howto(save, true, resume)));
@@ -423,6 +449,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
       click(node, '[data-act=howto]', () => ui.howto(save));
       click(node, '[data-act=shipyard]', () => ui.shipyard(save));
+      click(node, '[data-act=medals]', () => ui.medals(save));
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
       show('title', node);
@@ -564,6 +591,7 @@ export function createUI(root, levels, handlers) {
     },
 
     results(index, result, improved, save) {
+      tipQueue = []; // the voyage is over, its tips are moot
       const def = defOf(index);
       const hasNext = !def.daily && index + 1 < levels.length;
       const rec = recordOf(save, def);
@@ -584,6 +612,7 @@ export function createUI(root, levels, handlers) {
               ${(improved.newBoats || []).map((name) => `<span class="k">Shipyard</span><span class="v">${esc(name)}<span class="badge">NEW BOAT</span></span>`).join('')}
               ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
+            ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
             ${hasNext ? '<button class="btn small" data-act="voyages">Voyages</button>' : ''}
@@ -604,6 +633,15 @@ export function createUI(root, levels, handlers) {
           }, 350 + i * 320);
         }
       });
+      // New medals pop in once the stars have landed.
+      const medalEls = node.querySelectorAll('.medal-chip');
+      if (medalEls.length) {
+        setTimeout(() => {
+          if (current !== 'results') return;
+          medalEls.forEach((m) => m.classList.add('on'));
+          handlers.onMedal();
+        }, 500 + result.stars * 320);
+      }
     },
 
     shipyard(save) {
@@ -747,6 +785,35 @@ export function createUI(root, levels, handlers) {
       show('howto', node, { push: true });
     },
 
+    medals(save) {
+      const got = medalsEarned(save);
+      const cards = MEDALS.map((m) => {
+        const earned = isEarned(save, m.id);
+        const p = earned ? null : medalProgress(m, save, levels);
+        const meter =
+          p && p[1] > 1
+            ? `<span class="medal-meter"><i style="width:${Math.round((100 * Math.min(p[0], p[1])) / p[1])}%"></i></span><span class="medal-count">${p[0]} / ${p[1]}${m.unit ? ` ${m.unit}` : ''}</span>`
+            : '';
+        const day = save.medals[m.id];
+        const when = earned && /^\d{4}-\d\d-\d\d$/.test(day) ? `<span class="medal-count">${esc(dayLabel(day))}</span>` : '';
+        return `<div class="medal ${earned ? 'earned' : ''}">
+            <span class="medal-disc">${icon(m.icon, 26)}</span>
+            <span class="medal-text"><b>${esc(m.name)}</b><small>${esc(m.text)}</small>${meter}${when}</span>
+          </div>`;
+      }).join('');
+      const node = el(`<section class="screen dim" aria-label="Medals">
+        <div class="sheet wide">
+          <div class="sheet-head"><h2>Medals</h2><span class="eyebrow">${got} / ${MEDALS.length}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body"><div class="medal-grid">${cards}</div></div>
+        </div></section>`);
+      click(node, '[data-act=back]', () => ui.back());
+      show('medals', node, { push: true });
+      if (save.medalsSeen !== got) {
+        save.medalsSeen = got;
+        handlers.onSeen();
+      }
+    },
+
     logbook(save) {
       const notes = save.notes.length
         ? save.notes.map((n) => `<p class="note-card">“${esc(n)}”</p>`).join('')
@@ -782,24 +849,35 @@ export function createUI(root, levels, handlers) {
       return true;
     },
 
+    // kind: '' | 'good' | 'warn' | 'note' | 'tip' (one at a time, queued) |
+    // 'alert' (danger right now, never waits).
     toast(text, kind = '', ms = 3200) {
+      const live = [...toasts.children].filter((t) => !t.classList.contains('out'));
       // The same message again just stays up longer.
-      for (const t of toasts.children) {
-        if (t.textContent === text && !t.classList.contains('out')) {
-          clearTimeout(t._timer);
-          t._timer = setTimeout(() => dismiss(t), ms);
+      const same = live.find((t) => t.textContent === text);
+      if (same) {
+        hold(same, ms);
+        return;
+      }
+      if (kind === 'tip') {
+        const shown = live.find((t) => t.classList.contains('tip'));
+        if (shown) {
+          if (!tipQueue.some((q) => q.text === text)) tipQueue.push({ text, ms });
+          if (tipQueue.length > 3) tipQueue.shift();
+          // Hurry the current tip along so the next one isn't stale.
+          if (shown._until - performance.now() > 2200) hold(shown, 2200);
           return;
         }
       }
       const node = el(`<div class="toast ${kind}"></div>`);
       node.textContent = text;
       toasts.appendChild(node);
-      const live = [...toasts.children].filter((t) => !t.classList.contains('out'));
-      if (live.length > 2) dismiss(live[0]);
-      node._timer = setTimeout(() => dismiss(node), ms);
+      if (live.length >= 2) dismiss(live[0]);
+      hold(node, ms);
     },
 
     clearToasts() {
+      tipQueue = [];
       toasts.innerHTML = '';
     },
 
