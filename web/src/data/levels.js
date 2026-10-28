@@ -87,7 +87,7 @@ export const LEVELS = [
     ],
     checkpoints: [{ x: 700, y: 640 }, { x: 700, y: 400 }],
     tips: [
-      { at: 0, text: 'The lighthouse is straight upwind. The red wedge on the wind ring is the no-go zone.' },
+      { at: 0, text: 'The lighthouse is straight upwind. The shaded wedge on the wind ring is the no-go zone.' },
       { at: 6, text: 'Sail about 45° off the wind, then turn through it (tack) to zig-zag upwind.' },
       { at: 16, text: 'Wind shifts! When the wind swings toward your bow, tack onto the lifted side.' },
     ],

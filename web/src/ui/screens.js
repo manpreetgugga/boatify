@@ -204,7 +204,7 @@ function heelSvg() {
       <path d="M120 140 L120 40" stroke="#4a3220" stroke-width="4"/>
       <path d="M120 45 L120 135 L160 135 Z" fill="#f5f0e4"/>
     </g>
-    <path d="M150 30 A90 90 0 0 1 200 110" fill="none" stroke="#ff4d4d" stroke-width="2.5" stroke-dasharray="5 4"/>
+    <path d="M150 30 A90 90 0 0 1 200 110" fill="none" style="stroke: var(--danger)" stroke-width="2.5" stroke-dasharray="5 4"/>
     <text x="160" y="24" fill="#ff9a9a">capsize!</text>
     </g></svg>`;
 }
@@ -238,7 +238,7 @@ function hazardsSvg() {
     <text x="160" y="92" text-anchor="middle">Current</text>
     <g transform="translate(45 140)"><circle r="28" fill="rgba(170,222,226,0.3)"/><path d="M-16 -4 h32 M-12 6 h24" stroke="#e8f4f2" stroke-width="2"/></g>
     <text x="45" y="186" text-anchor="middle">Calm / wind shadow</text>
-    <g transform="translate(160 140)"><circle r="28" fill="rgba(4,22,30,0.7)" stroke="#ff4d4d" stroke-width="2" stroke-dasharray="5 4"/>
+    <g transform="translate(160 140)"><circle r="28" fill="rgba(4,22,30,0.7)" style="stroke: var(--danger)" stroke-width="2" stroke-dasharray="5 4"/>
       <path d="M-12 8 q-6 -14 4 -20 M2 10 q2 -16 12 -18 M12 12 q10 -6 6 -18" stroke="#a5648c" stroke-width="5" fill="none" stroke-linecap="round"/></g>
     <text x="160" y="186" text-anchor="middle">Kraken</text>
     </g></svg>`;
@@ -251,7 +251,7 @@ function pickupsSvg() {
     <text x="55" y="88">Pearl</text>
     <g transform="translate(160 48) scale(2.4)"><rect x="-5.5" y="-6" width="11" height="13" rx="3" fill="rgba(120,220,240,0.35)" stroke="#bff3ff" stroke-width="1.2"/><rect x="-3.5" y="-8.5" width="7" height="3" fill="#8a6a3c"/></g>
     <text x="160" y="88">Gust jar</text>
-    <g transform="translate(55 140) scale(2.4) rotate(12)"><rect x="-6" y="-6" width="12" height="12" fill="#9b6a3f" stroke="#5e3b25"/><rect x="-1.2" y="-4" width="2.4" height="8" fill="#3ddc97"/><rect x="-4" y="-1.2" width="8" height="2.4" fill="#3ddc97"/></g>
+    <g transform="translate(55 140) scale(2.4) rotate(12)"><rect x="-6" y="-6" width="12" height="12" fill="#9b6a3f" stroke="#5e3b25"/><rect x="-1.2" y="-4" width="2.4" height="8" style="fill: var(--ok)"/><rect x="-4" y="-1.2" width="8" height="2.4" style="fill: var(--ok)"/></g>
     <text x="55" y="180">Repair crate</text>
     <g transform="translate(160 140) scale(2.4) rotate(-35)"><rect x="-8" y="-3.5" width="12" height="7" rx="3" fill="rgba(90,170,110,0.9)"/><rect x="4" y="-1.8" width="4" height="3.6" fill="rgba(90,170,110,0.9)"/><rect x="7.5" y="-1.6" width="2.4" height="3.2" fill="#c9a36a"/><rect x="-5.5" y="-1.6" width="7" height="3.2" fill="#f2e6c8"/></g>
     <text x="160" y="180">Message in a bottle</text>
@@ -263,7 +263,7 @@ const HOWTO = [
     title: 'The wind is your engine',
     svg: polarSvg,
     body: `<p>Your oar is gone, so the sail is all you have. The pink curve shows how fast you go on each heading. <b>Wind across the boat (a beam reach) is fastest.</b></p>
-      <p>Pointing straight into the wind is the <b>no-go zone</b>: the sail just flaps and you stop. The red wedge on the wind dial marks it.</p>`,
+      <p>Pointing straight into the wind is the <b>no-go zone</b>: the sail just flaps and you stop. The shaded wedge on the wind dial marks it.</p>`,
   },
   {
     title: 'Steer with the wheel',
@@ -281,12 +281,12 @@ const HOWTO = [
     title: 'Trim the sail',
     svg: trimSvg,
     body: `<p>By default the sail trims itself. Expert sailors can switch to <b>manual trim</b> in Settings: drag the slider on the right, or use W / S.</p>
-      <p><b>Sheet in</b> (pull the sail tight) when heading upwind; <b>ease out</b> when the wind is behind you. Flapping (<b>luffing</b>) means it's too loose; <b>stalled</b> means it's too tight. Stay in the green band.</p>`,
+      <p><b>Sheet in</b> (pull the sail tight) when heading upwind; <b>ease out</b> when the wind is behind you. Flapping (<b>luffing</b>) means it's too loose; <b>stalled</b> means it's too tight. Keep the marker in the bright sweet-spot band.</p>`,
   },
   {
     title: 'Heel, gusts and capsizing',
     svg: heelSvg,
-    body: `<p>Strong wind leans the boat over. Past about 40° the heel meter turns red; push further and you <b>capsize</b>, losing time and hull.</p>
+    body: `<p>Strong wind leans the boat over. Past about 40° the heel meter hits its danger zone; push further and you <b>capsize</b>, losing time and hull.</p>
       <p>To recover, ease the sail out or turn away from the wind. A <b>gust jar</b> gives a burst of bottled wind: great for escaping whirlpools or calms.</p>`,
   },
   {
@@ -302,6 +302,9 @@ const HOWTO = [
       <p><b>Bottles</b> carry notes from sailors who came before you. They're kept in your Logbook.</p>`,
   },
 ];
+
+// Text size steps for the menus, as multiples of the normal size.
+export const TEXT_SIZES = [1, 1.15, 1.3];
 
 export function createUI(root, levels, handlers) {
   const screens = {};
@@ -685,38 +688,42 @@ export function createUI(root, levels, handlers) {
 
     settings(save) {
       const s = save.settings;
+      // Reduced motion may still be following the phone's own setting.
+      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : !!s[key]);
       const toggle = (key, label, sub, invert = false) => `<div class="setting">
         <span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
-        <button class="toggle" role="switch" data-key="${key}" data-invert="${invert}" aria-checked="${invert ? !s[key] : s[key]}" aria-label="${label}"></button></div>`;
+        <button class="toggle" role="switch" data-key="${key}" data-invert="${invert}" aria-checked="${invert ? !value(key) : value(key)}" aria-label="${label}"></button></div>`;
+      const seg = (key, label, sub, options) => `<div class="setting"><span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
+              <div class="seg" data-key="${key}" role="group" aria-label="${label}">
+                ${options.map(([v, name]) => `<button data-v="${v}" aria-pressed="${s[key] === v}">${name}</button>`).join('')}
+              </div></div>`;
       const node = el(`<section class="screen dim" aria-label="Settings">
         <div class="sheet narrow">
           <div class="sheet-head"><h2>Settings</h2><button class="btn small" data-act="back">Back</button></div>
           <div class="sheet-body">
+            <h3 class="setting-group">Sound and feel</h3>
             ${toggle('sound', 'Sound effects', '')}
             ${toggle('music', 'Music', 'A quiet sea shanty-ish tune')}
             ${toggle('vibration', 'Vibration', 'Bumps, capsizes and pickups')}
+            <h3 class="setting-group">Sailing</h3>
             ${toggle('autoTrim', 'Trim the sail by hand', 'For experienced sailors: W / S or the right-hand slider', true)}
             ${toggle('leftHanded', 'Left-handed controls', 'Steer on the right, gust button on the left')}
+            ${seg('steerSensitivity', 'Steering', 'How hard a small thumb movement turns', [[0.75, 'Gentle'], [1, 'Normal'], [1.35, 'Sharp']])}
             ${toggle('ghost', 'Race your best run', 'A pale ghost boat replays your fastest voyage')}
-            <div class="setting"><span class="label"><b>Steering</b><small>How hard a small thumb movement turns</small></span>
-              <div class="seg" data-key="steerSensitivity">
-                <button data-v="0.75" aria-pressed="${s.steerSensitivity === 0.75}">Gentle</button>
-                <button data-v="1" aria-pressed="${s.steerSensitivity === 1}">Normal</button>
-                <button data-v="1.35" aria-pressed="${s.steerSensitivity === 1.35}">Sharp</button>
-              </div></div>
-            <div class="setting"><span class="label"><b>Graphics</b><small>Lower is easier on older phones</small></span>
-              <div class="seg" data-key="quality">
-                <button data-v="low" aria-pressed="${s.quality === 'low'}">Low</button>
-                <button data-v="high" aria-pressed="${s.quality === 'high'}">High</button>
-              </div></div>
-            <div class="setting"><span class="label"><b>Reset progress</b><small>Clears times, stars and the logbook</small></span>
+            <h3 class="setting-group">Seeing and reading</h3>
+            ${toggle('colorblind', 'Colour-blind friendly', 'Blue for good and orange for danger, instead of green and red')}
+            ${toggle('reduceMotion', 'Reduce motion', 'No screen shake or lightning flashes, lighter rain and snow')}
+            ${seg('textSize', 'Text size', 'Menus, tips and messages in bottles', TEXT_SIZES.map((v, i) => [v, ['Normal', 'Large', 'Largest'][i]]))}
+            ${seg('quality', 'Graphics', 'Lower is easier on older phones', [['low', 'Low'], ['high', 'High']])}
+            <h3 class="setting-group">Progress</h3>
+            <div class="setting"><span class="label"><b>Reset progress</b><small>Clears times, stars, medals and the logbook</small></span>
               <button class="btn small" data-act="reset">Reset</button></div>
           </div>
         </div></section>`);
       click(node, '.toggle', (e, b) => {
         const key = b.dataset.key;
         const invert = b.dataset.invert === 'true';
-        s[key] = !s[key];
+        s[key] = !value(key);
         b.setAttribute('aria-checked', String(invert ? !s[key] : s[key]));
         handlers.onSettings(s);
       });

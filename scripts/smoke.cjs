@@ -1,6 +1,6 @@
 // Browser smoke test of the bundled game: menus, a voyage sailed by the
 // autopilot at high speed, the results card, today's daily voyage, the
-// Shipyard and the medals. Fails on any page error.
+// Shipyard, the medals and the accessibility settings. Fails on any page error.
 //
 //   node scripts/smoke.cjs [--shots <dir>] [--level <index>] [--size 915x412]
 
@@ -111,6 +111,26 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   if (medals < 10 || earned < 1) throw new Error(`medals screen shows ${earned} of ${medals}`);
   await tab.waitForTimeout(300);
   await snap('11-medals');
+
+  step('settings: colour-blind colours, reduced motion and large text');
+  await tab.getByRole('button', { name: 'Back' }).click();
+  await tab.waitForSelector('section[aria-label="Title"].open');
+  await tab.getByRole('button', { name: 'Settings' }).click();
+  await tab.waitForSelector('section[aria-label="Settings"].open');
+  await tab.getByRole('switch', { name: 'Colour-blind friendly' }).click();
+  const motion = tab.getByRole('switch', { name: 'Reduce motion' });
+  if ((await motion.getAttribute('aria-checked')) !== 'true') await motion.click();
+  await tab.getByRole('group', { name: 'Text size' }).getByRole('button', { name: 'Largest' }).click();
+  const look = await tab.evaluate(() => {
+    const html = document.documentElement;
+    const s = window.__boatify.save.settings;
+    return { palette: html.dataset.palette, motion: html.dataset.motion, text: html.style.getPropertyValue('--text'), s };
+  });
+  if (look.palette !== 'colorblind' || look.motion !== 'reduced' || look.text !== '1.3' || look.s.reduceMotion !== true) {
+    throw new Error(`settings did not stick: ${JSON.stringify(look)}`);
+  }
+  await tab.waitForTimeout(300);
+  await snap('12-settings');
 
   await browser.close();
   if (errors.length) {

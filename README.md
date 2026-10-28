@@ -23,15 +23,16 @@ from that source. Android 8.0 or newer.
 | Pause | Pause button or back | P or Esc |
 | Restart, mute, toggle trim | | R, M, T |
 
-- **The no-go zone.** You can't sail straight into the wind. The red wedge on the wind dial shows where the sail stops working.
+- **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the wind dial shows where the sail stops working.
 - **Beam reach is fastest.** Wind from the side gives the most speed; dead downwind is slower than you'd think.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".
-- **Watch the heel.** Gusts lean the boat over. Past the red mark you capsize. Ease out or bear away.
+- **Watch the heel.** Gusts lean the boat over. Past the danger mark you capsize. Ease out or bear away.
 - **Read the water.** Dark ruffled patches are gusts, pale glassy water is a lull or an island's wind shadow. Streaks show how the air flows.
 - **Daily voyage.** After the first three voyages, a new course is charted every day: the same one for everyone that day. Sail it on consecutive days to build a streak.
 - **Shipyard.** Earn stars to unlock the Reed Skiff, Twin Proa and Lantern Junk. Each boat trades speed, upwind ability, stability, agility and toughness differently.
 - **Medals.** Eighteen goals beyond the stars: thread a coral reef without a dent, dodge the kraken, cross the ice untouched, find every bottle, sail a week of daily voyages. The Medals screen shows how close you are to each one.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
+- **Play your way.** Settings has colour-blind friendly colours (blue and orange instead of green and red), a reduce-motion mode (no screen shake or lightning flashes; it follows your phone's setting until you choose), three text sizes, left-handed controls and steering sensitivity.
 
 ### Voyages
 
@@ -54,7 +55,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # physics, wind, boats, floes, levels and daily courses (the autopilot sails them), medals, save and bundle tests
+npm test            # physics, wind, boats, floes, levels and daily courses (the autopilot sails them), medals, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 ```

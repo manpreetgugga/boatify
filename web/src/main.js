@@ -10,10 +10,10 @@ import { createRecorder, recordGhost, finishGhost, isValidGhost, ghostAt, ghostG
 import { createRenderer, resize, resetView, renderFrame } from './render/renderer.js';
 import { hudLayout } from './render/layout.js';
 import { burst, ring, floatText } from './render/effects.js';
-import { C } from './render/palette.js';
+import { C, setColorblind } from './render/palette.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
-import { createUI } from './ui/screens.js';
+import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
@@ -64,9 +64,28 @@ function getLayout() {
   return layout;
 }
 
+// Reduced motion follows the phone until the player picks for themselves.
+function motionReduced() {
+  const s = save.settings.reduceMotion;
+  if (s === true || s === false) return s;
+  try {
+    return matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 function applySettings() {
   const s = save.settings;
   audio.configure({ sound: s.sound, music: s.music });
+  const calm = motionReduced();
+  renderer.cam.still = calm;
+  renderer.fx.calm = calm;
+  setColorblind(!!s.colorblind);
+  const html = document.documentElement;
+  html.dataset.palette = s.colorblind ? 'colorblind' : 'standard';
+  html.dataset.motion = calm ? 'reduced' : 'full';
+  html.style.setProperty('--text', String(TEXT_SIZES.includes(s.textSize) ? s.textSize : 1));
   const q = s.quality === 'low' ? 0.5 : 1;
   if (q !== renderer.quality) {
     renderer.quality = q;
@@ -139,6 +158,7 @@ const ui = createUI(root, LEVELS, {
   onReset: () => resetProgress(save),
   onSeenIntro: () => writeSave(save),
   onSeen: () => writeSave(save),
+  motionReduced,
   onBoat: (id) => {
     save.settings.boat = id;
     writeSave(save);
@@ -339,7 +359,7 @@ function handleEvents(events, live) {
       case 'kraken':
         if (!live) break;
         audio.sfx.kraken(e.phase);
-        if (e.phase === 'warning') ui.toast('The water is boiling! Get out of the red ring!', 'alert', 2200);
+        if (e.phase === 'warning') ui.toast('The water is boiling! Get out of the ring!', 'alert', 2200);
         else buzz(160);
         cam.shake = Math.min(1, cam.shake + (e.phase === 'strike' ? 0.7 : 0.1));
         break;
@@ -512,12 +532,19 @@ window.__boatify = {
     };
   },
   save,
+  applySettings,
   isAndroidApp,
   exitApp,
 };
 
 readInsets();
 applySettings();
+try {
+  // Follow the phone if its reduce-motion setting changes while we are open.
+  matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', applySettings);
+} catch {
+  // Older WebViews: the setting is read again next launch.
+}
 showTitle();
 requestAnimationFrame((t) => {
   last = t;

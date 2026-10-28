@@ -4,10 +4,11 @@
 import { clamp } from '../core/math.js';
 import { sampleWind } from '../world/wind.js';
 import { viewBounds } from './camera.js';
-import { C, font } from './palette.js';
+import { C, font, rgba } from './palette.js';
 
 export function createEffects() {
   return {
+    calm: false, // reduced motion: lighter weather, no lightning bolts
     streaks: [],
     particles: [],
     floaters: [],
@@ -199,7 +200,7 @@ export function drawKrakens(ctx, game, time) {
       ctx.beginPath();
       ctx.arc(0, 0, k.r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(255, 77, 77, ${0.35 + 0.45 * Math.abs(Math.sin(time * 10))})`;
+      ctx.strokeStyle = rgba(C.danger, 0.35 + 0.45 * Math.abs(Math.sin(time * 10)));
       ctx.lineWidth = 3;
       ctx.setLineDash([10, 8]);
       ctx.beginPath();
@@ -288,7 +289,7 @@ export function drawRain(ctx, fx, game, w, h, dt) {
     if (d < s.r) local = Math.max(local, 1 - d / s.r);
   }
   const intensity = clamp(amount + local * 0.6, 0, 1);
-  const count = Math.floor(intensity * 220);
+  const count = Math.floor(intensity * (fx.calm ? 80 : 220));
   while (fx.rain.length < count) fx.rain.push({ x: Math.random() * w, y: Math.random() * h, z: 0.5 + Math.random() * 0.5 });
   fx.rain.length = count;
   if (!count) return;
@@ -317,7 +318,7 @@ export function drawRain(ctx, fx, game, w, h, dt) {
 // Screen-space snow: slow flakes that tumble and drift with the wind.
 export function drawSnow(ctx, fx, game, w, h, dt, time) {
   const amount = game.level.weather.snow || 0;
-  const count = Math.floor(amount * 160);
+  const count = Math.floor(amount * (fx.calm ? 60 : 160));
   while (fx.snow.length < count) fx.snow.push({ x: Math.random() * w, y: Math.random() * h, z: 0.4 + Math.random() * 0.6, p: Math.random() * 6 });
   fx.snow.length = count;
   if (!count) return;
@@ -356,9 +357,10 @@ export function drawLightning(ctx, fx, game, w, h) {
     }
     fx.bolt = pts;
   }
-  ctx.fillStyle = `rgba(230, 240, 255, ${(game.flash * 0.45).toFixed(3)})`;
+  // With reduced motion the strike is only a soft glow: no white-out, no bolt.
+  ctx.fillStyle = `rgba(230, 240, 255, ${(game.flash * (fx.calm ? 0.06 : 0.45)).toFixed(3)})`;
   ctx.fillRect(0, 0, w, h);
-  if (game.flash > 0.6) {
+  if (game.flash > 0.6 && !fx.calm) {
     ctx.strokeStyle = `rgba(255, 255, 255, ${game.flash})`;
     ctx.lineWidth = 2.5;
     ctx.beginPath();

@@ -6,7 +6,7 @@ import { HEEL_WARNING, CAPSIZE_ANGLE, boatSpeed } from '../physics/boat.js';
 import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.js';
 import { windFromBearing } from '../world/wind.js';
 import { worldToScreen } from './camera.js';
-import { C, font, FONT } from './palette.js';
+import { C, font, FONT, rgba } from './palette.js';
 
 function panel(ctx, x, y, w, h, r = 12) {
   ctx.fillStyle = C.panel;
@@ -166,7 +166,7 @@ function buildMinimap(game, L) {
     m.fill();
   }
   for (const kr of level.krakens) {
-    m.strokeStyle = 'rgba(255, 77, 77, 0.7)';
+    m.strokeStyle = rgba(C.danger, 0.7);
     m.lineWidth = 1.2 / k;
     m.setLineDash([6 / k, 4 / k]);
     m.beginPath();
@@ -191,7 +191,7 @@ function buildMinimap(game, L) {
 }
 
 function drawMinimap(ctx, hud, game, cam, L, time) {
-  const key = `${game.level.id}:${Math.round(L.minimap.w)}`;
+  const key = `${game.level.id}:${Math.round(L.minimap.w)}:${C.danger}`;
   if (!hud.minimap || hud.minimapKey !== key) {
     hud.minimap = buildMinimap(game, L);
     hud.minimapKey = key;
@@ -366,7 +366,7 @@ function drawInstruments(ctx, game, L, controls, time) {
   const rel = relativeWindAngle(game);
   const windA = -Math.PI / 2 + rel;
   const inIrons = Math.abs(rel) < 34 * DEG;
-  ctx.fillStyle = inIrons ? `rgba(255, 77, 77, ${0.35 + 0.2 * Math.sin(time * 8)})` : 'rgba(214, 62, 169, 0.22)';
+  ctx.fillStyle = inIrons ? rgba(C.danger, 0.35 + 0.2 * Math.sin(time * 8)) : 'rgba(214, 62, 169, 0.22)';
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.arc(0, 0, R - 1, windA - 34 * DEG, windA + 34 * DEG);
@@ -443,7 +443,7 @@ function drawInstruments(ctx, game, L, controls, time) {
   ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
   ctx.fillRect(gx, by, gw, 10);
   const opt = clamp(boat.optimalTrim, 0, 1);
-  ctx.fillStyle = 'rgba(61, 220, 151, 0.45)';
+  ctx.fillStyle = rgba(C.ok, 0.45);
   ctx.fillRect(gx + gw * clamp(opt - 0.07, 0, 1), by, gw * 0.14, 10);
   const tm = gx + gw * clamp(boat.trim, 0, 1);
   ctx.fillStyle = C.foam;
@@ -467,7 +467,7 @@ function drawInstruments(ctx, game, L, controls, time) {
   ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
   ctx.fillRect(mx0, hy - 3, mw, 6);
   const warnFrac = HEEL_WARNING / CAPSIZE_ANGLE;
-  ctx.fillStyle = 'rgba(255, 77, 77, 0.5)';
+  ctx.fillStyle = rgba(C.danger, 0.5);
   ctx.fillRect(mx0 + mw * warnFrac, hy - 3, mw * (1 - warnFrac), 6);
   ctx.fillStyle = hc;
   ctx.fillRect(mx0, hy - 3, mw * clamp(Math.abs(boat.heel) / CAPSIZE_ANGLE, 0, 1), 6);
@@ -556,7 +556,7 @@ function drawTouchControls(ctx, game, L, controls, time) {
     const s = L.sheet;
     panel(ctx, s.x - s.w / 2, s.y, s.w, s.h, s.w / 2);
     const opt = clamp(game.boat.optimalTrim, 0, 1);
-    ctx.fillStyle = 'rgba(61, 220, 151, 0.4)';
+    ctx.fillStyle = rgba(C.ok, 0.4);
     ctx.fillRect(s.x - s.w / 2 + 4, s.y + 8 + (s.h - 16) * clamp(opt - 0.07, 0, 1), s.w - 8, (s.h - 16) * 0.14);
     const ty = s.y + 8 + (s.h - 16) * clamp(controls.trimTarget, 0, 1);
     ctx.fillStyle = controls.sheet && controls.sheet.active ? C.signal : C.foam;

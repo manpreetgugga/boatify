@@ -5,7 +5,7 @@ import { approach, clamp } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
 
 export function createCamera() {
-  return { x: 0, y: 0, scale: 1.5, zoom: 1, shake: 0, ox: 0, oy: 0, w: 1, h: 1 };
+  return { x: 0, y: 0, scale: 1.5, zoom: 1, shake: 0, still: false, ox: 0, oy: 0, w: 1, h: 1 };
 }
 
 // Pixels per world unit for a viewport, before speed zoom.
@@ -40,7 +40,7 @@ export function updateCamera(cam, game, dt, w, h) {
   cam.x = approach(cam.x, tx, 3, dt);
   cam.y = approach(cam.y, ty, 3, dt);
   cam.shake = Math.max(0, cam.shake - dt * 2.2);
-  const s = cam.shake * cam.shake * 7;
+  const s = cam.still ? 0 : cam.shake * cam.shake * 7;
   cam.ox = (Math.random() * 2 - 1) * s;
   cam.oy = (Math.random() * 2 - 1) * s;
 }

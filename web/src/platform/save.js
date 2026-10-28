@@ -23,6 +23,9 @@ export const DEFAULT_SETTINGS = {
   quality: 'high',
   ghost: true,
   boat: 'sloop',
+  colorblind: false,
+  reduceMotion: null, // null: follow the phone's own setting
+  textSize: 1,
 };
 
 function blank() {

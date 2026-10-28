@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.0] - 2026-10-28
+
+Play your way.
+
+- **Colour-blind friendly colours.** A new setting swaps the game's green, yellow and red for blue, yellow and orange, which stay apart for every kind of colour vision. It covers the sail and heel meters, the hull bar, the in-irons warning on the wind dial, the kraken's ring and the warning toasts.
+- **Reduce motion.** No screen shake, no lightning flashes, and lighter rain and snow. It follows your phone's own reduce-motion setting until you pick one yourself.
+- **Text size.** Normal, Large or Largest for menus, tips, briefings and messages in bottles.
+- Settings are grouped into Sound and feel, Sailing, Seeing and reading, and Progress.
+- Help text no longer leans on colour names ("the red wedge"), so it reads right in either palette.
+
 ## [0.6.0] - 2026-10-28
 
 Medals.

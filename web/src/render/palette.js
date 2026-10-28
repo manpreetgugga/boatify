@@ -37,6 +37,21 @@ export const C = {
   textDim: 'rgba(232, 244, 242, 0.62)',
 };
 
+// Status colours that stay apart for red-green colour blindness: sky blue
+// for good, yellow for caution, vermillion for danger.
+const STANDARD = { ok: C.ok, warn: C.warn, danger: C.danger };
+const COLORBLIND = { ok: '#56b4e9', warn: '#f0e442', danger: '#ff6a1a' };
+
+export function setColorblind(on) {
+  Object.assign(C, on ? COLORBLIND : STANDARD);
+}
+
+// '#rrggbb' with an alpha, for translucent versions of the palette.
+export function rgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${Number(a).toFixed(3)})`;
+}
+
 export const FONT = {
   display: "'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif",
   body: "'Barlow', 'Roboto', system-ui, sans-serif",

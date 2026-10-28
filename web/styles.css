@@ -56,6 +56,13 @@
   --inset-left: max(env(safe-area-inset-left, 0px), var(--native-inset-left, 0px));
 }
 
+/* Colour-blind friendly: blue, yellow and orange stay apart for every kind of colour vision. */
+:root[data-palette='colorblind'] {
+  --ok: #56b4e9;
+  --warn: #f0e442;
+  --danger: #ff6a1a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -146,7 +153,7 @@ button:focus-visible {
   border-radius: 12px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: calc(20px * var(--text, 1));
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--foam);
@@ -173,7 +180,7 @@ button:focus-visible {
 
 .btn.small {
   min-height: 40px;
-  font-size: 16px;
+  font-size: calc(16px * var(--text, 1));
   padding: 0 16px;
 }
 
@@ -216,7 +223,7 @@ button:focus-visible {
 
 .tagline {
   margin: 0;
-  font-size: clamp(15px, 3.2vh, 19px);
+  font-size: calc(clamp(15px, 3.2vh, 19px) * var(--text, 1));
   line-height: 1.4;
   color: var(--foam-dim);
   max-width: 34ch;
@@ -238,7 +245,7 @@ button:focus-visible {
   gap: 18px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: calc(15px * var(--text, 1));
   letter-spacing: 0.06em;
   color: var(--foam-dim);
   text-transform: uppercase;
@@ -306,7 +313,7 @@ button:focus-visible {
 .eyebrow {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--brass);
@@ -356,13 +363,13 @@ button:focus-visible {
 .voyage .name {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: calc(19px * var(--text, 1));
   line-height: 1.1;
 }
 
 .voyage .stars {
   margin-top: auto;
-  font-size: 16px;
+  font-size: calc(16px * var(--text, 1));
   letter-spacing: 2px;
   color: rgba(232, 244, 242, 0.2);
 }
@@ -372,7 +379,7 @@ button:focus-visible {
 }
 
 .voyage .best {
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   color: var(--foam-dim);
 }
 
@@ -416,7 +423,7 @@ button:focus-visible {
   position: absolute;
   top: 14px;
   right: 14px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text, 1));
 }
 
 /* Shipyard */
@@ -427,7 +434,7 @@ button:focus-visible {
 
 .sheet-note {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text, 1));
   color: var(--foam-dim);
 }
 
@@ -470,18 +477,18 @@ button:focus-visible {
   margin: 0;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: calc(19px * var(--text, 1));
   line-height: 1.1;
 }
 
 .boat-head .tag {
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   color: var(--brass);
 }
 
 .boat-blurb {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   line-height: 1.35;
   color: var(--foam-dim);
 }
@@ -492,7 +499,7 @@ button:focus-visible {
   gap: 3px 10px;
   align-items: center;
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text, 1));
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--foam-dim);
@@ -576,12 +583,12 @@ button:focus-visible {
 .medal-text b {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 18px;
+  font-size: calc(18px * var(--text, 1));
   line-height: 1.15;
 }
 
 .medal-text small {
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   line-height: 1.3;
   color: var(--foam-dim);
 }
@@ -603,7 +610,7 @@ button:focus-visible {
 }
 
 .medal-count {
-  font-size: 12px;
+  font-size: calc(12px * var(--text, 1));
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--foam-dim);
@@ -632,7 +639,7 @@ button:focus-visible {
   border-radius: 999px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 16px;
+  font-size: calc(16px * var(--text, 1));
   color: var(--ink);
   background: linear-gradient(180deg, #f4d58d, var(--brass));
   opacity: 0;
@@ -675,7 +682,7 @@ button:focus-visible {
 
 .brief .lead {
   grid-column: 1 / -1;
-  font-size: 17px;
+  font-size: calc(17px * var(--text, 1));
   color: var(--foam);
   margin: 0;
 }
@@ -685,7 +692,7 @@ button:focus-visible {
   grid-template-columns: auto 1fr;
   gap: 6px 14px;
   margin: 8px 0 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--text, 1));
 }
 
 .facts dt {
@@ -694,7 +701,7 @@ button:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--foam-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   padding-top: 2px;
 }
 
@@ -712,7 +719,7 @@ button:focus-visible {
 .chip {
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
   font-weight: 600;
   background: rgba(232, 244, 242, 0.08);
   border: 1px solid var(--foam-faint);
@@ -720,7 +727,9 @@ button:focus-visible {
 
 .chip.danger {
   border-color: rgba(255, 77, 77, 0.5);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
   color: #ffb3b3;
+  color: color-mix(in srgb, var(--danger) 45%, white);
 }
 
 /* Results */
@@ -750,7 +759,7 @@ button:focus-visible {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px 16px;
-  font-size: 16px;
+  font-size: calc(16px * var(--text, 1));
 }
 
 .stat-rows .k {
@@ -760,7 +769,7 @@ button:focus-visible {
 .stat-rows .v {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: calc(19px * var(--text, 1));
   text-align: right;
 }
 
@@ -769,7 +778,7 @@ button:focus-visible {
   margin-left: 8px;
   padding: 2px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text, 1));
   font-family: var(--display);
   letter-spacing: 0.06em;
   background: var(--ok);
@@ -778,6 +787,20 @@ button:focus-visible {
 }
 
 /* Settings */
+
+.setting-group {
+  margin: 18px 0 2px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(14px * var(--text, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.setting-group:first-child {
+  margin-top: 0;
+}
 
 .setting {
   display: flex;
@@ -802,7 +825,7 @@ button:focus-visible {
 
 .setting .label small {
   color: var(--foam-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--text, 1));
 }
 
 .toggle {
@@ -846,7 +869,7 @@ button:focus-visible {
 .seg button {
   padding: 7px 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: calc(14px * var(--text, 1));
 }
 
 .seg button[aria-pressed='true'] {
@@ -912,7 +935,7 @@ button:focus-visible {
   border-radius: 10px;
   background: #efe3c4;
   color: #3b2f1c;
-  font-size: 15px;
+  font-size: calc(15px * var(--text, 1));
   line-height: 1.45;
   font-style: italic;
 }
@@ -944,7 +967,7 @@ button:focus-visible {
   border-radius: 12px;
   background: var(--panel);
   border: 1px solid var(--foam-faint);
-  font-size: 14px;
+  font-size: calc(14px * var(--text, 1));
   line-height: 1.35;
   text-align: center;
   animation: toast-in 0.3s ease both;
@@ -961,6 +984,7 @@ button:focus-visible {
 
 .toast.alert {
   border-color: rgba(255, 77, 77, 0.6);
+  border-color: color-mix(in srgb, var(--danger) 60%, transparent);
 }
 
 .toast.alert::before {
@@ -986,7 +1010,7 @@ button:focus-visible {
   font-style: normal;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--text, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #8a6a3c;
@@ -995,6 +1019,7 @@ button:focus-visible {
 
 .toast.good {
   border-color: rgba(61, 220, 151, 0.5);
+  border-color: color-mix(in srgb, var(--ok) 50%, transparent);
 }
 
 .toast.out {
@@ -1058,7 +1083,7 @@ button:focus-visible {
   }
   .btn {
     min-height: 44px;
-    font-size: 18px;
+    font-size: calc(18px * var(--text, 1));
   }
   .voyage {
     min-height: 112px;
@@ -1105,9 +1130,8 @@ button:focus-visible {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+/* Reduce motion follows the phone's setting unless the player picked one in Settings. */
+:root[data-motion='reduced'] * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }
