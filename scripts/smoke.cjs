@@ -92,6 +92,19 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.waitForTimeout(1000);
   await snap('09-daily');
 
+  step('open sea: gates charted ahead, the run ends when the clock does');
+  await tab.evaluate(() => window.__boatify.startLevel('sea'));
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
+  await tab.waitForFunction(() => window.__boatify.state().sea.gates >= 1, null, { timeout: 30000 });
+  await snap('09b-open-sea');
+  await tab.evaluate(() => window.__boatify.setSeaClock(2));
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'results', null, { timeout: 15000 });
+  await tab.waitForTimeout(600);
+  const run = await tab.evaluate(() => [window.__boatify.save.openSea, document.querySelector('section[aria-label="Run over"] h2').textContent]);
+  if (run[0].runs !== 1 || run[0].gates < 1 || run[1] !== 'Out of time') throw new Error(`open sea run ${JSON.stringify(run)}`);
+  step(`sailed ${run[0].best.toFixed(0)} units east through ${run[0].gates} gates`);
+  await snap('09c-sea-results');
+
   step('shipyard: four boats, the sloop is sailing');
   await tab.evaluate(() => window.__boatify.showTitle());
   await tab.getByRole('button', { name: 'Shipyard' }).click();
@@ -106,7 +119,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.getByRole('button', { name: 'Sail Locker' }).click();
   await tab.waitForSelector('section[aria-label="Sail Locker"].open');
   const gear = await tab.locator('.gear').count();
-  if (gear !== 23) throw new Error(`sail locker shows ${gear} items`);
+  if (gear !== 24) throw new Error(`sail locker shows ${gear} items`);
   await tab.getByRole('button', { name: 'Jolly Roger, locked' }).click();
   await tab.getByRole('button', { name: 'Harbor Stripe' }).click();
   const fitted = await tab.evaluate(() => [window.__boatify.save.settings.sail, document.querySelector('.gear.picked[data-kind=sail]').dataset.id]);

@@ -33,6 +33,7 @@ export function buildLevel(def) {
     weather: { rain: 0, snow: 0, fog: 0, night: false, lightning: false, dark: 0, ...(def.weather || {}) },
     par: def.par,
     tips: def.tips || [],
+    endless: !!def.endless,
   };
   moveFloes(level, 0);
   return level;
@@ -40,4 +41,11 @@ export function buildLevel(def) {
 
 export function pearlCount(level) {
   return level.pickups.filter((p) => p.kind === 'pearl').length;
+}
+
+// Where the boat is headed: B, or on the open sea the next gate.
+export function courseGoal(game) {
+  const { level } = game;
+  if (!level.endless) return level.finish;
+  return level.checkpoints[game.nextCheckpoint] || { x: game.boat.x + 600, y: level.height / 2 };
 }

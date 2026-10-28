@@ -391,8 +391,14 @@ export function drawMarks(ctx, game, cam, time) {
   const s = level.start;
   drawLetterBuoy(ctx, s.x, s.y + 22, 'A', C.brass, time);
 
+  const reach = cam.w / cam.scale / 2 + 120;
   level.checkpoints.forEach((c, i) => {
+    if (Math.abs(c.x - cam.x) > reach) return;
     const next = i === game.nextCheckpoint;
+    if (c.gate) {
+      drawGate(ctx, c, next, time + i);
+      return;
+    }
     if (!c.reached) {
       ctx.strokeStyle = next ? `rgba(255, 200, 87, ${0.45 + 0.25 * Math.sin(time * 4)})` : 'rgba(255, 200, 87, 0.22)';
       ctx.lineWidth = 2;
@@ -405,6 +411,7 @@ export function drawMarks(ctx, game, cam, time) {
     drawBuoy(ctx, c.x, c.y, c.reached ? C.ok : C.warn, time + i);
   });
 
+  if (level.endless) return;
   const f = level.finish;
   const pulse = 0.5 + 0.5 * Math.sin(time * 2.5);
   ctx.fillStyle = `rgba(255, 107, 53, ${0.08 + 0.06 * pulse})`;
@@ -427,6 +434,25 @@ export function drawMarks(ctx, game, cam, time) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('B', f.x, f.y - f.r - 14);
+}
+
+// An open-sea gate: a buoy either side, to sail between. Missed ones fade.
+function drawGate(ctx, c, next, t) {
+  const color = c.reached ? C.ok : c.missed ? 'rgba(232, 244, 242, 0.35)' : C.warn;
+  if (!c.reached && !c.missed) {
+    ctx.strokeStyle = next ? `rgba(255, 200, 87, ${0.5 + 0.3 * Math.sin(t * 4)})` : 'rgba(255, 200, 87, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 7]);
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y - c.r + 8);
+    ctx.lineTo(c.x, c.y + c.r - 8);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.globalAlpha = c.missed ? 0.5 : 1;
+  drawBuoy(ctx, c.x, c.y - c.r, color, t);
+  drawBuoy(ctx, c.x, c.y + c.r, color, t + 1.3);
+  ctx.globalAlpha = 1;
 }
 
 function drawBuoy(ctx, x, y, color, t) {

@@ -4,13 +4,14 @@
 import { clamp, dist, wrapAngle, angleDiff } from '../core/math.js';
 import { hashString } from '../core/rng.js';
 import { createBoat, stepBoat, hullCircles, boatSpeed, CAPSIZE_ANGLE, HEEL_WARNING, BOOST_DURATION, BOAT_TYPES } from '../physics/boat.js';
-import { buildLevel, pearlCount } from './level.js';
+import { buildLevel, pearlCount, courseGoal } from './level.js';
 import { createWind, updateWind, sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
 import { circlePolygon, circleCircle } from './collision.js';
 import { moveFloes, floeContact } from './floes.js';
 import { prepareWildlife, updateWildlife } from './wildlife.js';
 import { preparePirates, updatePirates } from './pirates.js';
+import { prepareOpenSea, updateOpenSea, reachGate, endRun, PEARL_TIME } from './opensea.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
@@ -61,7 +62,9 @@ export function createGame(def, options = {}) {
     escortTime: 0, // seconds spent riding a dolphin pod's bow wave
     closeBreaches: 0, // whale breaches seen up close
     chases: 0, // times a pirate ship came after you
+    sea: null, // the endless open sea's clock and gates
   };
+  if (def.endless) prepareOpenSea(game);
   return game;
 }
 
@@ -96,6 +99,10 @@ function tick(game, input, dt) {
   }
 
   game.time += dt;
+  if (game.sea) {
+    updateOpenSea(game, dt);
+    if (game.status === 'finished') return;
+  }
   updateWind(wind, dt);
   updateKrakens(game);
   updateWildlife(game, dt);
@@ -120,6 +127,8 @@ function tick(game, input, dt) {
         boat.trim = boat.trimTarget = 1;
         boat.yawRate = 0;
         emit(game, 'righted');
+      } else if (game.sea) {
+        endRun(game, 'sunk'); // no last buoy to go back to out here
       } else {
         respawn(game);
       }
@@ -292,23 +301,30 @@ function checkPickups(game) {
     if (p.taken) continue;
     if (dist(boat.x, boat.y, p.x, p.y) > 16) continue;
     p.taken = true;
-    if (p.kind === 'pearl') game.pearls += 1;
-    else if (p.kind === 'gust') game.gustJars = Math.min(3, game.gustJars + 1);
+    let bonus = 0;
+    if (p.kind === 'pearl') {
+      game.pearls += 1;
+      if (game.sea) {
+        bonus = PEARL_TIME;
+        game.sea.clock += bonus;
+      }
+    } else if (p.kind === 'gust') game.gustJars = Math.min(3, game.gustJars + 1);
     else if (p.kind === 'repair') game.hull = Math.min(100, game.hull + 35);
     else if (p.kind === 'bottle') game.notes.push(p.note);
-    emit(game, 'pickup', { kind: p.kind, x: p.x, y: p.y, note: p.note });
+    emit(game, 'pickup', { kind: p.kind, x: p.x, y: p.y, note: p.note, bonus });
   }
 }
 
 function checkCheckpoints(game) {
   const { boat, level } = game;
   for (const c of level.checkpoints) {
-    if (c.reached) continue;
+    if (c.reached || c.missed) continue;
+    if (game.sea && c.x > boat.x + c.r) break; // gates ahead are in order
     if (dist(boat.x, boat.y, c.x, c.y) > c.r) continue;
     c.reached = true;
     game.nextCheckpoint = Math.max(game.nextCheckpoint, c.index + 1);
     game.respawn = { x: c.x, y: c.y, heading: boat.heading };
-    emit(game, 'checkpoint', { index: c.index });
+    emit(game, 'checkpoint', { index: c.index, bonus: game.sea ? reachGate(game, c) : 0 });
   }
 }
 
@@ -394,18 +410,21 @@ function finish(game) {
   emit(game, 'finish', { ...game.result });
 }
 
-// Helpers the HUD, autopilot and audio share.
+// Helpers the HUD, autopilot and audio share. On the open sea "the finish"
+// is the next gate.
 export function distanceToFinish(game) {
-  const { boat, level } = game;
-  return dist(boat.x, boat.y, level.finish.x, level.finish.y);
+  const { boat } = game;
+  const f = courseGoal(game);
+  return dist(boat.x, boat.y, f.x, f.y);
 }
 
 export function bearingToFinish(game) {
-  const { boat, level } = game;
-  return Math.atan2(level.finish.y - boat.y, level.finish.x - boat.x);
+  const { boat } = game;
+  const f = courseGoal(game);
+  return Math.atan2(f.y - boat.y, f.x - boat.x);
 }
 
-// Velocity made good toward the finish (units/s).
+// Velocity made good toward the finish or the next gate (units/s).
 export function vmgToFinish(game) {
   const { boat } = game;
   const a = bearingToFinish(game);

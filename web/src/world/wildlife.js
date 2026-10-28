@@ -19,8 +19,16 @@ const DOLPHIN_SPRINT = 34;
 export const WHALE = { dive: 11, rise: 22, breach: 23.6, splash: 24.8, period: 27, close: 200, swell: 280, swellSpeed: 85, body: 40 };
 
 export function prepareWildlife(def, seed) {
-  const rng = createRng(seed ^ 0x51ea11fe);
-  const pods = (def.dolphins || []).map((d) => {
+  const life = { pods: [], whales: [], swells: [], rng: createRng(seed ^ 0x51ea11fe) };
+  addSeaLife(life, def);
+  return life;
+}
+
+// Put dolphin pods and whales in the sea. The open sea adds more as it is
+// charted.
+export function addSeaLife(life, { dolphins = [], whales = [] }) {
+  const rng = life.rng;
+  for (const d of dolphins) {
     const count = d.count || 4;
     const orbit = rng.range(0, Math.PI * 2);
     const roam = d.r || 140;
@@ -39,23 +47,24 @@ export function prepareWildlife(def, seed) {
         leap: 0,
       });
     }
-    return { home: { x: d.x, y: d.y }, roam, orbit, x, y, heading: orbit + Math.PI / 2, state: 'roam', timer: 0, cooldown: 0, slow: 0, ride: 0, members };
-  });
-  const whales = (def.whales || []).map((w) => ({
-    cx: w.x,
-    cy: w.y,
-    rx: w.rx || 160,
-    ry: w.ry || 90,
-    t: rng.range(0, Math.PI * 2),
-    offset: w.offset !== undefined ? w.offset : rng.range(0, 8),
-    x: w.x,
-    y: w.y,
-    heading: 0,
-    phase: 'surface',
-    phaseTime: 0,
-    spout: 0,
-  }));
-  return { pods, whales, swells: [], rng };
+    life.pods.push({ home: { x: d.x, y: d.y }, roam, orbit, x, y, heading: orbit + Math.PI / 2, state: 'roam', timer: 0, cooldown: 0, slow: 0, ride: 0, members });
+  }
+  for (const w of whales) {
+    life.whales.push({
+      cx: w.x,
+      cy: w.y,
+      rx: w.rx || 160,
+      ry: w.ry || 90,
+      t: rng.range(0, Math.PI * 2),
+      offset: w.offset !== undefined ? w.offset : rng.range(0, 8),
+      x: w.x,
+      y: w.y,
+      heading: 0,
+      phase: 'surface',
+      phaseTime: 0,
+      spout: 0,
+    });
+  }
 }
 
 export function updateWildlife(game, dt) {

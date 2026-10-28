@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0] - 2026-10-28
+
+The Open Sea, and a sail you can see.
+
+- **Open Sea.** A new endless mode, unlocked with the daily voyage. There's no B: sail east for as long as the clock lasts. Each buoy gate you sail between puts the next leg's time back on the clock, and each pearl adds two seconds. Miss a gate and you lose its time. The run ends when the clock runs out or the hull gives out, and your score is how far east you got.
+- The sea is charted as you go, so every run is different. It starts gentle, and the further out you sail the more islands, reefs, calms, currents and whirlpools you meet. Dolphins and whales turn up too. Every minute or so the wind shifts, and it never settles dead on the nose for long. Gates give back less time the further you go, so every run ends sooner or later.
+- On the HUD a countdown replaces the voyage timer. It turns red and ticks over the last ten seconds. A GATE pointer shows the way, and the minimap scrolls along with you.
+- The Voyages screen has an Open Sea card with your furthest run, and its briefing shows your records. The results card shows your distance, gates, pearls and time at sea, and marks a new best.
+- New medal: **Far Horizon** (sail 1.5 km in one Open Sea run). It unlocks the Compass Rose sail. That makes twenty-two.
+- **A sail you can see.** From straight above, the sail was only a thin sliver. Now it leans out over the water as a full triangle with a shadow underneath. It swings as you trim and fills out more when it's pulling hard, so you can see what the wind is doing to your boat.
+- The demo boat behind the title screen picks better courses. It had been overestimating its speed with the wind on the beam.
+
 ## [0.10.0] - 2026-10-28
 
 The Sail Locker, and a bigger boat.

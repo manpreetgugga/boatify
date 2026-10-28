@@ -1,7 +1,7 @@
 // Instruments and on-screen controls, drawn in screen space (CSS pixels).
 
 import { clamp, DEG, formatTime, compassPoint } from '../core/math.js';
-import { beaufort, toKnots, toMeters } from '../physics/sailing.js';
+import { beaufort, toKnots, toMeters, formatDistance } from '../physics/sailing.js';
 import { HEEL_WARNING, CAPSIZE_ANGLE, boatSpeed } from '../physics/boat.js';
 import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.js';
 import { windFromBearing } from '../world/wind.js';
@@ -49,7 +49,8 @@ function fitText(ctx, str, size, maxW, weight, family, minSize = 9) {
 
 export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = null) {
   const L = layout;
-  drawTopLeft(ctx, game, L);
+  if (game.sea) drawSeaClock(ctx, game, L, time);
+  else drawTopLeft(ctx, game, L);
   if (ghost) drawGhostInfo(ctx, game, cam, L, ghost);
   drawEscort(ctx, game, L, time, ghost && ghost.gap !== null && game.time >= 2);
   drawMinimap(ctx, hud, game, cam, L, time);
@@ -62,11 +63,7 @@ export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = nul
 }
 
 function drawTopLeft(ctx, game, L) {
-  const p = L.pause;
-  panel(ctx, p.x, p.y, p.w, p.h, 10);
-  ctx.fillStyle = C.text;
-  ctx.fillRect(p.x + 15, p.y + 13, 5, 18);
-  ctx.fillRect(p.x + 25, p.y + 13, 5, 18);
+  drawPause(ctx, L);
 
   const x = L.timer.x;
   const y = L.timer.y;
@@ -88,6 +85,38 @@ function drawTopLeft(ctx, game, L) {
   ctx.arc(x + w - 46, y + 30, 5, 0, Math.PI * 2);
   ctx.fill();
   text(ctx, `${game.pearls}/${game.pearlsTotal}`, x + w - 10, y + 31, 16, C.text, 'right', 700);
+}
+
+function drawPause(ctx, L) {
+  const p = L.pause;
+  panel(ctx, p.x, p.y, p.w, p.h, 10);
+  ctx.fillStyle = C.text;
+  ctx.fillRect(p.x + 15, p.y + 13, 5, 18);
+  ctx.fillRect(p.x + 25, p.y + 13, 5, 18);
+}
+
+// On the open sea the timer counts down: time left, how far east, and
+// the gates sailed through.
+function drawSeaClock(ctx, game, L, time) {
+  drawPause(ctx, L);
+  const sea = game.sea;
+  const x = L.timer.x;
+  const y = L.timer.y;
+  const w = L.compact ? 150 : 176;
+  const low = sea.clock < 10 && game.status !== 'finished';
+  panel(ctx, x, y, w, 44, 10);
+  if (low) {
+    ctx.strokeStyle = rgba(C.danger, 0.55 + 0.45 * Math.sin(time * 9));
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, 44, 10);
+    else ctx.rect(x, y, w, 44);
+    ctx.stroke();
+  }
+  text(ctx, 'OPEN SEA', x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
+  text(ctx, `⚑ ${sea.gates}`, x + w - 10, y + 13, 11, C.warn, 'right', 700, FONT.body);
+  text(ctx, formatTime(sea.clock), x + 12, y + 30, 21, low ? C.danger : C.text, 'left', 700);
+  text(ctx, formatDistance(sea.best), x + w - 10, y + 31, 15, C.text, 'right', 700);
 }
 
 // Label over the ghost boat and a chip under the timer: ahead or behind.
@@ -136,23 +165,35 @@ function drawEscort(ctx, game, L, time, belowGhost) {
   }
 }
 
-function minimapScale(game, L) {
-  const { level } = game;
-  const k = Math.min(L.minimap.w / level.width, (L.minimap.w * 0.75) / level.height);
-  return { k, w: level.width * k, h: level.height * k };
+// The open sea is too long for one map: it shows the stretch around the
+// boat, redrawn as the boat moves on.
+const SEA_MAP_W = 2400;
+const SEA_MAP_STEP = 400;
+
+function mapWindow(game) {
+  if (!game.sea) return { x0: 0, width: game.level.width };
+  const x0 = Math.max(0, Math.floor((game.boat.x - SEA_MAP_W * 0.3) / SEA_MAP_STEP) * SEA_MAP_STEP);
+  return { x0, width: SEA_MAP_W };
 }
 
-function buildMinimap(game, L) {
+function minimapScale(game, L, width) {
   const { level } = game;
-  const { k, w, h } = minimapScale(game, L);
+  const k = Math.min(L.minimap.w / width, (L.minimap.w * 0.75) / level.height);
+  return { k, w: width * k, h: level.height * k };
+}
+
+function buildMinimap(game, L, view) {
+  const { level } = game;
+  const { k, w, h } = minimapScale(game, L, view.width);
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const c = document.createElement('canvas');
   c.width = Math.ceil(w * dpr);
   c.height = Math.ceil(h * dpr);
   const m = c.getContext('2d');
   m.scale(dpr * k, dpr * k);
+  m.translate(-view.x0, 0);
   m.fillStyle = 'rgba(15, 76, 92, 0.9)';
-  m.fillRect(0, 0, level.width, level.height);
+  m.fillRect(view.x0, 0, view.width, level.height);
   for (const cz of level.calms) {
     m.fillStyle = 'rgba(170, 222, 226, 0.25)';
     m.beginPath();
@@ -215,21 +256,30 @@ function buildMinimap(game, L) {
     m.arc(r.x, r.y, Math.max(r.r, 1.2 / k), 0, Math.PI * 2);
     m.fill();
   }
-  return { canvas: c, w, h, k };
+  return { canvas: c, w, h, k, x0: view.x0 };
 }
 
 function drawMinimap(ctx, hud, game, cam, L, time) {
-  const key = `${game.level.id}:${Math.round(L.minimap.w)}:${C.danger}`;
+  const view = mapWindow(game);
+  const key = `${game.level.id}:${view.x0}:${Math.round(L.minimap.w)}:${C.danger}`;
   if (!hud.minimap || hud.minimapKey !== key) {
-    hud.minimap = buildMinimap(game, L);
+    hud.minimap = buildMinimap(game, L, view);
     hud.minimapKey = key;
   }
   const mm = hud.minimap;
-  const x = L.minimap.x + (L.minimap.w - mm.w);
   const y = L.minimap.y;
-  L.minimap.drawn = { x, y, w: mm.w, h: mm.h };
-  panel(ctx, x - 5, y - 5, mm.w + 10, mm.h + 10, 8);
-  ctx.drawImage(mm.canvas, x, y, mm.w, mm.h);
+  // Everything below is placed in world units from the map's west edge.
+  const x = L.minimap.x + (L.minimap.w - mm.w) - mm.x0 * mm.k;
+  const left = x + mm.x0 * mm.k;
+  L.minimap.drawn = { x: left, y, w: mm.w, h: mm.h };
+  panel(ctx, left - 5, y - 5, mm.w + 10, mm.h + 10, 8);
+  ctx.drawImage(mm.canvas, left, y, mm.w, mm.h);
+  ctx.save();
+  if (game.sea) {
+    ctx.beginPath();
+    ctx.rect(left, y, mm.w, mm.h);
+    ctx.clip();
+  }
   const k = mm.k;
   const { level, boat } = game;
   // View rectangle.
@@ -247,7 +297,8 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
     ctx.fill();
   }
   for (const c of level.checkpoints) {
-    ctx.fillStyle = c.reached ? C.ok : C.warn;
+    if (game.sea && (c.x < mm.x0 || c.x > mm.x0 + SEA_MAP_W)) continue;
+    ctx.fillStyle = c.reached ? C.ok : c.missed ? rgba(C.textDim, 0.5) : C.warn;
     ctx.beginPath();
     ctx.arc(x + c.x * k, y + c.y * k, 2.5, 0, Math.PI * 2);
     ctx.fill();
@@ -261,11 +312,13 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
     ctx.fill();
   }
   const f = level.finish;
-  ctx.fillStyle = C.signal;
-  ctx.beginPath();
-  ctx.arc(x + f.x * k, y + f.y * k, 3.5 + Math.sin(time * 4), 0, Math.PI * 2);
-  ctx.fill();
-  text(ctx, 'B', x + f.x * k, y + f.y * k - 9, 10, C.signal, 'center', 800);
+  if (!game.sea) {
+    ctx.fillStyle = C.signal;
+    ctx.beginPath();
+    ctx.arc(x + f.x * k, y + f.y * k, 3.5 + Math.sin(time * 4), 0, Math.PI * 2);
+    ctx.fill();
+    text(ctx, 'B', x + f.x * k, y + f.y * k - 9, 10, C.signal, 'center', 800);
+  }
   // Boat arrow.
   ctx.save();
   ctx.translate(x + boat.x * k, y + boat.y * k);
@@ -279,8 +332,9 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
+  ctx.restore();
   // North-up wind arrow in the corner.
-  const ax = x + 12;
+  const ax = left + 12;
   const ay = y + 12;
   ctx.save();
   ctx.translate(ax, ay);
@@ -295,7 +349,7 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
   ctx.lineTo(2, 3.5);
   ctx.stroke();
   ctx.restore();
-  text(ctx, 'N', x + mm.w - 8, y + 9, 9, C.textDim, 'center', 700);
+  text(ctx, 'N', left + mm.w - 8, y + 9, 9, C.textDim, 'center', 700);
 }
 
 function drawHull(ctx, game, L) {
@@ -321,9 +375,10 @@ function drawPointers(ctx, game, cam, L, time) {
   const ship = chasingShip(game);
   if (ship) targets.push({ x: ship.x, y: ship.y, color: C.danger, label: 'PIRATE', dist: Math.hypot(ship.x - game.boat.x, ship.y - game.boat.y) });
   const f = game.level.finish;
-  targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
+  if (!game.sea) targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
   const next = game.level.checkpoints[game.nextCheckpoint];
-  if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: '', dist: 0 });
+  // Out on the open sea the next gate is the mark to steer for.
+  if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: game.sea ? 'GATE' : '', dist: distanceToFinish(game) });
   // Pointers ride the edge of the open water between the HUD bands.
   const m = 30;
   const x0 = L.insets.l + m;
@@ -454,7 +509,7 @@ function drawInstruments(ctx, game, L, controls, time) {
   const numW = ctx.measureText(kn.toFixed(1)).width;
   text(ctx, 'kn', sx + numW + 4, P.y + 46, 13, C.textDim, 'left', 600, FONT.body);
   const vmgColor = vmg > 0.5 ? C.ok : vmg < -0.5 ? C.danger : C.warn;
-  text(ctx, `to B ${vmg >= 0 ? '▲' : '▼'} ${Math.abs(vmg).toFixed(1)}`, sx, P.y + P.h - 16, 13, vmgColor, 'left', 700);
+  text(ctx, `${game.sea ? 'to gate' : 'to B'} ${vmg >= 0 ? '▲' : '▼'} ${Math.abs(vmg).toFixed(1)}`, sx, P.y + P.h - 16, 13, vmgColor, 'left', 700);
 
   // Sail trim and heel.
   const gx = P.x + P.w * 0.74;
@@ -622,7 +677,7 @@ function drawStatus(ctx, game, L, time) {
     msg = 'CAPSIZED! Righting the boat…';
     color = C.danger;
   } else if (game.status === 'sinking') {
-    msg = 'HULL BREACHED! Back to the last buoy…';
+    msg = game.sea ? 'HULL BREACHED! The run is over…' : 'HULL BREACHED! Back to the last buoy…';
     color = C.danger;
   } else if (Math.abs(game.boat.heel) > HEEL_WARNING && game.status === 'sailing') {
     msg = 'HEELING HARD: ease the sail or bear away!';

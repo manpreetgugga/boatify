@@ -367,11 +367,9 @@ export function drawBoat(ctx, boat, time, state = {}) {
     return;
   }
 
-  // Mast at a third of the length; its top leans to leeward with the heel.
+  // Mast at a third of the length.
   const mx = L * 0.12;
   const mastH = L * 1.15;
-  const topX = mx;
-  const topY = sinHeel * mastH;
   const boomLen = L * 0.62;
   const boom = boat.boom;
   const bx = mx - Math.cos(boom) * boomLen;
@@ -388,6 +386,12 @@ export function drawBoat(ctx, boat, time, state = {}) {
     nX = -nX;
     nY = -nY;
   }
+  // Seen straight down a sail is a sliver, so the masthead is drawn leaning
+  // well out to leeward of the boom, further as she heels and fills: the cloth
+  // always shows as a full triangle that swings with the trim.
+  const lean = mastH * (0.3 + 0.55 * Math.abs(sinHeel)) * (boat.luffing ? 0.55 : 0.75 + 0.25 * drive);
+  const topX = mx + nX * lean;
+  const topY = nY * lean;
   const belly = 1.2 + drive * 2.8;
   const midFootX = (mx + bx) / 2 + nX * (belly + flutter);
   const midFootY = by / 2 + nY * (belly + flutter);
@@ -399,8 +403,30 @@ export function drawBoat(ctx, boat, time, state = {}) {
   cloth.quadraticCurveTo(midFootX, midFootY, bx, by);
   cloth.quadraticCurveTo(midLeechX, midLeechY, topX, topY);
   cloth.closePath();
+  // Its shadow falls on the water down and to the right, away from the hull,
+  // which is what makes it read as standing up.
+  ctx.save();
+  const sx = 4 + Math.abs(sinHeel) * 4;
+  const sy = 7 + Math.abs(sinHeel) * 4;
+  ctx.translate(sx * Math.cos(boat.heading) + sy * Math.sin(boat.heading), sy * Math.cos(boat.heading) - sx * Math.sin(boat.heading));
+  ctx.fillStyle = 'rgba(0, 10, 18, 0.22)';
+  ctx.fill(cloth);
+  ctx.restore();
   ctx.fillStyle = boat.luffing ? look.sailShade : look.sail;
   ctx.fill(cloth);
+  if (!look.marks) {
+    // A soft shade in the belly along the foot gives the cloth some depth.
+    ctx.save();
+    ctx.clip(cloth);
+    ctx.strokeStyle = look.sailShade;
+    ctx.globalAlpha *= 0.7;
+    ctx.lineWidth = 2 + drive * 2;
+    ctx.beginPath();
+    ctx.moveTo(mx, 0);
+    ctx.quadraticCurveTo(midFootX, midFootY, bx, by);
+    ctx.stroke();
+    ctx.restore();
+  }
   if (look.marks) {
     // Sail coordinates to boat coordinates, following the belly of the cloth:
     // the foot and leech curves above, blended across the sail.
@@ -417,18 +443,18 @@ export function drawBoat(ctx, boat, time, state = {}) {
     drawMarks(ctx, look.marks, map, boat.luffing ? look.sailShade : look.sail);
     ctx.restore();
   }
-  ctx.strokeStyle = 'rgba(80, 70, 55, 0.55)';
-  ctx.lineWidth = 0.6;
+  ctx.strokeStyle = 'rgba(60, 50, 38, 0.7)';
+  ctx.lineWidth = 0.9;
   ctx.stroke(cloth);
   // Sail seams, or the stiff bamboo battens of a junk rig.
   const seams = type.battens ? 5 : 3;
-  ctx.strokeStyle = type.battens ? 'rgba(60, 25, 12, 0.7)' : 'rgba(120, 110, 95, 0.25)';
+  ctx.strokeStyle = type.battens ? 'rgba(60, 25, 12, 0.7)' : 'rgba(120, 110, 95, 0.3)';
   ctx.lineWidth = type.battens ? 0.8 : 0.6;
   for (let i = 1; i < seams; i++) {
     const t = i / seams;
     ctx.beginPath();
-    ctx.moveTo(mx, topY * t);
-    ctx.lineTo(mx + (bx - mx) * (1 - t), by * (1 - t) + topY * t);
+    ctx.moveTo(mx + (topX - mx) * t, topY * t);
+    ctx.lineTo(mx + (bx - mx) * (1 - t) + (topX - mx) * t, by * (1 - t) + topY * t);
     ctx.stroke();
   }
 

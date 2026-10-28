@@ -7,6 +7,7 @@ import { totalStars, unlockedBoats } from '../platform/save.js';
 import { dateKey } from './daily.js';
 
 const LONG_HAUL_KM = 25;
+const FAR_HORIZON_KM = 1.5;
 const STREAK_DAYS = 7;
 const BEST_BY = 5; // seconds off a best time for Personal Best
 
@@ -175,6 +176,14 @@ export const MEDALS = [
     text: `Sail ${LONG_HAUL_KM} km in all.`,
     unit: 'km',
     progress: (save) => [Math.min(LONG_HAUL_KM, Math.floor(toMeters(save.stats.distance) / 100) / 10), LONG_HAUL_KM],
+  },
+  {
+    id: 'far-horizon',
+    name: 'Far Horizon',
+    icon: 'horizon',
+    text: `Sail ${FAR_HORIZON_KM} km east in one Open Sea run.`,
+    unit: 'km',
+    progress: (save) => [Math.min(FAR_HORIZON_KM, Math.floor(toMeters(save.openSea ? save.openSea.best : 0) / 100) / 10), FAR_HORIZON_KM],
   },
 ];
 

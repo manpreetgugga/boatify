@@ -4,6 +4,8 @@
 import { LEVELS } from './data/levels.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
+import { openSeaDef } from './world/opensea.js';
+import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
 import { createRecorder, recordGhost, finishGhost, isValidGhost, ghostAt, ghostGap } from './world/ghost.js';
@@ -16,7 +18,7 @@ import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
-import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
+import { loadSave, writeSave, recordResult, recordSeaRun, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
 const root = document.getElementById('boatify');
@@ -31,7 +33,7 @@ const audio = createAudio();
 
 let mode = 'title'; // title | countdown | playing | paused | finishing | results
 let game = null;
-let levelIndex = 0; // campaign index, or 'daily'
+let levelIndex = 0; // campaign index, 'daily' or 'sea'
 let autopilot = null;
 let botDriving = false;
 let recorder = null;
@@ -213,14 +215,16 @@ function showTitle(withMenu = true) {
 }
 
 function startLevel(ref) {
-  const def = ref === 'daily' ? dailyDef() : LEVELS[ref];
+  // Every Open Sea run is a fresh stretch of sea.
+  const def = ref === 'sea' ? openSeaDef((Date.now() % 1e9) + 1) : ref === 'daily' ? dailyDef() : LEVELS[ref];
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
   levelIndex = ref;
   game = createGame(def, { boat: selectedBoat(save) });
   autopilot = botDriving ? createAutopilot(game) : null;
-  recorder = createRecorder(game);
-  const g = loadGhost(def.id);
+  // No ghost to race on the open sea: no two runs share a course.
+  recorder = def.endless ? null : createRecorder(game);
+  const g = def.endless ? null : loadGhost(def.id);
   ghost = isValidGhost(g, def) ? g : null;
   resetView(renderer, game);
   ui.hide();
@@ -256,6 +260,13 @@ function finishVoyage(result) {
   mode = 'finishing';
   finishTimer = 1.8;
   input.setEnabled(false);
+  if (game.sea) {
+    const improved = recordSeaRun(save, result);
+    improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
+    if (improved.medals.length) writeSave(save);
+    pending = { improved, result };
+    return;
+  }
   const hadGhost = !!ghost;
   const daily = game.def.daily;
   if (daily) markDaily(save, daily);
@@ -300,7 +311,7 @@ function handleEvents(events, live) {
         if (!live) break;
         audio.sfx.pickup(e.kind);
         buzz(18);
-        if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, `◆ ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
+        if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, game.sea ? `◆ +${e.bonus} s` : `◆ ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
         else if (e.kind === 'gust') floatText(fx, e.x, e.y - 10, 'GUST JAR', '#bff3ff');
         else if (e.kind === 'repair') floatText(fx, e.x, e.y - 10, 'HULL +35', C.ok);
         else if (e.kind === 'bottle') {
@@ -311,13 +322,27 @@ function handleEvents(events, live) {
       }
       case 'checkpoint': {
         const c = game.level.checkpoints[e.index];
-        ring(fx, c.x, c.y, C.warn, 50, 1);
+        ring(fx, c.x, c.y, game.sea ? C.ok : C.warn, 50, 1);
         if (!live) break;
         audio.sfx.checkpoint();
         buzz(25);
-        ui.toast('Buoy reached. If you sink, you restart here.', 'good', 2600);
+        if (game.sea) floatText(fx, c.x, c.y - 18, `+${e.bonus} s`, C.ok);
+        else ui.toast('Buoy reached. If you sink, you restart here.', 'good', 2600);
         break;
       }
+      case 'gate':
+        if (!live) break;
+        floatText(fx, game.boat.x, game.boat.y - 14, 'GATE MISSED', C.danger);
+        buzz(30);
+        break;
+      case 'windshift':
+        if (live) ui.toast(`Wind shift! It blows from the ${compassPoint(e.from)} now.`, '', 2600);
+        break;
+      case 'clock':
+        if (!live) break;
+        audio.sfx.count(false);
+        if (e.left <= 3) buzz(15);
+        break;
       case 'collide': {
         const sand = e.material === 'sand';
         burst(fx, e.x, e.y, {
@@ -459,10 +484,15 @@ function handleEvents(events, live) {
         break;
       }
       case 'finish':
-        burst(fx, game.boat.x, game.boat.y, { count: 40, speed: 50, color: C.warn, size: 2.6 });
-        ring(fx, game.level.finish.x, game.level.finish.y, C.signal, game.level.finish.r + 30, 1.2);
+        if (game.sea) {
+          // The run is over: out of time, or sunk.
+          if (live && e.reason === 'time') audio.sfx.count(true);
+        } else {
+          burst(fx, game.boat.x, game.boat.y, { count: 40, speed: 50, color: C.warn, size: 2.6 });
+          ring(fx, game.level.finish.x, game.level.finish.y, C.signal, game.level.finish.r + 30, 1.2);
+          if (live) audio.sfx.finish(e.stars);
+        }
         if (!live) break;
-        audio.sfx.finish(e.stars);
         buzz(60);
         finishVoyage(e);
         break;
@@ -512,7 +542,8 @@ function frame(now) {
     finishTimer -= dt;
     if (finishTimer <= 0) {
       mode = 'results';
-      ui.results(levelIndex, pending.result, pending.improved, save);
+      if (game.sea) ui.seaResults(pending.result, pending.improved, save);
+      else ui.results(levelIndex, pending.result, pending.improved, save);
     }
   }
 
@@ -606,6 +637,10 @@ window.__boatify = {
   setTimeScale(n) {
     timeScale = Math.max(1, Math.round(n));
   },
+  // Wind the Open Sea clock down to see a run end.
+  setSeaClock(s) {
+    if (game && game.sea) game.sea.clock = s;
+  },
   state() {
     return {
       mode,
@@ -619,6 +654,7 @@ window.__boatify = {
       speed: game && speedOf(game),
       hull: game && game.hull,
       pearls: game && game.pearls,
+      sea: game && game.sea && { clock: game.sea.clock, gates: game.sea.gates, missed: game.sea.missed, best: game.sea.best },
       result: game && game.result,
       frames,
     };

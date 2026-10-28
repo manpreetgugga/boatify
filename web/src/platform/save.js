@@ -34,6 +34,7 @@ function blank() {
   return {
     levels: {},
     daily: {},
+    openSea: { best: 0, gates: 0, runs: 0 }, // best distance east, most gates in a run
     streak: { count: 0, best: 0, last: null },
     settings: { ...DEFAULT_SETTINGS },
     notes: [],
@@ -65,6 +66,7 @@ export function loadSave() {
     settings: { ...base.settings, ...(data.settings || {}) },
     stats: { ...base.stats, ...(data.stats || {}) },
     streak: { ...base.streak, ...(isObj(data.streak) ? data.streak : {}) },
+    openSea: { ...base.openSea, ...(isObj(data.openSea) ? data.openSea : {}) },
     levels: isObj(data.levels) ? data.levels : {},
     daily: isObj(data.daily) ? data.daily : {},
     notes: Array.isArray(data.notes) ? data.notes : [],
@@ -112,6 +114,27 @@ export function recordResult(save, levelId, result, notes = [], bucket = 'levels
   if (result.boat && !save.sailed.includes(result.boat)) save.sailed.push(result.boat);
   save.stats.voyages += 1;
   save.stats.distance += result.distance || 0;
+  save.stats.capsizes += result.capsizes || 0;
+  writeSave(save);
+  return improved;
+}
+
+// Merge an Open Sea run into the save. Returns what improved.
+export function recordSeaRun(save, result) {
+  const prev = save.openSea;
+  const improved = {
+    best: result.distance > prev.best,
+    prevDistance: prev.runs ? prev.best : null,
+    gates: result.gates > prev.gates,
+    first: !prev.runs,
+  };
+  save.openSea = {
+    best: Math.max(prev.best, result.distance),
+    gates: Math.max(prev.gates, result.gates),
+    runs: prev.runs + 1,
+  };
+  save.stats.voyages += 1;
+  save.stats.distance += result.sailed || 0;
   save.stats.capsizes += result.capsizes || 0;
   writeSave(save);
   return improved;

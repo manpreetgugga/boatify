@@ -89,7 +89,15 @@ export function drawWater(ctx, ocean, game, cam, time) {
   ctx.strokeStyle = 'rgba(232, 244, 242, 0.18)';
   ctx.lineWidth = 2 / cam.scale;
   ctx.setLineDash([10 / cam.scale, 8 / cam.scale]);
-  ctx.strokeRect(0, 0, level.width, level.height);
+  if (level.endless) {
+    // Only the stretch in view: the open sea's chart is far too long to dash.
+    ctx.beginPath();
+    for (const y of [0, level.height]) {
+      ctx.moveTo(Math.max(0, v.minX), y);
+      ctx.lineTo(v.maxX, y);
+    }
+    ctx.stroke();
+  } else ctx.strokeRect(0, 0, level.width, level.height);
   ctx.setLineDash([]);
 }
 

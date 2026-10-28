@@ -398,6 +398,22 @@ button:focus-visible {
   color: var(--brass);
 }
 
+.voyage.sea {
+  border-color: rgba(120, 206, 226, 0.6);
+  background: rgba(120, 206, 226, 0.09);
+}
+
+.voyage.sea .num {
+  font-size: 26px;
+  text-transform: uppercase;
+  color: #8fd8ea;
+}
+
+.voyage.sea .stars {
+  letter-spacing: 0;
+  color: #8fd8ea;
+}
+
 .voyage:disabled {
   opacity: 0.8;
 }
@@ -871,6 +887,28 @@ button:focus-visible {
   color: var(--brass);
   transform: scale(1);
   text-shadow: 0 0 18px rgba(217, 164, 65, 0.6);
+}
+
+/* The distance an Open Sea run got, in place of the stars. */
+.sea-distance {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 44px;
+  line-height: 1;
+  color: #8fd8ea;
+}
+
+.sea-distance small {
+  font-size: calc(15px * var(--text, 1));
+  font-style: normal;
+  font-weight: 600;
+  color: var(--foam-dim);
 }
 
 .stat-rows {

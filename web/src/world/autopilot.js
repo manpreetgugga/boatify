@@ -7,6 +7,7 @@ import { isClear } from './collision.js';
 import { inFloeLane, floeContact } from './floes.js';
 import { boatSpeed } from '../physics/boat.js';
 import { sampleWind } from './wind.js';
+import { courseGoal } from './level.js';
 
 const CELL = 16;
 const CLEARANCE = 13;
@@ -14,33 +15,43 @@ const TACK_ANGLE = 50 * DEG;
 const GYBE_ANGLE = 145 * DEG;
 const UPWIND_LIMIT = 47 * DEG;
 const DOWNWIND_LIMIT = 157 * DEG;
+// On the open sea the grid covers a window around the boat, moved on as it
+// sails.
+const WINDOW_BEHIND = 300;
+const WINDOW_AHEAD = 1700;
 
 // Boat speed as a fraction of wind speed by true wind angle (10 degree steps),
 // taken from the simulated polar of the default boat.
 export const POLAR = [0.05, 0.05, 0.05, 0.16, 0.4, 0.62, 0.81, 0.97, 1.05, 1.08, 1.11, 1.1, 1.02, 0.94, 0.84, 0.73, 0.64, 0.58, 0.56];
+// Best speed made good straight up and down wind, and the angles that give
+// it. A course closer to the wind than those is sailed in tacks or gybes.
 const VMG_UP = 0.405;
 const VMG_DOWN = 0.645;
+const BEST_UP = 52;
+const BEST_DOWN = 140;
 
 export function effectiveSpeed(twa) {
   const deg = clamp(twa / DEG, 0, 180);
   const i = Math.min(17, Math.floor(deg / 10));
   const f = deg / 10 - i;
   let v = POLAR[i] + (POLAR[i + 1] - POLAR[i]) * f;
-  const c = Math.cos(twa);
-  if (c > 0.05) v = Math.max(v, VMG_UP / c);
-  if (c < -0.05) v = Math.max(v, VMG_DOWN / -c);
+  if (deg < BEST_UP) v = Math.max(v, VMG_UP / Math.cos(twa));
+  if (deg > BEST_DOWN) v = Math.max(v, VMG_DOWN / -Math.cos(twa));
   return v;
 }
 
-export function createNavGrid(level, wind = null, clearance = CLEARANCE) {
+// `span` limits the grid to the strip of sea between x0 and x1.
+export function createNavGrid(level, wind = null, clearance = CLEARANCE, span = null) {
   const sample = {};
-  const cols = Math.ceil(level.width / CELL);
+  const x0 = span ? Math.max(0, Math.floor(span.x0 / CELL) * CELL) : 0;
+  const x1 = span ? Math.min(level.width, span.x1) : level.width;
+  const cols = Math.ceil((x1 - x0) / CELL);
   const rows = Math.ceil(level.height / CELL);
   const blocked = new Uint8Array(cols * rows);
   const hazard = new Float32Array(cols * rows);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const x = (c + 0.5) * CELL;
+      const x = x0 + (c + 0.5) * CELL;
       const y = (r + 0.5) * CELL;
       const i = r * cols + c;
       if (!isClear(level, x, y, clearance)) blocked[i] = 1;
@@ -65,11 +76,11 @@ export function createNavGrid(level, wind = null, clearance = CLEARANCE) {
       hazard[i] = h;
     }
   }
-  return { cols, rows, blocked, hazard, level };
+  return { cols, rows, blocked, hazard, level, x0 };
 }
 
 function cellOf(grid, x, y) {
-  const c = clamp(Math.floor(x / CELL), 0, grid.cols - 1);
+  const c = clamp(Math.floor((x - grid.x0) / CELL), 0, grid.cols - 1);
   const r = clamp(Math.floor(y / CELL), 0, grid.rows - 1);
   return r * grid.cols + c;
 }
@@ -171,7 +182,7 @@ export function findPath(grid, sx, sy, tx, ty, windFrom, speedFn = effectiveSpee
   if (came[goal] === -1 && goal !== start) return null;
   const path = [];
   for (let i = goal; i !== -1; i = came[i]) {
-    path.push([((i % grid.cols) + 0.5) * CELL, (Math.floor(i / grid.cols) + 0.5) * CELL]);
+    path.push([grid.x0 + ((i % grid.cols) + 0.5) * CELL, (Math.floor(i / grid.cols) + 0.5) * CELL]);
     if (i === start) break;
   }
   path.reverse();
@@ -189,9 +200,14 @@ export function lineClear(grid, ax, ay, bx, by) {
   return true;
 }
 
+function seaWindow(game) {
+  const x = game.boat.x;
+  return createNavGrid(game.level, game.wind, CLEARANCE, { x0: x - WINDOW_BEHIND, x1: x + WINDOW_AHEAD });
+}
+
 export function createAutopilot(game) {
   return {
-    grid: createNavGrid(game.level, game.wind),
+    grid: game.level.endless ? seaWindow(game) : createNavGrid(game.level, game.wind),
     path: null,
     replan: 0,
     tack: 1,
@@ -210,13 +226,19 @@ export function autopilotInput(ap, game, dt) {
   ap.speed = boatSpeed(boat);
   ap.replan -= dt;
   ap.tackHold -= dt;
+  // The open sea is charted as the boat goes: move the grid along with it.
+  if (level.endless && (boat.x > ap.grid.x0 + WINDOW_AHEAD / 2 || boat.x < ap.grid.x0 + WINDOW_BEHIND / 2)) {
+    ap.grid = seaWindow(game);
+    ap.path = null;
+  }
+  const goal = courseGoal(game);
   if (!ap.path || ap.replan <= 0) {
-    ap.path = findPath(ap.grid, boat.x, boat.y, level.finish.x, level.finish.y, windFrom);
+    ap.path = findPath(ap.grid, boat.x, boat.y, goal.x, goal.y, windFrom);
     ap.replan = 1.5;
   }
   // Furthest visible path point within reach.
-  let tx = level.finish.x;
-  let ty = level.finish.y;
+  let tx = goal.x;
+  let ty = goal.y;
   if (ap.path) {
     let best = null;
     for (let i = 0; i < ap.path.length; i++) {

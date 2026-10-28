@@ -104,6 +104,18 @@ export const SAILS = [
       { star: [0.26, 0.46, 0.14], color: '#e2b44d' },
     ],
   },
+  {
+    id: 'compass',
+    name: 'Compass Rose',
+    medal: 'far-horizon',
+    cloth: '#f2ead6',
+    shade: '#d8cfb8',
+    marks: [
+      { band: [-0.1, 0.06], color: '#2a5d8f' },
+      { star: [0.27, 0.4, 0.17], color: '#2a5d8f' },
+      { disc: [0.27, 0.4, 0.04], color: '#c8423a' },
+    ],
+  },
 ];
 
 export const HULLS = [

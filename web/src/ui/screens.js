@@ -3,8 +3,9 @@
 // logbook of bottle notes. Plus toasts.
 
 import { formatTime, compassPoint, DEG } from '../core/math.js';
-import { beaufort, toKnots } from '../physics/sailing.js';
+import { beaufort, toKnots, formatDistance } from '../physics/sailing.js';
 import { POLAR } from '../world/autopilot.js';
+import { SEA_BLURB, PEARL_TIME } from '../world/opensea.js';
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
@@ -467,6 +468,7 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="title-buttons">
             ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
+            ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">Open Sea</button>` : ''}
             <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
             <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
             <button class="btn small" data-act="logbook">Logbook</button>
@@ -478,6 +480,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=play]', () => (save.seenIntro ? ui.briefing(resume, save) : ui.howto(save, true, resume)));
       click(node, '[data-act=voyages]', () => ui.voyages(save, true));
       click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
+      click(node, '[data-act=sea]', () => ui.seaBriefing(save));
       click(node, '[data-act=howto]', () => ui.howto(save));
       click(node, '[data-act=shipyard]', () => ui.shipyard(save));
       click(node, '[data-act=medals]', () => ui.medals(save));
@@ -518,10 +521,17 @@ export function createUI(root, levels, handlers) {
             <span class="stars">${stars(dailyRec ? dailyRec.stars : 0)}</span>
             <span class="best">${dailyLine}</span>
           </button>`;
+      const sea = save.openSea;
+      const seaCard = `<button class="voyage sea ${dailyOpen ? '' : 'locked'}" data-act="sea" ${dailyOpen ? '' : 'aria-disabled="true"'}>
+            <span class="num">Endless</span>
+            <span class="name">Open Sea</span>
+            <span class="stars">${sea.runs ? `⚑ ${sea.gates}` : ''}</span>
+            <span class="best">${!dailyOpen ? `Finish voyage ${DAILY_UNLOCK} to unlock` : sea.runs ? `Furthest ${formatDistance(sea.best)}` : 'How far east can you sail?'}</span>
+          </button>`;
       const node = el(`<section class="screen dim" aria-label="Voyages">
         <div class="sheet">
           <div class="sheet-head"><h2>Voyages</h2><span class="eyebrow">★ ${totalStars(save)} / ${levels.length * 3}</span><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><div class="voyage-grid">${dailyCard}${cards}</div></div>
+          <div class="sheet-body"><div class="voyage-grid">${dailyCard}${seaCard}${cards}</div></div>
         </div></section>`);
       click(node, '.voyage[data-i]', (e, b) => {
         const i = Number(b.dataset.i);
@@ -532,6 +542,10 @@ export function createUI(root, levels, handlers) {
         ui.briefing(i, save);
       });
       click(node, '.voyage.daily', (e, b) => openDaily(save, b, b.querySelector('.best')));
+      click(node, '.voyage.sea', () => {
+        if (!isDailyUnlocked(save, levels)) ui.toast(`Finish the first ${DAILY_UNLOCK} voyages to unlock the Open Sea.`);
+        else ui.seaBriefing(save, 'push');
+      });
       click(node, '[data-act=back]', () => ui.back());
       show('voyages', node, { push });
     },
@@ -539,6 +553,10 @@ export function createUI(root, levels, handlers) {
     // `how`: 'push' from a menu, 'replace' to take the current screen's
     // place, 'restore' when coming back to it.
     briefing(index, save, how = 'push') {
+      if (index === 'sea') {
+        ui.seaBriefing(save, how);
+        return;
+      }
       const def = defOf(index);
       const rec = recordOf(save, def);
       const streak = def.daily ? currentStreak(save, def.daily) : 0;
@@ -580,14 +598,57 @@ export function createUI(root, levels, handlers) {
       show('briefing', node, { push: how === 'push', keep: how === 'restore' });
     },
 
+    seaBriefing(save, how = 'push') {
+      const rec = save.openSea;
+      const medal = MEDALS.find((m) => m.id === 'far-horizon');
+      const [have, need] = medalProgress(medal, save, levels);
+      const node = el(`<section class="screen dim" aria-label="Open Sea briefing">
+        <div class="sheet">
+          <div class="sheet-head"><span class="eyebrow">Endless</span><h2>Open Sea</h2></div>
+          <div class="sheet-body"><div class="brief">
+            <p class="lead">${esc(SEA_BLURB)}</p>
+            <div>
+              <div class="eyebrow">How it works</div>
+              <dl class="facts">
+                <dt>Clock</dt><dd>Counts down from about a minute</dd>
+                <dt>Gates</dt><dd>Sail between the two buoys to add the next leg's time</dd>
+                <dt>Pearls</dt><dd>+${PEARL_TIME} s each</dd>
+                <dt>Hull</dt><dd>If she sinks, the run is over</dd>
+                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
+              </dl>
+            </div>
+            <div>
+              <div class="eyebrow">Records</div>
+              <dl class="facts">
+                <dt>Furthest</dt><dd>${rec.runs ? formatDistance(rec.best) : '—'}</dd>
+                <dt>Most gates</dt><dd>${rec.runs ? rec.gates : '—'}</dd>
+                <dt>Runs</dt><dd>${rec.runs}</dd>
+                <dt>Medal</dt><dd>${isEarned(save, medal.id) ? `${esc(medal.name)} <span style="color:var(--brass)">earned</span>` : `${esc(medal.name)}: ${have} / ${need} km`}</dd>
+              </dl>
+            </div>
+          </div></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn primary" data-act="go" data-autofocus>Set sail</button></div>
+        </div></section>`);
+      click(node, '[data-act=back]', () => ui.back());
+      click(node, '[data-act=go]', () => handlers.onPlay('sea'));
+      click(node, '[data-act=shipyard]', () => ui.shipyard(save));
+      lastBriefing = 'sea';
+      show('briefing', node, { push: how === 'push', keep: how === 'restore' });
+    },
+
     pause(game, save) {
+      const sea = game.sea;
+      const rows = sea
+        ? `<span class="k">Clock</span><span class="v">${formatTime(sea.clock)}</span>
+              <span class="k">Distance</span><span class="v">${formatDistance(sea.best)} · ⚑ ${sea.gates}</span>`
+        : `<span class="k">Time</span><span class="v">${formatTime(game.time)}</span>
+              <span class="k">Pearls</span><span class="v">${game.pearls} / ${game.pearlsTotal}</span>`;
       const node = el(`<section class="screen dim" aria-label="Paused">
         <div class="sheet narrow">
           <div class="sheet-head"><h2>Paused</h2><span class="eyebrow">${esc(game.level.name)}</span></div>
           <div class="sheet-body">
             <div class="stat-rows">
-              <span class="k">Time</span><span class="v">${formatTime(game.time)}</span>
-              <span class="k">Pearls</span><span class="v">${game.pearls} / ${game.pearlsTotal}</span>
+              ${rows}
               <span class="k">Hull</span><span class="v">${Math.ceil(game.hull)}%</span>
             </div>
             <div class="setting" style="margin-top:8px">
@@ -672,6 +733,41 @@ export function createUI(root, levels, handlers) {
           medalEls.forEach((m) => m.classList.add('on'));
           handlers.onMedal();
         }, 500 + result.stars * 320);
+      }
+    },
+
+    seaResults(result, improved, save) {
+      tipQueue = [];
+      const rec = save.openSea;
+      const node = el(`<section class="screen dim" aria-label="Run over">
+        <div class="sheet narrow results-sheet">
+          <div class="sheet-head"><span class="eyebrow">Open Sea</span><h2>${result.reason === 'sunk' ? 'The hull gave out' : 'Out of time'}</h2></div>
+          <div class="sheet-body">
+            <div class="sea-distance">${formatDistance(result.distance)} <small>east</small>${improved.best && !improved.first ? '<span class="badge">NEW BEST</span>' : ''}</div>
+            <div class="stat-rows">
+              <span class="k">Furthest</span><span class="v">${formatDistance(rec.best)}</span>
+              <span class="k">Gates</span><span class="v">${result.gates}${result.missed ? ` (${result.missed} missed)` : ''}${improved.gates && !improved.first ? '<span class="badge">MOST</span>' : ''}</span>
+              <span class="k">Pearls</span><span class="v">${result.pearls}</span>
+              <span class="k">Time at sea</span><span class="v">${formatTime(result.time)}</span>
+              <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
+            </div>
+            ${medalStrip(improved.medals)}
+          </div>
+          <div class="sheet-foot">
+            <button class="btn small" data-act="voyages">Voyages</button>
+            <button class="btn primary" data-act="retry" data-autofocus>Sail again</button>
+          </div>
+        </div></section>`);
+      click(node, '[data-act=retry]', () => handlers.onRestart());
+      click(node, '[data-act=voyages]', () => handlers.onQuit());
+      show('results', node);
+      const medalEls = node.querySelectorAll('.medal-chip');
+      if (medalEls.length) {
+        setTimeout(() => {
+          if (current !== 'results') return;
+          medalEls.forEach((m) => m.classList.add('on'));
+          handlers.onMedal();
+        }, 500);
       }
     },
 

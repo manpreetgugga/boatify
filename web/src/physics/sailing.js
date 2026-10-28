@@ -137,3 +137,9 @@ export const METERS_PER_UNIT = KNOTS_PER_UNIT * 0.5144;
 export function toMeters(units) {
   return units * METERS_PER_UNIT;
 }
+
+// "830 m", or "2.41 km" from a kilometer up.
+export function formatDistance(units) {
+  const m = toMeters(units);
+  return m < 1000 ? `${Math.floor(m)} m` : `${(Math.floor(m / 10) / 100).toFixed(2)} km`;
+}

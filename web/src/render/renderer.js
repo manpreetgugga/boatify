@@ -101,7 +101,8 @@ export function renderFrame(r, game, dt, time, ui) {
   if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, ui.ghost.type || game.boat.type, time);
   const boatState = {
     capsized: game.status === 'capsized',
-    sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : 0,
+    // A run on the open sea ends when she goes down: she stays down.
+    sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : game.result && game.result.reason === 'sunk' ? 1 : 0,
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
     look: ui && ui.look,
   };
