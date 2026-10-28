@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0] - 2026-10-28
+
+Sea life.
+
+- **Dolphins.** Pods roam several voyages. Sail past one at five knots or more and the dolphins swim up to ride your bow wave, giving the boat a steady push for about fourteen seconds. Slow down and they lose interest. A chip under the timer shows how much longer they'll stay.
+- **Whales.** On Whirlpool Strait, Wind Shadow and Drift Ice a humpback cruises, spouts, dives, then breaches. A ring of rising bubbles warns you a few seconds before it comes up. The splash sends out a swell that shoves and rocks any boat it rolls under, and a whale landing on top of you dents the hull.
+- **Flying fish** skim away from your bow when you're going fast, and a **gull** lands on the stern when you sit still for a while. Gulls also circle the harbour at B.
+- Two new medals: **Bow Rider** (ten seconds with dolphins in one voyage) and **Whale Watcher** (see a breach up close without being hit). That makes twenty.
+- A short tip the first time you meet dolphins or a whale, shown ahead of any queued tips.
+- New sounds for dolphin clicks and whistles, whale spouts and breaches, and passing swells, with a buzz on phones.
+
 ## [0.7.0] - 2026-10-28
 
 Play your way.

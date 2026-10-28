@@ -39,6 +39,7 @@ function blank() {
     medals: {}, // medal id -> day it was earned
     medalsSeen: 0, // how many medals the Medals screen last showed
     sailed: [], // boats that have finished a voyage
+    sightings: {}, // sea life the player has had the first-meeting tip for
     seenIntro: false,
   };
 }
@@ -67,6 +68,7 @@ export function loadSave() {
     medals: isObj(data.medals) ? data.medals : {},
     medalsSeen: Number(data.medalsSeen) || 0,
     sailed: Array.isArray(data.sailed) ? data.sailed : [],
+    sightings: isObj(data.sightings) ? data.sightings : {},
   };
 }
 

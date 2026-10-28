@@ -30,8 +30,9 @@ from that source. Android 8.0 or newer.
 - **Read the water.** Dark ruffled patches are gusts, pale glassy water is a lull or an island's wind shadow. Streaks show how the air flows.
 - **Daily voyage.** After the first three voyages, a new course is charted every day: the same one for everyone that day. Sail it on consecutive days to build a streak.
 - **Shipyard.** Earn stars to unlock the Reed Skiff, Twin Proa and Lantern Junk. Each boat trades speed, upwind ability, stability, agility and toughness differently.
-- **Medals.** Eighteen goals beyond the stars: thread a coral reef without a dent, dodge the kraken, cross the ice untouched, find every bottle, sail a week of daily voyages. The Medals screen shows how close you are to each one.
+- **Medals.** Twenty goals beyond the stars: thread a coral reef without a dent, dodge the kraken, ride with dolphins, cross the ice untouched, find every bottle, sail a week of daily voyages. The Medals screen shows how close you are to each one.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
+- **Sea life.** Dolphins ride your bow wave and push you along if you sail fast enough. Whales spout, dive and breach, sending out a swell that rocks your boat. Flying fish skim past and gulls land on the stern when you stop.
 - **Play your way.** Settings has colour-blind friendly colours (blue and orange instead of green and red), a reduce-motion mode (no screen shake or lightning flashes; it follows your phone's setting until you choose), three text sizes, left-handed controls and steering sensitivity.
 
 ### Voyages

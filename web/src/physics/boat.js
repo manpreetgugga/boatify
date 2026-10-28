@@ -100,6 +100,8 @@ export const CAPSIZE_ANGLE = 1.0; // radians (~57 degrees)
 export const HEEL_WARNING = 0.72; // radians (~41 degrees)
 export const BOOST_DURATION = 2.6;
 export const BOOST_THRUST = 7.5;
+// A dolphin pod riding the bow wave gives a gentle, steady push.
+export const ESCORT_THRUST = 2.2;
 const SIDE_DEADBAND = 0.05; // ~3 degrees either side of the centerline
 
 export function createBoat(x, y, heading, type = BOAT_TYPES.sloop) {
@@ -116,6 +118,7 @@ export function createBoat(x, y, heading, type = BOAT_TYPES.sloop) {
     trimTarget: 0.5,
     heel: 0,
     boostTime: 0,
+    escort: 0, // 0..1, how well a dolphin pod is riding the bow wave
     // Derived values the renderer, HUD and audio read every frame.
     beta: 0,
     side: 1,
@@ -185,6 +188,7 @@ export function stepBoat(boat, input, env, dt) {
 
   let accU = driveF - dragU;
   const accW = sideLocal - dragW;
+  if (boat.escort > 0) accU += ESCORT_THRUST * boat.escort;
   if (boat.boostTime > 0) {
     accU += BOOST_THRUST;
     boat.boostTime = Math.max(0, boat.boostTime - dt);

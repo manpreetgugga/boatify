@@ -12,6 +12,7 @@ export const LEVELS = [
     start: { x: 140, y: 380, heading: 100 },
     finish: { x: 1260, y: 470, r: 46, kind: 'harbor' },
     wind: { from: 330, speed: 16, gust: 0.15, shift: 5, period: 50 },
+    dolphins: [{ x: 470, y: 440, r: 70 }],
     par: { gold: 70, silver: 95 },
     islands: [
       { pts: blob(610, 215, 78, 11, 0.3), kind: 'sand' },
@@ -40,6 +41,7 @@ export const LEVELS = [
     start: { x: 120, y: 500, heading: 90 },
     finish: { x: 1690, y: 520, r: 48, kind: 'harbor' },
     wind: { from: 0, speed: 16, gust: 0.32, shift: 7, period: 40 },
+    dolphins: [{ x: 920, y: 570, r: 50, count: 5 }],
     par: { gold: 95, silver: 135 },
     islands: [
       { pts: blob(470, 330, 95, 31, 0.3), kind: 'sand' },
@@ -70,6 +72,7 @@ export const LEVELS = [
     start: { x: 690, y: 900, heading: 315 },
     finish: { x: 700, y: 120, r: 48, kind: 'lighthouse' },
     wind: { from: 0, speed: 18, gust: 0.22, shift: 11, period: 36 },
+    dolphins: [{ x: 650, y: 250, r: 70 }],
     par: { gold: 145, silver: 200 },
     islands: [
       { pts: ridge([[120, 980], [180, 700], [140, 420], [230, 120]], 210, 71), kind: 'sand' },
@@ -100,6 +103,7 @@ export const LEVELS = [
     start: { x: 110, y: 230, heading: 120 },
     finish: { x: 1580, y: 930, r: 46, kind: 'harbor' },
     wind: { from: 30, speed: 15, gust: 0.25, shift: 8, period: 42 },
+    dolphins: [{ x: 965, y: 770, r: 80 }],
     par: { gold: 135, silver: 190 },
     islands: [
       { pts: blob(560, 140, 80, 101, 0.35), kind: 'sand' },
@@ -137,6 +141,7 @@ export const LEVELS = [
     start: { x: 140, y: 1000, heading: 45 },
     finish: { x: 1660, y: 150, r: 46, kind: 'lighthouse' },
     wind: { from: 210, speed: 16, gust: 0.28, shift: 9, period: 38 },
+    whales: [{ x: 330, y: 830, rx: 110, ry: 60, offset: 3 }],
     par: { gold: 145, silver: 200 },
     islands: [
       { pts: ridge([[420, 120], [760, 300], [1000, 240], [1260, 60]], 230, 131), kind: 'rock' },
@@ -175,6 +180,7 @@ export const LEVELS = [
     start: { x: 120, y: 620, heading: 90 },
     finish: { x: 1880, y: 600, r: 48, kind: 'harbor' },
     wind: { from: 320, speed: 15, gust: 0.26, shift: 8, period: 44 },
+    whales: [{ x: 300, y: 430, rx: 100, ry: 50, offset: 9.6 }],
     par: { gold: 145, silver: 200 },
     islands: [
       { pts: blob(560, 620, 150, 151, 0.25, 36), kind: 'sand' },
@@ -249,6 +255,7 @@ export const LEVELS = [
     finish: { x: 1560, y: 1080, r: 50, kind: 'lighthouse' },
     wind: { from: 20, speed: 15, gust: 0.25, shift: 9, period: 40 },
     weather: { fog: 0.75, night: true },
+    dolphins: [{ x: 1470, y: 1010, r: 60, count: 3 }],
     par: { gold: 110, silver: 150 },
     islands: [
       { pts: blob(560, 520, 110, 191, 0.3), kind: 'rock' },
@@ -290,6 +297,7 @@ export const LEVELS = [
     finish: { x: 1960, y: 560, r: 50, kind: 'harbor' },
     wind: { from: 350, speed: 15, gust: 0.22, shift: 10, period: 45 },
     weather: { snow: 0.6, fog: 0.2 },
+    whales: [{ x: 330, y: 640, rx: 90, ry: 50, offset: 8 }],
     par: { gold: 135, silver: 195 },
     islands: [
       { pts: ridge([[-60, 140], [400, 170], [800, 150], [1200, 190], [1600, 160], [2160, 150]], 260, 241, 0.3), kind: 'ice', shadow: 0.3 },

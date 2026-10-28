@@ -858,7 +858,8 @@ export function createUI(root, levels, handlers) {
 
     // kind: '' | 'good' | 'warn' | 'note' | 'tip' (one at a time, queued) |
     // 'alert' (danger right now, never waits).
-    toast(text, kind = '', ms = 3200) {
+    // `soon` puts a tip at the head of the queue, for news that can't wait.
+    toast(text, kind = '', ms = 3200, soon = false) {
       const live = [...toasts.children].filter((t) => !t.classList.contains('out'));
       // The same message again just stays up longer.
       const same = live.find((t) => t.textContent === text);
@@ -869,8 +870,8 @@ export function createUI(root, levels, handlers) {
       if (kind === 'tip') {
         const shown = live.find((t) => t.classList.contains('tip'));
         if (shown) {
-          if (!tipQueue.some((q) => q.text === text)) tipQueue.push({ text, ms });
-          if (tipQueue.length > 3) tipQueue.shift();
+          if (!tipQueue.some((q) => q.text === text)) tipQueue[soon ? 'unshift' : 'push']({ text, ms });
+          if (tipQueue.length > 3) tipQueue.splice(soon ? 3 : 0, 1);
           // Hurry the current tip along so the next one isn't stale.
           if (shown._until - performance.now() > 2200) hold(shown, 2200);
           return;

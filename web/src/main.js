@@ -271,6 +271,14 @@ function buzz(ms) {
   if (save.settings.vibration) vibrate(ms);
 }
 
+// A one-time tip the first time the player meets a kind of sea life.
+function firstSight(kind, text) {
+  if (save.sightings[kind]) return;
+  save.sightings[kind] = true;
+  writeSave(save);
+  ui.toast(text, 'tip', 6000, true);
+}
+
 function handleEvents(events, live) {
   const fx = renderer.fx;
   const cam = renderer.cam;
@@ -366,6 +374,37 @@ function handleEvents(events, live) {
       case 'lightning':
         if (!live) break;
         setTimeout(() => audio.sfx.thunder(), 250 + Math.random() * 900);
+        break;
+      case 'dolphins':
+        if (!live) break;
+        if (e.phase === 'join') {
+          audio.sfx.dolphins();
+          buzz(20);
+          floatText(fx, game.boat.x, game.boat.y - 14, 'BOW RIDERS!', '#bfefff');
+          firstSight('dolphins', 'Dolphins! Keep your speed up and they ride your bow wave, pushing you along.');
+        } else if (e.reason === 'slow') {
+          floatText(fx, game.boat.x, game.boat.y - 14, 'Too slow for the dolphins', '#bfefff');
+        }
+        break;
+      case 'whale': {
+        if (e.phase === 'breach') {
+          burst(fx, e.x, e.y, { count: 46, speed: 70, color: C.foam, size: 3 });
+          ring(fx, e.x, e.y, C.foam, 70, 1.3);
+          if (e.near) cam.shake = Math.min(1, cam.shake + 0.4);
+        }
+        if (!live) break;
+        const d = Math.hypot(e.x - game.boat.x, e.y - game.boat.y);
+        audio.sfx.whale(e.phase, Math.min(1, Math.max(0.15, 1 - d / 600)));
+        if (e.phase === 'spout') firstSight('whale', 'A whale! When a ring of bubbles rises, it is about to breach. Give it room.');
+        else if (e.phase === 'rising' && d < 160) ui.toast('Bubbles rising! The whale is coming up. Steer clear!', 'alert', 2000);
+        else if (e.phase === 'breach' && d < 200) buzz(80);
+        break;
+      }
+      case 'swell':
+        cam.shake = Math.min(1, cam.shake + 0.25 * e.strength);
+        if (!live) break;
+        audio.sfx.swell(e.strength);
+        buzz(Math.round(30 + 50 * e.strength));
         break;
       case 'finish':
         burst(fx, game.boat.x, game.boat.y, { count: 40, speed: 50, color: C.warn, size: 2.6 });

@@ -222,6 +222,26 @@ export function createAudio() {
     note() {
       tone(midi(79), { type: 'sine', peak: 0.08, decay: 0.8 });
     },
+    dolphins() {
+      // A burst of clicks, then two rising whistles.
+      [0, 0.05, 0.09, 0.12].forEach((at) => tone(2600, { type: 'square', peak: 0.025, decay: 0.02, at }));
+      tone(1800, { type: 'sine', peak: 0.07, attack: 0.03, decay: 0.35, glide: 2.1, at: 0.18 });
+      tone(2600, { type: 'sine', peak: 0.05, attack: 0.02, decay: 0.25, glide: 0.6, at: 0.55 });
+    },
+    whale(phase, vol = 1) {
+      if (phase === 'spout') {
+        hiss({ freq: 1400, q: 0.8, peak: 0.12 * vol, attack: 0.05, decay: 0.7, sweep: 0.5 });
+      } else if (phase === 'rising') {
+        tone(140, { type: 'sine', peak: 0.12 * vol, attack: 0.3, decay: 1.4, glide: 1.6 });
+        tone(210, { type: 'triangle', peak: 0.05 * vol, attack: 0.4, decay: 1.1, glide: 1.4, at: 0.2 });
+      } else {
+        hiss({ type: 'lowpass', freq: 1100, peak: 0.6 * vol, attack: 0.02, decay: 1.6, sweep: 0.35 });
+        tone(60, { type: 'sine', peak: 0.4 * vol, attack: 0.005, decay: 0.7, glide: 0.6 });
+      }
+    },
+    swell(strength = 1) {
+      hiss({ type: 'lowpass', freq: 500, peak: 0.3 * strength, attack: 0.2, decay: 0.9, sweep: 1.8 });
+    },
     medal() {
       // A rising fanfare that ends on a ringing bell.
       [67, 72, 76, 79].forEach((n, i) => tone(midi(n), { type: 'triangle', peak: 0.13, decay: 0.35, at: i * 0.08 }));

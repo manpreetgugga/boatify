@@ -89,6 +89,20 @@ export const MEDALS = [
     run: ({ def, result }) => has(def.floes) && !(result.hits || {}).ice,
   },
   {
+    id: 'bow-rider',
+    name: 'Bow Rider',
+    icon: 'dolphin',
+    text: 'Have dolphins ride your bow wave for 10 seconds in one voyage.',
+    run: ({ result }) => (result.escort || 0) >= 10,
+  },
+  {
+    id: 'whale-watcher',
+    name: 'Whale Watcher',
+    icon: 'whale',
+    text: 'See a whale breach up close without it landing on you.',
+    run: ({ result }) => (result.whales || 0) >= 1 && !(result.hits || {}).whale,
+  },
+  {
     id: 'navigator',
     name: 'Navigator',
     icon: 'map',

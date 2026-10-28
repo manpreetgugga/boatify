@@ -1,5 +1,5 @@
-// Draws a frame: sea, flows, shallows, wake, islands, marks, pickups, boat,
-// effects, weather and lighting, then the HUD on top.
+// Draws a frame: sea, flows, shallows, wake, islands, marks, pickups, sea
+// life, boat, birds and spray, weather and lighting, then the HUD on top.
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
@@ -17,6 +17,7 @@ import {
   drawSnow,
   drawLightning,
 } from './effects.js';
+import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
 import { createLighting, drawLighting } from './lighting.js';
 import { createHud, drawHud } from './hud.js';
 
@@ -32,6 +33,7 @@ export function createRenderer(canvas) {
     ocean: createOcean(ctx),
     wake: createWake(),
     fx: createEffects(),
+    life: createLifeFx(),
     light: createLighting(),
     hud: createHud(),
     quality: 1,
@@ -57,6 +59,7 @@ export function resize(r) {
 export function resetView(r, game) {
   r.wake = createWake();
   r.fx = createEffects();
+  r.life = createLifeFx();
   r.hud.minimap = null;
   snapCamera(r.cam, game, r.w, r.h);
 }
@@ -67,6 +70,7 @@ export function renderFrame(r, game, dt, time, ui) {
   updateWake(r.wake, game.boat, game.clock, game.status === 'sailing' || game.status === 'finished');
   updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 9000));
   updateParticles(r.fx, dt);
+  updateLifeFx(r.life, game, dt);
 
   ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
   ctx.save();
@@ -83,12 +87,14 @@ export function renderFrame(r, game, dt, time, ui) {
   drawFlows(ctx, game, cam, time);
   drawShallows(ctx, game, cam, time);
   drawKrakens(ctx, game, time);
+  drawSeaBelow(ctx, game, cam, time);
   drawWake(ctx, r.wake, game.clock);
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
   drawFloes(ctx, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
+  drawSeaLife(ctx, game, cam, time);
   if (ui && ui.ghost) drawGhost(ctx, ui.ghost.pose, ui.ghost.type || game.boat.type, time);
   const boatState = {
     capsized: game.status === 'capsized',
@@ -96,6 +102,7 @@ export function renderFrame(r, game, dt, time, ui) {
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
   };
   drawBoat(ctx, game.boat, time, boatState);
+  drawSkyLife(ctx, r.life, game, cam, time);
   drawParticles(ctx, r.fx, cam);
   drawStormClouds(ctx, game, time);
   ctx.restore();

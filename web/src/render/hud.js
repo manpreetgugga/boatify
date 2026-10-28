@@ -5,6 +5,7 @@ import { beaufort, toKnots, toMeters } from '../physics/sailing.js';
 import { HEEL_WARNING, CAPSIZE_ANGLE, boatSpeed } from '../physics/boat.js';
 import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.js';
 import { windFromBearing } from '../world/wind.js';
+import { ESCORT_TIME } from '../world/wildlife.js';
 import { worldToScreen } from './camera.js';
 import { C, font, FONT, rgba } from './palette.js';
 
@@ -49,6 +50,7 @@ export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = nul
   const L = layout;
   drawTopLeft(ctx, game, L);
   if (ghost) drawGhostInfo(ctx, game, cam, L, ghost);
+  drawEscort(ctx, game, L, time, ghost && ghost.gap !== null && game.time >= 2);
   drawMinimap(ctx, hud, game, cam, L, time);
   drawHull(ctx, game, L);
   drawPointers(ctx, game, cam, L, time);
@@ -106,6 +108,31 @@ function drawGhostInfo(ctx, game, cam, L, ghost) {
   panel(ctx, x, y, w, 22, 8);
   text(ctx, 'BEST', x + 9, y + 11.5, 10, '#bfefff', 'left', 700, FONT.display);
   text(ctx, label, x + w - 9, y + 11.5, 13, ahead ? C.ok : C.warn, 'right', 700, FONT.display);
+}
+
+// While dolphins ride the bow: a chip under the timer with how long they'll stay.
+function drawEscort(ctx, game, L, time, belowGhost) {
+  const pod = game.life && game.life.pods.find((p) => p.state === 'escort');
+  if (!pod) return;
+  const x = L.timer.x;
+  const y = L.timer.y + (belowGhost ? 76 : 50);
+  const w = L.compact ? 150 : 176;
+  panel(ctx, x, y, w, 22, 8);
+  const riding = pod.ride > 0.5;
+  const label = riding ? 'DOLPHINS' : 'DOLPHINS…';
+  text(ctx, label, x + 9, y + 11.5, 11, '#bfefff', 'left', 700, FONT.display);
+  // Remaining ride, or a pulse while the pod is still catching up.
+  const bx = x + 84;
+  const bw = w - 94;
+  ctx.fillStyle = 'rgba(191, 239, 255, 0.18)';
+  ctx.fillRect(bx, y + 9, bw, 5);
+  ctx.fillStyle = '#bfefff';
+  if (riding) ctx.fillRect(bx, y + 9, bw * clamp(pod.timer / ESCORT_TIME, 0, 1), 5);
+  else {
+    ctx.globalAlpha = 0.4 + 0.4 * Math.sin(time * 6);
+    ctx.fillRect(bx, y + 9, bw, 5);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function minimapScale(game, L) {

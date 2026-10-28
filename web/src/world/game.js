@@ -9,6 +9,7 @@ import { createWind, updateWind, sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
 import { circlePolygon, circleCircle } from './collision.js';
 import { moveFloes, floeContact } from './floes.js';
+import { prepareWildlife, updateWildlife } from './wildlife.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
@@ -54,6 +55,9 @@ export function createGame(def, options = {}) {
     distanceSailed: 0,
     lightningTimer: 3 + (seed % 5),
     flash: 0,
+    life: prepareWildlife(def, seed),
+    escortTime: 0, // seconds spent riding a dolphin pod's bow wave
+    closeBreaches: 0, // whale breaches seen up close
   };
   return game;
 }
@@ -83,12 +87,14 @@ function tick(game, input, dt) {
     boat.x += boat.vx * dt;
     boat.y += boat.vy * dt;
     updateWind(wind, dt);
+    updateWildlife(game, dt);
     return;
   }
 
   game.time += dt;
   updateWind(wind, dt);
   updateKrakens(game);
+  updateWildlife(game, dt);
   updateWeather(game, dt);
 
   const w = sampleWind(wind, boat.x, boat.y, game.windHere);
@@ -376,6 +382,8 @@ function finish(game) {
     jars: game.jarsUsed,
     boat: game.boat.type.id,
     distance: game.distanceSailed,
+    escort: game.escortTime,
+    whales: game.closeBreaches,
   };
   emit(game, 'finish', { ...game.result });
 }
