@@ -1,6 +1,6 @@
 {
   "name": "boatify",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Boatify — your oar is lost, so sail by the wind from point A to point B. An Android sailing game.",
   "private": true,
   "type": "module",

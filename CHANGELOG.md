@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0] - 2026-10-28
+
+A new sea every day.
+
+- **Daily voyage.** Every day brings a freshly charted course, the same for every sailor that day: random islands, rock fields, wind, and two of currents, a whirlpool, dead calms, a squall or an archipelago. The autopilot test-sails each course before you see it, so it can always be finished, and its time sets the star targets. Opens after the first three voyages.
+- **Daily streak.** Finish the daily voyage on consecutive days to build a streak, shown on the title screen, the briefing and the results card. Daily results don't change campaign stars.
+- The course is charted a few milliseconds at a time in the background, so the menus never freeze, and it is cached for the rest of the day.
+- Your ghost races you on the daily voyage too.
+- The results card no longer shows two buttons that both go to Voyages after the last voyage.
+- The lock on locked voyages sits in the card's corner instead of wrapping onto its own line.
+
 ## [0.2.0] - 2026-10-28
 
 Race yourself.

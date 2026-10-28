@@ -380,9 +380,43 @@ button:focus-visible {
   opacity: 0.45;
 }
 
-.voyage.locked .name::after {
-  content: ' 🔒';
-  font-size: 14px;
+.voyage.daily {
+  border-color: rgba(217, 164, 65, 0.6);
+  background: rgba(217, 164, 65, 0.09);
+}
+
+.voyage.daily .num {
+  font-size: 26px;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.voyage:disabled {
+  opacity: 0.8;
+}
+
+/* "Not sailed today" dot on the daily voyage button. */
+.btn.fresh {
+  position: relative;
+}
+
+.btn.fresh::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--signal);
+}
+
+.voyage.locked::after {
+  content: '🔒';
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 15px;
 }
 
 /* Briefing */

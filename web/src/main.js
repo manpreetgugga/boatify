@@ -2,6 +2,7 @@
 // results, wiring simulation events to sound, haptics, particles and toasts.
 
 import { LEVELS } from './data/levels.js';
+import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
 import { createRecorder, recordGhost, finishGhost, isValidGhost, ghostAt, ghostGap } from './world/ghost.js';
@@ -12,7 +13,7 @@ import { C } from './render/palette.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI } from './ui/screens.js';
-import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost } from './platform/save.js';
+import { loadSave, writeSave, recordResult, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
 const root = document.getElementById('boatify');
@@ -25,7 +26,7 @@ const audio = createAudio();
 
 let mode = 'title'; // title | countdown | playing | paused | finishing | results
 let game = null;
-let levelIndex = 0;
+let levelIndex = 0; // campaign index, or 'daily'
 let autopilot = null;
 let botDriving = false;
 let recorder = null;
@@ -91,7 +92,30 @@ const input = createInput(canvas, {
   },
 });
 
+// Today's course: charted once, then cached for the rest of the day.
+function keepDaily(def) {
+  const stored = loadDailyCourse();
+  if (def && (!stored || stored.def !== def)) storeDailyCourse({ v: DAILY_VERSION, def });
+  return def;
+}
+
+function dailyDef() {
+  return keepDaily(dailyVoyage(dateKey(), loadDailyCourse()));
+}
+
+// Charts in small slices between frames so the screen keeps moving.
+function chartToday(done = () => {}) {
+  chartDaily(dateKey(), loadDailyCourse(), (def) => done(keepDaily(def)));
+}
+
+function dailyPeek() {
+  return chartedDaily(dateKey(), loadDailyCourse());
+}
+
 const ui = createUI(root, LEVELS, {
+  daily: dailyDef,
+  dailyPeek,
+  chartDaily: chartToday,
   onScreen: () => {},
   onClick: () => {
     audio.unlock();
@@ -145,12 +169,15 @@ function showTitle(withMenu = true) {
   ui.clearToasts();
   startDemo();
   if (withMenu) ui.title(save);
+  // Chart today's course in the background so the daily voyage opens at once.
+  if (isDailyUnlocked(save, LEVELS) && !dailyPeek()) setTimeout(() => chartToday(), 2500);
 }
 
-function startLevel(index) {
+function startLevel(ref) {
+  const def = ref === 'daily' ? dailyDef() : LEVELS[ref];
+  if (!def) return;
   if (cancelCountdown) cancelCountdown();
-  levelIndex = index;
-  const def = LEVELS[index];
+  levelIndex = ref;
   game = createGame(def);
   autopilot = botDriving ? createAutopilot(game) : null;
   recorder = createRecorder(game);
@@ -191,7 +218,9 @@ function finishVoyage(result) {
   finishTimer = 1.8;
   input.setEnabled(false);
   const hadGhost = !!ghost;
-  const improved = recordResult(save, game.def.id, result, game.notes);
+  const daily = game.def.daily;
+  if (daily) markDaily(save, daily);
+  const improved = recordResult(save, game.def.id, result, game.notes, daily ? 'daily' : 'levels');
   // Keep the fastest run as the ghost (or the first one we see for a voyage).
   if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
     storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
@@ -438,6 +467,7 @@ window.addEventListener('keydown', (e) => {
 // Hooks for automated playtests.
 window.__boatify = {
   levels: LEVELS,
+  daily: dailyDef,
   startLevel,
   showTitle,
   setAutopilot(on) {

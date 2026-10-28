@@ -2,8 +2,15 @@
 // (private windows, blocked site data), so every access is guarded and the
 // game keeps working from memory.
 
+import { dateKey } from '../data/daily.js';
+
 const KEY = 'boatify.save.v1';
 const GHOST_KEY = 'boatify.ghosts.v1';
+const DAILY_KEY = 'boatify.daily.v1';
+const DAILY_KEEP = 30; // days of daily results to remember
+
+// Campaign voyages to finish before the daily voyage opens.
+export const DAILY_UNLOCK = 3;
 
 export const DEFAULT_SETTINGS = {
   sound: true,
@@ -17,8 +24,18 @@ export const DEFAULT_SETTINGS = {
 };
 
 function blank() {
-  return { levels: {}, settings: { ...DEFAULT_SETTINGS }, notes: [], stats: { voyages: 0, distance: 0, capsizes: 0, pearls: 0 }, seenIntro: false };
+  return {
+    levels: {},
+    daily: {},
+    streak: { count: 0, best: 0, last: null },
+    settings: { ...DEFAULT_SETTINGS },
+    notes: [],
+    stats: { voyages: 0, distance: 0, capsizes: 0, pearls: 0 },
+    seenIntro: false,
+  };
 }
+
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 export function loadSave() {
   let data = null;
@@ -35,7 +52,9 @@ export function loadSave() {
     ...data,
     settings: { ...base.settings, ...(data.settings || {}) },
     stats: { ...base.stats, ...(data.stats || {}) },
-    levels: data.levels && typeof data.levels === 'object' ? data.levels : {},
+    streak: { ...base.streak, ...(isObj(data.streak) ? data.streak : {}) },
+    levels: isObj(data.levels) ? data.levels : {},
+    daily: isObj(data.daily) ? data.daily : {},
     notes: Array.isArray(data.notes) ? data.notes : [],
   };
 }
@@ -49,9 +68,11 @@ export function writeSave(save) {
   }
 }
 
-// Merge a finished voyage into the save. Returns what improved.
-export function recordResult(save, levelId, result, notes = []) {
-  const prev = save.levels[levelId] || { best: null, stars: 0, pearls: 0, runs: 0 };
+// Merge a finished voyage into the save. Returns what improved. Daily voyages
+// go in their own bucket so they don't count toward the campaign's stars.
+export function recordResult(save, levelId, result, notes = [], bucket = 'levels') {
+  const records = save[bucket];
+  const prev = records[levelId] || { best: null, stars: 0, pearls: 0, runs: 0 };
   const improved = {
     time: prev.best === null || result.time < prev.best,
     stars: result.stars > prev.stars,
@@ -59,13 +80,17 @@ export function recordResult(save, levelId, result, notes = []) {
     first: prev.best === null,
     prevBest: prev.best,
   };
-  save.levels[levelId] = {
+  records[levelId] = {
     best: improved.time ? result.time : prev.best,
     stars: Math.max(prev.stars, result.stars),
     pearls: Math.max(prev.pearls, result.pearls),
     pearlsTotal: result.pearlsTotal,
     runs: (prev.runs || 0) + 1,
   };
+  if (bucket === 'daily') {
+    const keys = Object.keys(records).sort();
+    for (const k of keys.slice(0, Math.max(0, keys.length - DAILY_KEEP))) delete records[k];
+  }
   for (const n of notes) if (n && !save.notes.includes(n)) save.notes.push(n);
   save.stats.voyages += 1;
   save.stats.distance += result.distance || 0;
@@ -78,6 +103,31 @@ export function isUnlocked(save, levels, index) {
   if (index === 0) return true;
   const prev = levels[index - 1];
   return !!(prev && save.levels[prev.id] && save.levels[prev.id].best !== null);
+}
+
+export function isDailyUnlocked(save, levels) {
+  return levels.slice(0, DAILY_UNLOCK).every((l) => save.levels[l.id] && save.levels[l.id].best !== null);
+}
+
+function dayBefore(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return dateKey(new Date(y, m - 1, d - 1));
+}
+
+// Count a finished daily voyage toward the run of consecutive days.
+export function markDaily(save, key) {
+  const s = save.streak;
+  if (s.last === key) return s;
+  s.count = s.last === dayBefore(key) ? s.count + 1 : 1;
+  s.best = Math.max(s.best, s.count);
+  s.last = key;
+  return s;
+}
+
+// Days in a row up to today; still alive until today's voyage is missed.
+export function currentStreak(save, today) {
+  const s = save.streak;
+  return s.last === today || s.last === dayBefore(today) ? s.count : 0;
 }
 
 export function totalStars(save) {
@@ -114,6 +164,8 @@ export function loadGhost(levelId) {
 
 export function storeGhost(levelId, ghost) {
   const all = readGhosts();
+  // Only today's daily ghost is worth keeping.
+  if (levelId.startsWith('daily-')) for (const k of Object.keys(all)) if (k.startsWith('daily-')) delete all[k];
   all[levelId] = ghost;
   try {
     window.localStorage.setItem(GHOST_KEY, JSON.stringify(all));
@@ -129,5 +181,28 @@ export function clearGhosts() {
     window.localStorage.removeItem(GHOST_KEY);
   } catch {
     // Nothing stored, nothing to clear.
+  }
+}
+
+// Today's generated course, so reopening the game doesn't chart it again.
+let dailyCourse;
+
+export function loadDailyCourse() {
+  if (dailyCourse !== undefined) return dailyCourse;
+  try {
+    const raw = window.localStorage.getItem(DAILY_KEY);
+    dailyCourse = raw ? JSON.parse(raw) : null;
+  } catch {
+    dailyCourse = null;
+  }
+  return dailyCourse;
+}
+
+export function storeDailyCourse(record) {
+  dailyCourse = record;
+  try {
+    window.localStorage.setItem(DAILY_KEY, JSON.stringify(record));
+  } catch {
+    // Charting again next time is fine.
   }
 }

@@ -1,5 +1,6 @@
 // Browser smoke test of the bundled game: menus, a voyage sailed by the
-// autopilot at high speed, and the results card. Fails on any page error.
+// autopilot at high speed, the results card and today's daily voyage. Fails on
+// any page error.
 //
 //   node scripts/smoke.cjs [--shots <dir>] [--level <index>] [--size 915x412]
 
@@ -77,6 +78,15 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.getByRole('button', { name: 'Voyages' }).click();
   await tab.waitForSelector('section[aria-label="Voyages"].open');
   await snap('08-voyages');
+
+  step('daily voyage: locked card, then charted and sailed');
+  await tab.locator('.voyage.daily.locked').waitFor();
+  await tab.evaluate(() => window.__boatify.startLevel('daily'));
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 15000 });
+  const daily = await tab.evaluate(() => window.__boatify.state().level);
+  if (!/^daily-\d{4}-\d\d-\d\d$/.test(daily)) throw new Error(`unexpected daily id ${daily}`);
+  await tab.waitForTimeout(1000);
+  await snap('09-daily');
 
   await browser.close();
   if (errors.length) {

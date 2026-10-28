@@ -4,7 +4,8 @@
 import { formatTime, compassPoint, DEG } from '../core/math.js';
 import { beaufort, toKnots } from '../physics/sailing.js';
 import { POLAR } from '../world/autopilot.js';
-import { isUnlocked, totalStars } from '../platform/save.js';
+import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK } from '../platform/save.js';
+import { dateKey, dailyId } from '../data/daily.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -42,6 +43,14 @@ function windSentence(def) {
   const bf = beaufort(kn);
   return `${Math.round(kn)} kn from the ${compassPoint(def.wind.from)} · ${bf.name}`;
 }
+
+// "Wed 28 Oct" for a YYYY-MM-DD key, in the phone's language.
+function dayLabel(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
 
 // Comparison with the previous best, or nothing on a first run.
 function vsBest(time, prev) {
@@ -243,6 +252,33 @@ export function createUI(root, levels, handlers) {
   let lastBriefing = 0;
   const toasts = root.querySelector('#toasts');
 
+  // A voyage is referred to by its campaign index or as 'daily'.
+  const defOf = (ref) => (ref === 'daily' ? handlers.daily() : levels[ref]);
+  const recordOf = (save, def) => (def.daily ? save.daily : save.levels)[def.id];
+
+  // Charting today's course can take a moment on a slow phone, so the button
+  // says so until the briefing is ready.
+  function openDaily(save, button, busyLabel) {
+    if (!isDailyUnlocked(save, levels)) {
+      ui.toast(`Finish the first ${DAILY_UNLOCK} voyages to unlock the daily voyage.`);
+      return;
+    }
+    const label = busyLabel.textContent;
+    const screen = current;
+    busyLabel.textContent = "Charting today's course…";
+    button.disabled = true;
+    handlers.chartDaily((def) => {
+      if (current !== screen) return; // the player moved on meanwhile
+      if (def) {
+        ui.briefing('daily', save);
+        return;
+      }
+      busyLabel.textContent = label;
+      button.disabled = false;
+      ui.toast("Today's course couldn't be charted. Try again later.", 'warn');
+    });
+  }
+
   function dismiss(node) {
     clearTimeout(node._timer);
     node.classList.add('out');
@@ -307,6 +343,10 @@ export function createUI(root, levels, handlers) {
     title(save) {
       const nextIndex = levels.findIndex((l) => !save.levels[l.id] || save.levels[l.id].best === null);
       const resume = nextIndex === -1 ? levels.length - 1 : nextIndex;
+      const today = dateKey();
+      const dailyOpen = isDailyUnlocked(save, levels);
+      const sailedToday = !!save.daily[dailyId(today)];
+      const streak = currentStreak(save, today);
       const node = el(`<section class="screen scrim" aria-label="Title">
         <div class="title-wrap">
           <div class="eyebrow">A sailing voyage</div>
@@ -318,14 +358,16 @@ export function createUI(root, levels, handlers) {
             <button class="btn" data-act="howto">How to sail</button>
           </div>
           <div class="title-buttons">
+            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small" data-act="settings">Settings</button>
           </div>
-          <div class="title-meta"><span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span><span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
+          <div class="title-meta"><span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
         </div>
       </section>`);
       click(node, '[data-act=play]', () => (save.seenIntro ? ui.briefing(resume, save) : ui.howto(save, true, resume)));
       click(node, '[data-act=voyages]', () => ui.voyages(save, true));
+      click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
       click(node, '[data-act=howto]', () => ui.howto(save));
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
@@ -346,12 +388,30 @@ export function createUI(root, levels, handlers) {
           </button>`;
         })
         .join('');
+      const today = dateKey();
+      const dailyOpen = isDailyUnlocked(save, levels);
+      const dailyRec = save.daily[dailyId(today)];
+      const charted = handlers.dailyPeek();
+      const streak = currentStreak(save, today);
+      const dailyLine = !dailyOpen
+        ? `Finish voyage ${DAILY_UNLOCK} to unlock`
+        : dailyRec
+          ? `Best ${formatTime(dailyRec.best)}${streak ? ` · Streak ${streak}` : ''}`
+          : streak
+            ? `Streak ${streak} · keep it going`
+            : 'A new course every day';
+      const dailyCard = `<button class="voyage daily ${dailyOpen ? '' : 'locked'}" data-act="daily" ${dailyOpen ? '' : 'aria-disabled="true"'}>
+            <span class="num">Daily</span>
+            <span class="name">${esc(charted ? charted.name : dayLabel(today))}</span>
+            <span class="stars">${stars(dailyRec ? dailyRec.stars : 0)}</span>
+            <span class="best">${dailyLine}</span>
+          </button>`;
       const node = el(`<section class="screen dim" aria-label="Voyages">
         <div class="sheet">
           <div class="sheet-head"><h2>Voyages</h2><span class="eyebrow">★ ${totalStars(save)} / ${levels.length * 3}</span><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><div class="voyage-grid">${cards}</div></div>
+          <div class="sheet-body"><div class="voyage-grid">${dailyCard}${cards}</div></div>
         </div></section>`);
-      click(node, '.voyage', (e, b) => {
+      click(node, '.voyage[data-i]', (e, b) => {
         const i = Number(b.dataset.i);
         if (!isUnlocked(save, levels, i)) {
           ui.toast('Finish the previous voyage to unlock this one.');
@@ -359,20 +419,22 @@ export function createUI(root, levels, handlers) {
         }
         ui.briefing(i, save);
       });
+      click(node, '.voyage.daily', (e, b) => openDaily(save, b, b.querySelector('.best')));
       click(node, '[data-act=back]', () => ui.back());
       show('voyages', node, { push });
     },
 
     briefing(index, save, replace = false) {
-      const def = levels[index];
-      const rec = save.levels[def.id];
+      const def = defOf(index);
+      const rec = recordOf(save, def);
+      const streak = def.daily ? currentStreak(save, def.daily) : 0;
       const chips = hazardsOf(def)
         .map(([name, bad]) => `<span class="chip ${bad ? 'danger' : ''}">${name}</span>`)
         .join('');
       const pearls = (def.pickups || []).filter((p) => p.kind === 'pearl').length;
       const node = el(`<section class="screen dim" aria-label="Voyage briefing">
         <div class="sheet">
-          <div class="sheet-head"><span class="eyebrow">Voyage ${index + 1}</span><h2>${esc(def.name)}</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${def.daily ? `Daily voyage · ${esc(dayLabel(def.daily))}` : `Voyage ${index + 1}`}</span><h2>${esc(def.name)}</h2></div>
           <div class="sheet-body"><div class="brief">
             <p class="lead">${esc(def.blurb)}</p>
             <div>
@@ -390,6 +452,7 @@ export function createUI(root, levels, handlers) {
                 <dt style="color:var(--brass)">★★★</dt><dd>under ${formatTime(def.par.gold)}</dd>
                 <dt>★★</dt><dd>under ${formatTime(def.par.silver)}</dd>
                 <dt>Best</dt><dd>${rec && rec.best !== null ? `${formatTime(rec.best)} <span style="color:var(--brass)">${'★'.repeat(rec.stars)}</span>` : '—'}</dd>
+                ${def.daily ? `<dt>Streak</dt><dd>${streak ? days(streak) : 'Finish today to start one'}</dd>` : ''}
               </dl>
             </div>
           </div></div>
@@ -443,9 +506,10 @@ export function createUI(root, levels, handlers) {
     },
 
     results(index, result, improved, save) {
-      const def = levels[index];
-      const hasNext = index + 1 < levels.length;
-      const rec = save.levels[def.id];
+      const def = defOf(index);
+      const hasNext = !def.daily && index + 1 < levels.length;
+      const rec = recordOf(save, def);
+      const streak = def.daily ? currentStreak(save, def.daily) : 0;
       const node = el(`<section class="screen dim" aria-label="Voyage complete">
         <div class="sheet narrow results-sheet">
           <div class="sheet-head"><h2>${def.finish.kind === 'lighthouse' ? 'Lighthouse reached' : 'Harbor reached'}</h2></div>
@@ -459,10 +523,11 @@ export function createUI(root, levels, handlers) {
               <span class="k">Hull</span><span class="v">${Math.ceil(result.hull)}%</span>
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
               <span class="k">Next star</span><span class="v">${result.stars >= 3 ? 'Got them all' : `under ${formatTime(result.stars === 2 ? def.par.gold : def.par.silver)}`}</span>
+              ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
           </div>
           <div class="sheet-foot">
-            <button class="btn small" data-act="voyages">Voyages</button>
+            ${hasNext ? '<button class="btn small" data-act="voyages">Voyages</button>' : ''}
             <button class="btn small" data-act="retry">Retry</button>
             ${hasNext ? '<button class="btn primary" data-act="next" data-autofocus>Next voyage</button>' : '<button class="btn primary" data-act="voyages" data-autofocus>Done</button>'}
           </div>
