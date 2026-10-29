@@ -36,8 +36,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     env:
-      # The Play upload key, if the repository has one (see docs/PLAY_STORE.md).
-      UPLOAD_KEY: ${{ secrets.BOATIFY_UPLOAD_KEYSTORE != '' }}
+      # The Play upload key, if the repository has all of it (see docs/PLAY_STORE.md).
+      # Without all four secrets the APK still ships; only the .aab is left out.
+      UPLOAD_KEY: ${{ secrets.BOATIFY_UPLOAD_KEYSTORE != '' && secrets.BOATIFY_KEYSTORE_PASSWORD != '' && secrets.BOATIFY_KEY_ALIAS != '' && secrets.BOATIFY_KEY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
