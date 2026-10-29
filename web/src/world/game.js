@@ -54,6 +54,19 @@ const DAMAGE = {
   hulk: 2,
   mast: 1.8,
   ghost: 1.6,
+  glacier: 2.4,
+  tundra: 2.2,
+  berg: 2.4,
+  blocks: 2,
+  sandcastle: 1.2,
+  ball: 1,
+  brick: 1.8,
+  rubber: 1,
+  cloud: 0.6,
+  floater: 2.4,
+  balloon: 1.2,
+  puff: 0.6,
+  airship: 1.6,
 };
 
 // options: { boat, seed, guide, startJars, blackPearl } where `blackPearl` puts

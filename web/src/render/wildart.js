@@ -4,55 +4,14 @@
 // turtles and the plesiosaur), Sunken City (marble ruins, a drowned tower,
 // broken columns and stone heads, galleys and the moray in the gate) and the
 // Ghost Sea (graveyard isles, a beached wreck, sunken masts, ghost ships and
-// the wraith). worldart.js hands these over when it doesn't know a thing;
-// each returns true when it drew it.
+// the wraith). worldart.js hands these over when it doesn't know a thing,
+// and these hand over to dreamart.js in turn; each returns true when it drew
+// it.
 // Everything here is in world units with the camera applied.
 
-import { pointInPolygon, clamp } from '../core/math.js';
-import { TAU, hash, axisOf, store, raised, dangerRing, drawFlyer } from './artkit.js';
-
-// Points on a jittered grid well inside a shape (within `keep` of the way
-// from the centre to the edge), cached on the shape.
-function fill(isl, key, step, keep) {
-  const c = store(isl);
-  if (c[key]) return c[key];
-  const out = [];
-  const b = isl.bounds;
-  let i = 0;
-  for (let y = b.minY + step / 2; y < b.maxY; y += step) {
-    for (let x = b.minX + step / 2; x < b.maxX; x += step) {
-      i += 1;
-      const px = x + (hash(isl.seed * 3.1 + i) - 0.5) * step * 0.8;
-      const py = y + (hash(isl.seed * 5.7 + i) - 0.5) * step * 0.8;
-      const ox = isl.cx + (px - isl.cx) / keep;
-      const oy = isl.cy + (py - isl.cy) / keep;
-      if (pointInPolygon(ox, oy, isl.pts)) out.push({ x: px, y: py, h: hash(isl.seed + i * 1.37), i });
-    }
-  }
-  c[key] = out;
-  return out;
-}
-
-// Points along the shore with the outward direction there.
-function shore(isl, every) {
-  const out = [];
-  for (let i = 0; i < isl.pts.length; i += every) {
-    const [x, y] = isl.pts[i];
-    const d = Math.hypot(x - isl.cx, y - isl.cy) || 1;
-    out.push({ x, y, nx: (x - isl.cx) / d, ny: (y - isl.cy) / d, h: hash(isl.seed * 1.7 + i), i });
-  }
-  return out;
-}
-
-function dot(ctx, x, y, r) {
-  ctx.moveTo(x + r, y);
-  ctx.arc(x, y, r, 0, TAU);
-}
-
-function oval(ctx, x, y, rx, ry, rot = 0) {
-  ctx.moveTo(x + Math.cos(rot) * rx, y + Math.sin(rot) * rx);
-  ctx.ellipse(x, y, rx, ry, rot, 0, TAU);
-}
+import { clamp } from '../core/math.js';
+import { TAU, hash, axisOf, store, raised, dangerRing, drawFlyer, fill, shore, dot, oval, headOf, warnGlow, splash } from './artkit.js';
+import { drawDreamShallows, drawDreamIsland, drawDreamRock, drawDreamFloe, drawDreamLair, dreamLights } from './dreamart.js';
 
 // --- Shallows ----------------------------------------------------------------
 
@@ -137,7 +96,7 @@ export function drawWildShallows(ctx, isl, path, time) {
       return true;
     }
     default:
-      return false;
+      return drawDreamShallows(ctx, isl, path, time);
   }
 }
 
@@ -170,7 +129,7 @@ export function drawWildIsland(ctx, isl, path, decor, time) {
       drawHulk(ctx, isl, path, time);
       return true;
     default:
-      return false;
+      return drawDreamIsland(ctx, isl, path, decor, time);
   }
 }
 
@@ -945,7 +904,7 @@ export function drawWildRock(ctx, r, time) {
       drawMastRock(ctx, r, time);
       return true;
     default:
-      return false;
+      return drawDreamRock(ctx, r, time);
   }
 }
 
@@ -1140,16 +1099,8 @@ export function drawWildFloe(ctx, f, path, decor, time) {
       drawGhostShip(ctx, f, path, time);
       return true;
     default:
-      return false;
+      return drawDreamFloe(ctx, f, path, decor, time);
   }
-}
-
-// The head end of a drifter: the end of its long axis it is heading for.
-function headOf(f) {
-  const { a } = axisOf(f);
-  const c = store(f);
-  if (Math.hypot(f.vx, f.vy) > 0.3) c.face = Math.cos(a) * f.vx + Math.sin(a) * f.vy >= 0 ? 0 : Math.PI;
-  return a + (c.face || 0);
 }
 
 // A hippo wallowing: a wet grey back, ears that twitch, and a bird riding.
@@ -1479,35 +1430,8 @@ export function drawWildLair(ctx, k, time) {
       drawWraith(ctx, k, time);
       return true;
     default:
-      return false;
+      return drawDreamLair(ctx, k, time);
   }
-}
-
-function warnGlow(ctx, R, t, inner, outer) {
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
-  g.addColorStop(0, `rgba(${inner}, ${(0.55 * t).toFixed(3)})`);
-  g.addColorStop(0.8, `rgba(${outer}, ${(0.18 * t).toFixed(3)})`);
-  g.addColorStop(1, `rgba(${outer}, 0)`);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, R, 0, TAU);
-  ctx.fill();
-}
-
-function splash(ctx, R, t) {
-  ctx.strokeStyle = `rgba(232, 244, 242, ${(0.7 * (1 - t)).toFixed(3)})`;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(0, 0, R * (0.3 + t * 0.75), 0, TAU);
-  ctx.stroke();
-  const s = Math.sin(t * Math.PI);
-  ctx.fillStyle = `rgba(232, 244, 242, ${(0.5 * s).toFixed(3)})`;
-  ctx.beginPath();
-  for (let i = 0; i < 14; i++) {
-    const a = (i / 14) * TAU + i;
-    dot(ctx, Math.cos(a) * R * (0.25 + 0.55 * t), Math.sin(a) * R * (0.25 + 0.55 * t), 2.5 + 3 * s);
-  }
-  ctx.fill();
 }
 
 // A crocodile: eyes and nostrils just above the water, a shadow that grows,
@@ -1929,5 +1853,5 @@ export function wildLights(level, time) {
   for (const k of level.krakens) {
     if (k.look === 'wraith') out.push([k.x, k.y, k.r * (k.phase === 'idle' ? 0.5 : 1), k.phase === 'idle' ? 0.4 : 0.75]);
   }
-  return out;
+  return out.concat(dreamLights(level, time));
 }

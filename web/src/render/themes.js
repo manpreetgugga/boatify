@@ -101,6 +101,42 @@ export const THEMES = {
     whirlCore: '0, 4, 4',
     tint: 'rgba(40, 90, 70, 0.08)',
   },
+  aurora: {
+    sea: '#14304a',
+    edge: 'rgba(2, 8, 16, 0.6)',
+    mapSea: 'rgba(24, 56, 84, 0.92)',
+    shallow: '120, 190, 215',
+    shallowHi: '150, 215, 235',
+    flow: '120, 220, 230',
+    flowLine: '220, 250, 255',
+    whirl: '4, 14, 26',
+    whirlCore: '0, 6, 14',
+    tint: 'rgba(60, 160, 170, 0.06)',
+  },
+  toy: {
+    sea: '#2aa9c4',
+    edge: 'rgba(4, 30, 40, 0.45)',
+    mapSea: 'rgba(30, 140, 160, 0.9)',
+    shallow: '150, 232, 226',
+    shallowHi: '180, 242, 236',
+    flow: '120, 220, 240',
+    flowLine: '235, 255, 255',
+    whirl: '10, 60, 80',
+    whirlCore: '4, 30, 44',
+    tint: 'rgba(255, 240, 200, 0.05)',
+  },
+  sky: {
+    sea: '#4f9ad2',
+    edge: 'rgba(10, 40, 80, 0.45)',
+    mapSea: 'rgba(60, 130, 190, 0.9)',
+    shallow: '200, 228, 248',
+    shallowHi: '225, 240, 252',
+    flow: '200, 235, 255',
+    flowLine: '255, 255, 255',
+    whirl: '30, 70, 120',
+    whirlCore: '14, 40, 80',
+    tint: 'rgba(255, 255, 255, 0.05)',
+  },
 };
 
 export function themeOf(level) {
@@ -125,6 +161,12 @@ export const MAP_ISLAND = {
   tower: '#bfae86',
   grave: '#4a4a40',
   hulk: '#66604a',
+  glacier: '#e8f2f8',
+  tundra: '#8a8676',
+  blocks: '#e5484d',
+  sandcastle: '#ecd9a0',
+  cloud: '#ffffff',
+  floater: '#6f9a44',
 };
 
 export const MAP_ROCK = {
@@ -140,6 +182,11 @@ export const MAP_ROCK = {
   column: '#efe9da',
   statue: '#c8bda2',
   mast: '#5a4430',
+  berg: '#dff2fa',
+  ball: '#f5c518',
+  brick: '#3b8fe0',
+  balloon: '#f28c28',
+  puff: '#f4f8fc',
 };
 
 export const MAP_FLOE = {
@@ -151,6 +198,9 @@ export const MAP_FLOE = {
   turtle: '#9aa266',
   galley: '#c0392b',
   ghostship: '#a0ffd0',
+  berg: '#dff2fa',
+  duck: '#f7d038',
+  airship: '#c8ccd4',
 };
 
 // Burst colours when the boat hits something.
@@ -184,4 +234,17 @@ export const HIT_COLOR = {
   hulk: '#7a5a3a',
   mast: '#7a5a3a',
   ghost: '#a0ffd0',
+  glacier: '#eef6fa',
+  tundra: '#9a9686',
+  berg: '#dff2fa',
+  blocks: '#f5c518',
+  sandcastle: '#ecd9a0',
+  ball: '#e5484d',
+  brick: '#3b8fe0',
+  rubber: '#f7d038',
+  cloud: '#ffffff',
+  floater: '#7aa04a',
+  balloon: '#f28c28',
+  puff: '#ffffff',
+  airship: '#c8ccd4',
 };

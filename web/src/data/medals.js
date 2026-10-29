@@ -254,6 +254,9 @@ function worldMedals() {
     dino: ['Fossil Hunter', 'bone'],
     sunken: ['Atlantean', 'column'],
     ghost: ['Spirit Sailor', 'lantern'],
+    aurora: ['Polar Star', 'snow'],
+    toy: ['Toy Admiral', 'duck'],
+    sky: ['Cloud Captain', 'cloud'],
   };
   return WORLDS.filter((w) => looks[w.id]).map((w) => ({
     id: `world-${w.id}`,

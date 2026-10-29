@@ -68,9 +68,9 @@ function stars(n, total = 3) {
 }
 
 // What each world's rocks, lairs and drifting things are called.
-const ROCK_NAMES = { coral: 'Coral reefs', rock: 'Rocks', basalt: 'Rocks', piling: 'Pilings', container: 'Containers', shard: 'Crystal shards', pod: 'Spore pods', snag: 'Snags', bones: 'Fossil bones', column: 'Columns', statue: 'Statues', mast: 'Sunken masts' };
-const LAIR_NAMES = { kraken: 'Kraken', vent: 'Steam vents', crane: 'Cranes', beast: 'Beasts', croc: 'Crocodiles', plesio: 'Plesiosaurs', eel: 'Giant eels', wraith: 'Wraiths' };
-const DRIFT_NAMES = { ice: 'Drifting ice', pumice: 'Pumice rafts', ferry: 'Ferries', jelly: 'Jellies', hippo: 'Hippos', turtle: 'Giant turtles', galley: 'Galleys', ghostship: 'Ghost ships' };
+const ROCK_NAMES = { coral: 'Coral reefs', rock: 'Rocks', basalt: 'Rocks', piling: 'Pilings', container: 'Containers', shard: 'Crystal shards', pod: 'Spore pods', snag: 'Snags', bones: 'Fossil bones', column: 'Columns', statue: 'Statues', mast: 'Sunken masts', berg: 'Ice chunks', ball: 'Beach balls', brick: 'Toy bricks', balloon: 'Balloons', puff: 'Cloud puffs' };
+const LAIR_NAMES = { kraken: 'Kraken', vent: 'Steam vents', crane: 'Cranes', beast: 'Beasts', croc: 'Crocodiles', plesio: 'Plesiosaurs', eel: 'Giant eels', wraith: 'Wraiths', orca: 'Orcas', jack: 'Jack-in-the-boxes', storm: 'Thunderclouds' };
+const DRIFT_NAMES = { ice: 'Drifting ice', pumice: 'Pumice rafts', ferry: 'Ferries', jelly: 'Jellies', hippo: 'Hippos', turtle: 'Giant turtles', galley: 'Galleys', ghostship: 'Ghost ships', berg: 'Icebergs', duck: 'Rubber ducks', airship: 'Airships' };
 
 function hazardsOf(def) {
   const out = [];

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.24.0] - 2026-10-29
+
+The last three worlds and thirty more voyages: the frozen north, a bay full of toys and a sea up in the clouds. That makes a hundred voyages beyond Home Waters.
+
+- **Aurora Ice.** Green and violet northern lights ripple across the sky, brightest at night. Glaciers rise out of the sea with crevasses, meltwater pools and seals on their edges, and polar bears prowl the big ones. On the tundra there's an igloo, a stone inukshuk and reindeer grazing among the berries. Chunks of ice float in the water, icebergs drift on the tide, and a black fin circles until the orca breaches.
+- **Toy Bay.** A bathtub-blue bay where the islands are giant toy bricks with studs on top, and sandcastles stand with moats, towers and pennants. Beach balls and loose bricks bob in the water, soap bubbles float by, and giant rubber ducks drift on the tide. A jack-in-the-box plays its tune while the crank turns, then the lid flies open and out springs the clown.
+- **Sky Sea.** The water is up in the clouds. Cloud banks with rainbows, floating isles with cottages, sheep and a waterfall pouring off the edge, hot-air balloons and little cloud puffs. Airships cruise up and down the sky with their lamps lit at night, clouds drift overhead with their shadows below, and thunderclouds darken, flicker and then strike with lightning all round.
+- **New castaways.** Olga, Skipper Sven and Dr. Frost in Aurora Ice; Captain Quack, Teddy and Pip in Toy Bay; Amelia, Professor Nimbus and Skye on the Sky Sea.
+- **Three new medals.** Polar Star, Toy Admiral and Cloud Captain are for finishing every voyage in a world. They unlock the Aurora sail, the Rubber Duck hull paint and the Nimbus sail.
+- Penguins now ride icebergs and stand on glaciers.
+
 ## [0.23.0] - 2026-10-29
 
 Four more worlds and forty more voyages: a jungle river, a lagoon from the age of dinosaurs, a drowned city and a haunted sea.

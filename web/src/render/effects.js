@@ -399,6 +399,10 @@ export function drawMotes(ctx, fx, game, w, h, dt, time) {
   const bright = weather.night ? 1 : 0.6;
   const wx = game.windHere.wx;
   const wy = game.windHere.wy;
+  if (weather.moteStyle === 'bubble') {
+    drawBubbles(ctx, fx.motes, rgb, wx, wy, w, h, dt, time);
+    return;
+  }
   for (const m of fx.motes) {
     m.x += (Math.sin(time * 0.7 + m.p) * 16 + wx * 0.6) * m.s * dt;
     m.y += (Math.cos(time * 0.55 + m.p * 1.3) * 12 + wy * 0.6) * m.s * dt;
@@ -419,6 +423,143 @@ export function drawMotes(ctx, fx, game, w, h, dt, time) {
     ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+// Soap bubbles: they wobble along on the breeze, shine, and now and then pop
+// and start again somewhere else.
+function drawBubbles(ctx, motes, rgb, wx, wy, w, h, dt, time) {
+  ctx.lineWidth = 1;
+  for (const m of motes) {
+    m.x += (Math.sin(time * 0.9 + m.p) * 10 + wx * 1.4) * m.s * dt;
+    m.y += (Math.cos(time * 0.7 + m.p * 1.3) * 8 + wy * 1.4) * m.s * dt;
+    if (m.x < -14) m.x += w + 28;
+    if (m.x > w + 14) m.x -= w + 28;
+    if (m.y < -14) m.y += h + 28;
+    if (m.y > h + 14) m.y -= h + 28;
+    const life = Math.sin(time * 0.4 * m.s + m.p);
+    if (life < 0.1) continue;
+    const a = Math.min(1, (life - 0.1) * 4);
+    const r = 3 + m.s * 5;
+    const wob = 1 + Math.sin(time * 5 + m.p) * 0.06;
+    ctx.fillStyle = `rgba(${rgb}, ${(0.1 * a).toFixed(3)})`;
+    ctx.strokeStyle = `rgba(${rgb}, ${(0.55 * a).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.ellipse(m.x, m.y, r * wob, r / wob, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 190, 240, ${(0.35 * a).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, r * 0.8, 0.3, 1.4);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255, 255, 255, ${(0.8 * a).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(m.x - r * 0.4, m.y - r * 0.42, r * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// The northern lights: green and violet curtains rippling across the sky,
+// brightest at night. Drawn over the darkness so they glow.
+export function drawAurora(ctx, fx, game, w, h, time) {
+  const weather = game.level.weather;
+  const amount = weather.aurora || 0;
+  if (!amount) return;
+  const bright = amount * (weather.night ? 1 : 0.55);
+  const t = time * (fx.calm ? 0.08 : 0.22);
+  const bands = [
+    ['95, 240, 176', 0.18, 0],
+    ['154, 107, 255', 0.3, 2.1],
+    ['95, 240, 200', 0.42, 4.3],
+  ];
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const [rgb, at, phase] of bands) {
+    const curve = (x) => h * at + Math.sin(x * 0.006 + t + phase) * h * 0.07 + Math.sin(x * 0.017 - t * 1.7 + phase) * h * 0.025;
+    const line = () => {
+      ctx.beginPath();
+      for (let x = -20; x <= w + 20; x += 16) {
+        const y = curve(x);
+        if (x === -20) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+    };
+    line();
+    ctx.strokeStyle = `rgba(${rgb}, ${(0.05 * bright).toFixed(3)})`;
+    ctx.lineWidth = h * 0.11;
+    ctx.stroke();
+    // The bright core, waxing and waning along its length as it ripples.
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = h * 0.04;
+    for (let x = -20; x <= w + 20; x += 16) {
+      const shimmer = 0.5 + 0.5 * Math.sin(x * 0.015 - t * 3 + phase);
+      ctx.strokeStyle = `rgba(${rgb}, ${((0.04 + 0.08 * shimmer) * bright).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(x, curve(x));
+      ctx.lineTo(x + 16, curve(x + 16));
+      ctx.stroke();
+    }
+    ctx.lineCap = 'round';
+  }
+  ctx.restore();
+}
+
+// Fair-weather clouds drifting high over the sea with their shadows below.
+// They sit in a grid that rides the wind, so each comes back where it was.
+export function drawClouds(ctx, fx, game, cam, time, dt) {
+  const amount = game.level.weather.clouds || 0;
+  if (!amount) return;
+  const speed = game.wind.speed * (fx.calm ? 0.3 : 0.9);
+  fx.cloudX = (fx.cloudX || 0) + Math.cos(game.wind.angle) * speed * dt;
+  fx.cloudY = (fx.cloudY || 0) + Math.sin(game.wind.angle) * speed * dt;
+  const v = viewBounds(cam, 260);
+  const size = 420;
+  const ox = fx.cloudX;
+  const oy = fx.cloudY;
+  const puffs = [];
+  for (let gy = Math.floor((v.minY - oy) / size); gy <= Math.floor((v.maxY - oy) / size); gy++) {
+    for (let gx = Math.floor((v.minX - ox) / size); gx <= Math.floor((v.maxX - ox) / size); gx++) {
+      const seed = gx * 73.1 + gy * 191.7;
+      const e = hashFx(seed);
+      if (e > 0.35 + amount * 0.4) continue;
+      const cx = (gx + 0.2 + hashFx(seed + 1) * 0.6) * size + ox;
+      const cy = (gy + 0.2 + hashFx(seed + 2) * 0.6) * size + oy;
+      const n = 4 + Math.floor(hashFx(seed + 3) * 4);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + e * 6;
+        const d = 30 + hashFx(seed + i * 7.3) * 34;
+        puffs.push([cx + Math.cos(a) * d * 1.4, cy + Math.sin(a) * d * 0.8, 34 + hashFx(seed + i * 3.1) * 30]);
+      }
+      puffs.push([cx, cy, 56 + e * 30]);
+    }
+  }
+  if (!puffs.length) return;
+  ctx.fillStyle = 'rgba(20, 50, 90, 0.07)';
+  ctx.beginPath();
+  for (const [x, y, r] of puffs) {
+    ctx.moveTo(x + 60 + r, y + 90);
+    ctx.arc(x + 60, y + 90, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.13)';
+  ctx.beginPath();
+  for (const [x, y, r] of puffs) {
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.beginPath();
+  for (const [x, y, r] of puffs) {
+    ctx.moveTo(x - r * 0.15 + r * 0.6, y - r * 0.2);
+    ctx.arc(x - r * 0.15, y - r * 0.2, r * 0.6, 0, Math.PI * 2);
+  }
+  ctx.fill();
+}
+
+function hashFx(n) {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
 }
 
 export function drawLightning(ctx, fx, game, w, h) {

@@ -31,7 +31,7 @@ import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJ
 import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, REWARDS } from './platform/commerce.js';
 
 // Things that thud rather than crack when you hit them.
-const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice', 'jungle', 'mangrove', 'fern', 'hippo', 'ghost']);
+const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice', 'jungle', 'mangrove', 'fern', 'hippo', 'ghost', 'sandcastle', 'ball', 'rubber', 'cloud', 'puff', 'balloon']);
 
 // What a lair's ring means, in each world.
 const LAIR_WARNINGS = {
@@ -43,6 +43,9 @@ const LAIR_WARNINGS = {
   plesio: 'Something huge is rising! Get out of the ring!',
   eel: 'The eel is about to lunge! Get out of the ring!',
   wraith: 'The wraith is coming! Get out of the ring!',
+  orca: 'Orca! Get out of the ring!',
+  jack: 'Pop goes the box! Get out of the ring!',
+  storm: 'Lightning is about to strike! Get out of the ring!',
 };
 
 const root = document.getElementById('boatify');
@@ -1039,16 +1042,16 @@ window.__boatify = {
     return { x, y };
   },
   // Heave to beside the first drifter ('floe'), lair ('lair'), rock
-  // ('rock') or island of a kind, `off` past its edge. Returns where it is.
-  // Heave to beside the first thing of a kind to look at it; for a lair,
-  // `warned` winds the clock to that many seconds into its warning.
+  // ('rock'), island of a kind or rock of a material, `off` past its edge.
+  // Returns where it is. For a lair, `warned` winds the clock to that many
+  // seconds into its warning.
   lookAt(what, off = 40, warned = null) {
     if (!game) return null;
     const l = game.level;
     const f = l.floes[0];
     const isl = l.islands.find((i) => i.kind === what);
     const spot =
-      what === 'floe' ? f && { x: f.cx + f.ox, y: f.cy + f.oy, r: f.radius } : what === 'lair' ? l.krakens[0] : what === 'rock' ? l.rocks[0] : isl && { x: isl.cx, y: isl.cy, r: isl.radius };
+      what === 'floe' ? f && { x: f.cx + f.ox, y: f.cy + f.oy, r: f.radius } : what === 'lair' ? l.krakens[0] : what === 'rock' ? l.rocks[0] : (isl && { x: isl.cx, y: isl.cy, r: isl.radius }) || l.rocks.find((r) => r.material === what);
     if (!spot) return null;
     Object.assign(game.boat, { x: spot.x, y: spot.y + spot.r + off, vx: 0, vy: 0, heading: game.wind.angle + Math.PI, yawRate: 0 });
     if (what === 'lair' && warned !== null) game.time += (((spot.period - 3.4 + warned - spot.offset - game.time) % spot.period) + spot.period) % spot.period;

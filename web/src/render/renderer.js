@@ -16,6 +16,8 @@ import {
   drawParticles,
   drawKrakens,
   drawStormClouds,
+  drawClouds,
+  drawAurora,
   drawRain,
   drawSnow,
   drawAsh,
@@ -150,6 +152,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawCannonballs(ctx, game);
   drawParticles(ctx, r.fx, cam);
   drawStormClouds(ctx, game, time);
+  drawClouds(ctx, r.fx, game, cam, time, dt);
   if (film) drawFilmWorld(ctx, cam, film, time);
   ctx.restore();
 
@@ -163,6 +166,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawSnow(ctx, r.fx, game, r.w, r.h, dt, time);
   drawAsh(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLighting(ctx, r.light, game, cam, time, r.w, r.h);
+  drawAurora(ctx, r.fx, game, r.w, r.h, time);
   drawMotes(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLightning(ctx, r.fx, game, r.w, r.h);
   if (film) drawFilmLight(ctx, film, r.w, r.h);

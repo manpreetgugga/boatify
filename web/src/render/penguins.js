@@ -67,7 +67,7 @@ function penguin(rng, x, y, face) {
 // Every huddle on a level's ice, placed the same way every time.
 export function placeColonies(level) {
   const huddles = [];
-  const ice = level.islands.filter((isl) => isl.kind === 'ice');
+  const ice = level.islands.filter((isl) => isl.kind === 'ice' || isl.kind === 'glacier');
   ice.forEach((isl, n) => {
     const rng = createRng((isl.seed || n + 1) * 7477 + 211);
     const around = perimeter(isl.pts);
@@ -100,7 +100,7 @@ export function placeColonies(level) {
         y: cy,
         edge: e,
         floe: null,
-        lift: 1,
+        lift: isl.kind === 'glacier' ? 1.3 : 1,
         penguins,
         gull: rng.chance(0.4) ? { x: cx + rng.range(-12, 12), y: cy + rng.range(-12, 12) } : null,
         circling: rng.chance(0.5) ? { r: rng.range(28, 46), speed: rng.range(0.35, 0.6) * (rng.chance(0.5) ? 1 : -1), a: rng.range(0, TAU) } : null,
@@ -109,7 +109,7 @@ export function placeColonies(level) {
   });
   // A few riding each ice floe big enough to stand on (not the ferries).
   (level.floes || []).forEach((f, n) => {
-    if (f.look !== 'ice' || f.radius < 40) return;
+    if ((f.look !== 'ice' && f.look !== 'berg') || f.radius < 40) return;
     const rng = createRng((f.seed || n + 1) * 3571 + 97);
     const penguins = [];
     const count = rng.int(2, 4);
@@ -119,7 +119,7 @@ export function placeColonies(level) {
       if (!pointInPolygon(x, y, f.pts) || penguins.some((p) => dist(p.x, p.y, x, y) < 6)) continue;
       penguins.push(penguin(rng, x, y, rng.range(0, TAU)));
     }
-    huddles.push({ x: f.cx, y: f.cy, edge: null, floe: f, lift: 0.45, penguins, gull: null, circling: null });
+    huddles.push({ x: f.cx, y: f.cy, edge: null, floe: f, lift: f.look === 'berg' ? 1.8 : 0.45, penguins, gull: null, circling: null });
   });
   return huddles;
 }

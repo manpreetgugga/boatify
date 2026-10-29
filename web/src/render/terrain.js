@@ -95,10 +95,15 @@ const ROCK_HALO = {
   column: 'rgba(220, 245, 240, 0.18)',
   statue: 'rgba(220, 245, 240, 0.18)',
   mast: 'rgba(4, 12, 12, 0.3)',
+  berg: 'rgba(160, 225, 245, 0.24)',
+  ball: 'rgba(255, 255, 255, 0.16)',
+  brick: 'rgba(255, 255, 255, 0.14)',
+  balloon: 'rgba(255, 255, 255, 0.06)',
+  puff: 'rgba(255, 255, 255, 0.12)',
 };
 
 // Rocks that aren't round draw their own wash.
-const OWN_FOAM = new Set(['snag', 'bones', 'mast']);
+const OWN_FOAM = new Set(['snag', 'bones', 'mast', 'balloon', 'puff']);
 
 // The water a drifter stirs up, by its look.
 const FLOE_RING = {
@@ -106,6 +111,9 @@ const FLOE_RING = {
   ice: 'rgba(150, 220, 235, 0.18)',
   hippo: 'rgba(120, 100, 70, 0.22)',
   ghostship: 'rgba(150, 255, 200, 0.16)',
+  berg: 'rgba(150, 220, 240, 0.22)',
+  duck: 'rgba(255, 240, 180, 0.16)',
+  airship: 'rgba(20, 50, 80, 0.12)',
 };
 
 // Ice: `lift` is how far the top stands out of the water, so tall bergs

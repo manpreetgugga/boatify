@@ -190,6 +190,31 @@ export const SAILS = [
       { disc: [0.3, 0.45, 0.07], color: '#e8b21e' },
     ],
   },
+  {
+    id: 'aurora',
+    name: 'Aurora',
+    medal: 'world-aurora',
+    cloth: '#14243e',
+    shade: '#0e1a2e',
+    marks: [
+      { band: [0.18, 0.12], color: '#5ff0b0' },
+      { band: [0.34, 0.08], color: '#9a6bff' },
+      { dots: [[0.2, 0.62], [0.46, 0.72], [0.3, 0.84], [0.58, 0.56]], r: 0.03, color: '#ffffff' },
+    ],
+  },
+  {
+    id: 'nimbus',
+    name: 'Nimbus',
+    medal: 'world-sky',
+    cloth: '#7cc4f2',
+    shade: '#5eaee0',
+    marks: [
+      { disc: [0.28, 0.3, 0.12], color: '#ffffff' },
+      { disc: [0.42, 0.34, 0.1], color: '#ffffff' },
+      { disc: [0.22, 0.66, 0.1], color: '#ffffff' },
+      { disc: [0.34, 0.7, 0.08], color: '#ffffff' },
+    ],
+  },
   // Bought with coins in the locker.
   {
     id: 'royal',
@@ -246,6 +271,7 @@ export const HULLS = [
   { id: 'pilot', name: 'Harbor Pilot', medal: 'world-harbor', hull: '#e8b21e', hullDark: '#9a7310', trim: '#1f2a33' },
   { id: 'fossil', name: 'Fossil', medal: 'world-dino', hull: '#c9a46a', hullDark: '#7a5a30', deck: '#efe7cf', trim: '#5a3a1c' },
   { id: 'phantom', name: 'Phantom', medal: 'world-ghost', hull: '#2e3a36', hullDark: '#141a18', deck: '#56625c', trim: '#8affc1' },
+  { id: 'quack', name: 'Rubber Duck', medal: 'world-toy', hull: '#f7d038', hullDark: '#c9a018', deck: '#fff2b8', trim: '#f28c28' },
   // Bought with coins in the locker.
   { id: 'ocean', name: 'Ocean Blue', price: 300, hull: '#2f6fb0', hullDark: '#1c4370', trim: '#f5f0e4' },
   { id: 'cherry', name: 'Cherry Red', price: 300, hull: '#b8282f', hullDark: '#6e161b', trim: '#f2d27a' },
