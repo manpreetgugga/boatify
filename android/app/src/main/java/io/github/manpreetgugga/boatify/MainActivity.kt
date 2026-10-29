@@ -23,10 +23,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 
 // Hosts the bundled web game full screen. The game is served from the APK's
-// assets through WebViewAssetLoader, so it runs offline with no permissions
-// beyond vibration.
+// assets through WebViewAssetLoader, so it runs offline; only the ads
+// (AdsBridge) use the network.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var ads: AdsBridge
     private var insets = intArrayOf(0, 0, 0, 0)
     private var pageReady = false
 
@@ -55,6 +56,8 @@ class MainActivity : Activity() {
             isHapticFeedbackEnabled = false
             overScrollMode = WebView.OVER_SCROLL_NEVER
             addJavascriptInterface(Bridge(), "BoatifyAndroid")
+            ads = AdsBridge(this@MainActivity, this)
+            addJavascriptInterface(ads, "BoatifyAds")
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     loader.shouldInterceptRequest(request.url)
@@ -92,6 +95,7 @@ class MainActivity : Activity() {
 
         hideSystemBars()
         webView.loadUrl("https://${WebViewAssetLoader.DEFAULT_DOMAIN}/assets/www/index.html")
+        ads.start()
     }
 
     private fun hideSystemBars() {
@@ -134,6 +138,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         if (pageReady) webView.evaluateJavascript("window.BoatifyNative && window.BoatifyNative.onPause()", null)
         webView.onPause()
+        ads.onHostPause()
         super.onPause()
     }
 
@@ -141,9 +146,11 @@ class MainActivity : Activity() {
         super.onResume()
         webView.onResume()
         if (pageReady) webView.evaluateJavascript("window.BoatifyNative && window.BoatifyNative.onResume()", null)
+        ads.onHostResume()
     }
 
     override fun onDestroy() {
+        ads.destroy()
         webView.destroy()
         super.onDestroy()
     }

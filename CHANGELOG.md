@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.28.0] - 2026-10-29
+
+The ads are on, in the Android app: Google AdMob, with the same gentle rules as before.
+
+- **Videos that pay.** In the Shop, **Watch** a short video for a black pearl, three times a day. A failed Open Sea run can be saved with a video for a second wind, three times a day too. Close a video early and nothing is paid.
+- **The ad between voyages** starts after Home Waters, every three voyages, only as you move on from the results (never on Retry) and never within four minutes of another ad.
+- **Your choice first.** Where the law asks for it, Google's consent form comes up before any ad loads, and **Settings → Ad privacy** opens it again.
+- The game still plays offline; only the ads need the internet. The privacy policy now names AdMob and what it collects.
+- For builders: `AdsBridge.kt` in the Android app, Google's test ads unless the Play bundle is given the real AdMob ids, and Kotlin 2.3. [docs/MONETIZATION.md](docs/MONETIZATION.md) has the details.
+
 ## [0.27.0] - 2026-10-29
 
 A reason to come back every day: the harbourmaster's orders.

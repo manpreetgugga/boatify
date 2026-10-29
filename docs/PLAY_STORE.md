@@ -62,6 +62,17 @@ New repository secret**. Add four secrets:
 | `BOATIFY_KEY_ALIAS` | `upload` |
 | `BOATIFY_KEY_PASSWORD` | the key password (the same as the keystore password unless keytool asked for a second one) |
 
+Then the AdMob ids, from the AdMob console (**Apps → No Paddle → App
+settings** and **Ad units**). Only the `.aab` gets them; without them it, like
+the APK, serves Google's test ads. Set all three or none:
+
+| Name | Value |
+| --- | --- |
+| `ADMOB_APP_ID` | the app id, `ca-app-pub-…~…` |
+| `ADMOB_REWARDED_ID` | the *Rewarded* ad unit, `ca-app-pub-…/…` |
+| `ADMOB_INTERSTITIAL_ID` | the *Interstitial* ad unit, `ca-app-pub-…/…` |
+| `ADMOB_TEST_DEVICE_IDS` | optional: your phones' hashed ids, comma-separated, so they get test ads (see docs/MONETIZATION.md) |
+
 ## 4. Build the bundle
 
 On GitHub: **Actions → Build → Run workflow** (on `main`). When it finishes,
@@ -86,16 +97,29 @@ list). Answers for this game:
 
 - **Privacy policy:** `https://github.com/manpreetgugga/boatify/blob/main/PRIVACY.md`
 - **App access:** all functionality is available without special access.
-- **Ads:** No, the app doesn't contain ads.
+- **Ads:** Yes, the app contains ads (Google AdMob).
 - **Content rating:** start the questionnaire, category **Game**. The only
   violence is fantasy: pirate cannonballs and a kraken, no blood, no people
   hurt. No sex, bad language, drugs, gambling or chat between users, and no
   purchases.
 - **Target audience:** 13 and over (13–15, 16–17, 18+). Choosing under 13
   brings the Families policy's extra rules.
-- **Data safety:** the app collects no data and shares none. Answer **No** to
-  "Does your app collect or share any of the required user data types?".
-- **Advertising ID:** No.
+- **Data safety:** the ads SDK (Google AdMob) collects and shares data. Answer
+  **Yes** to "Does your app collect or share any of the required user data
+  types?", **Yes** to encrypted in transit, and declare:
+  - **Device or other IDs**: collected and shared, for **Advertising or
+    marketing**, **Analytics** and **Fraud prevention, security, and
+    compliance**.
+  - **Approximate location** (from the IP address): collected and shared, for
+    the same purposes.
+  - **App interactions**, **Crash logs** and **Diagnostics**: collected and
+    shared, for **Analytics**, **Advertising or marketing** and **Fraud
+    prevention**.
+  - None of it is processed only on the device, and collection isn't
+    optional (consent is asked separately, where the law needs it).
+  Google keeps its current list at
+  <https://developers.google.com/admob/android/privacy/play-data-disclosure>.
+- **Advertising ID:** Yes, for **Advertising or marketing**.
 - **Government, financial, health and news apps:** No / none.
 
 ## 7. Store listing

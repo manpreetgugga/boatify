@@ -243,6 +243,31 @@ test("the native bridge's replies come back to the right call", async () => {
   setAdsProvider(null);
 });
 
+test('ad privacy options open only through a bridge that says they are needed', async () => {
+  assert.equal(ads().privacyRequired(), false);
+  assert.deepEqual(await ads().privacyOptions(), { ok: false, reason: 'unavailable' });
+  const host = {};
+  const calls = [];
+  let required = false;
+  const bridge = {
+    privacyRequired: () => required,
+    request(id, method, arg) {
+      calls.push([method, arg]);
+      setTimeout(() => host.BoatifyAdsReply(id, '{"ok":true}'), 1);
+    },
+  };
+  setAdsProvider(nativeAds(bridge, host));
+  assert.equal(ads().privacyRequired(), false);
+  required = true;
+  assert.equal(ads().privacyRequired(), true);
+  assert.deepEqual(await ads().privacyOptions(), { ok: true });
+  assert.deepEqual(calls, [['privacy', '']]);
+  // An older shell without the flag never asks.
+  setAdsProvider(nativeAds({ request() {} }, host));
+  assert.equal(ads().privacyRequired(), false);
+  setAdsProvider(null);
+});
+
 test('the ad between voyages waits until the player is hooked, then comes every few voyages', () => {
   const save = rich();
   const t = 10 * 60 * 1000;

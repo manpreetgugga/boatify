@@ -1244,6 +1244,9 @@ export function createUI(root, levels, handlers) {
             ${toggle('reduceMotion', 'Reduce motion', 'No screen shake or lightning flashes, lighter rain and snow')}
             ${seg('textSize', 'Text size', 'Menus, tips and messages in bottles', TEXT_SIZES.map((v, i) => [v, ['Normal', 'Large', 'Largest'][i]]))}
             ${seg('quality', 'Graphics', 'Lower is easier on older phones', [['low', 'Low'], ['high', 'High']])}
+            ${ads().privacyRequired() ? `<h3 class="setting-group">Privacy</h3>
+            <div class="setting"><span class="label"><b>Ad privacy</b><small>Change what you agreed to for ads</small></span>
+              <button class="btn small" data-act="privacy">Options</button></div>` : ''}
             <h3 class="setting-group">Progress</h3>
             <div class="setting"><span class="label"><b>Reset progress</b><small>Clears times, stars, medals and the logbook</small></span>
               <button class="btn small" data-act="reset">Reset</button></div>
@@ -1274,6 +1277,10 @@ export function createUI(root, levels, handlers) {
           b.dataset.confirm = '1';
           b.textContent = 'Tap again';
         }
+      });
+      click(node, '[data-act=privacy]', async () => {
+        const r = await ads().privacyOptions();
+        if (!r.ok) ui.toast("The privacy options couldn't open. Try again later.");
       });
       click(node, '[data-act=back]', () => ui.back());
       show('settings', node, { push: true });

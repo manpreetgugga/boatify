@@ -63,6 +63,12 @@ jobs:
           BOATIFY_KEYSTORE_PASSWORD: ${{ secrets.BOATIFY_KEYSTORE_PASSWORD }}
           BOATIFY_KEY_ALIAS: ${{ secrets.BOATIFY_KEY_ALIAS }}
           BOATIFY_KEY_PASSWORD: ${{ secrets.BOATIFY_KEY_PASSWORD }}
+          # Real AdMob ids for the Play bundle only; the APK above keeps
+          # Google's test ids so a sideloaded build never serves real ads.
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_REWARDED_ID: ${{ secrets.ADMOB_REWARDED_ID }}
+          ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+          ADMOB_TEST_DEVICE_IDS: ${{ secrets.ADMOB_TEST_DEVICE_IDS }}
         run: ./gradlew bundleRelease --stacktrace
       - name: Name the APK and bundle
         id: apk

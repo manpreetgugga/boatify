@@ -1,10 +1,9 @@
 // Ads, and nothing for sale: rewarded videos for a black pearl or a second
-// wind, and the short ad between voyages. None of it is switched on yet: the
-// game runs on the 'none' provider, which has no ads, so the Shop says
-// "Coming soon" and no ad ever plays. When the Android shell gains an ads SDK
-// it exposes it to the page as `window.BoatifyAds` and answers through
+// wind, and the short ad between voyages. The Android app exposes AdMob to
+// the page as `window.BoatifyAds` and answers through
 // `window.BoatifyAdsReply` (docs/MONETIZATION.md has the contract), and
-// `nativeAds` speaks to it.
+// `nativeAds` speaks to it. Anywhere else (the browser, the tests) the game
+// runs on the 'none' provider: the Shop says "Coming soon" and no ad plays.
 
 // Rewarded videos: where they are offered, what they give, and how many a
 // day each one allows.
@@ -27,6 +26,10 @@ const NONE = {
   breakReady: () => false,
   rewarded: async () => ({ ok: false, reason: 'unavailable' }),
   interstitial: async () => ({ ok: false, reason: 'unavailable' }),
+  // Where consent law applies, Google's ad privacy form must be reachable
+  // from Settings.
+  privacyRequired: () => false,
+  privacyOptions: async () => ({ ok: false, reason: 'unavailable' }),
 };
 
 let provider = NONE;
@@ -43,7 +46,7 @@ export function setAdsProvider(p) {
 // Speaks to the Android shell. `bridge` is its JavaScript interface:
 //   request(id, method, arg)  starts a call; the reply comes back as
 //   BoatifyAdsReply(id, json)
-//   adsReady(), breakReady()  answer at once
+//   adsReady(), breakReady(), privacyRequired()  answer at once
 export function nativeAds(bridge, host = globalThis) {
   let next = 1;
   const waiting = new Map();
@@ -87,6 +90,8 @@ export function nativeAds(bridge, host = globalThis) {
     breakReady: () => flag('breakReady'),
     rewarded: (placement) => ask('rewarded', placement),
     interstitial: (placement) => ask('interstitial', placement),
+    privacyRequired: () => flag('privacyRequired'),
+    privacyOptions: () => ask('privacy'),
   };
 }
 
