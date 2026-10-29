@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.29.0] - 2026-10-29
+
+Quicker sailing.
+
+- **Everything on the water runs 30% faster.** The boat, the wind, the gusts, the pirates and the Open Sea clock all keep their balance with each other, so every voyage plays the same, just quicker. Star times are kept on the game's own clock, so a voyage takes less real time.
+- **A livelier speed dial.** Hit the best angle and the dial now reads 25 knots in a fresh breeze and 30 in a strong one, and the wind reading rises to match. Distances, Open Sea records and medals are unchanged.
+- **A softer sea at speed.** The wind and the bow wave are now a low, smooth rush that rises and falls with the swell, instead of a loud hiss, and the whistle in the rigging is gone.
+- The prologue film still plays at its own pace.
+
 ## [0.28.0] - 2026-10-29
 
 The ads are on, in the Android app: Google AdMob, with the same gentle rules as before.

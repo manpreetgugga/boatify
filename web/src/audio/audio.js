@@ -26,17 +26,26 @@ export function createAudio() {
   let chordIndex = 0;
   let padVoices = [];
 
-  function makeNoise() {
+  // White noise, or brown (much softer, all rumble and no hiss).
+  function makeNoise(brown = false) {
     const len = ac.sampleRate * 2;
     const buf = ac.createBuffer(1, len, ac.sampleRate);
     const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      if (!brown) d[i] = white;
+      else {
+        last = (last + 0.02 * white) / 1.02;
+        d[i] = last * 3.5;
+      }
+    }
     return buf;
   }
 
-  function bed(type, freq, q) {
+  function bed(type, freq, q, buffer = noise) {
     const src = ac.createBufferSource();
-    src.buffer = noise;
+    src.buffer = buffer;
     src.loop = true;
     src.loopStart = Math.random();
     const filter = ac.createBiquadFilter();
@@ -75,9 +84,10 @@ export function createAudio() {
     musicFilter.frequency.value = 2600;
     musicBus.connect(musicFilter).connect(master);
     noise = makeNoise();
-    beds.wind = bed('bandpass', 500, 0.8);
-    beds.whistle = bed('bandpass', 2000, 9);
-    beds.water = bed('lowpass', 400, 0.6);
+    // Wind and water run on brown noise so a fast reach is a soft rush, not a hiss.
+    const rumble = makeNoise(true);
+    beds.wind = bed('bandpass', 400, 0.7, rumble);
+    beds.water = bed('lowpass', 300, 0.5, rumble);
     beds.luff = bed('bandpass', 1100, 1.4);
     beds.rain = bed('highpass', 2800, 0.5);
     return true;
@@ -391,12 +401,12 @@ export function createAudio() {
       }
       const aw = game.boat.apparentSpeed;
       const sp = boatSpeed(game.boat);
-      set(beds.wind.gain.gain, clamp(0.04 + aw / 70, 0, 0.42), 0.25);
-      set(beds.wind.filter.frequency, 300 + aw * 38, 0.3);
-      set(beds.whistle.gain.gain, clamp((aw - 18) / 60, 0, 0.12), 0.4);
-      set(beds.whistle.filter.frequency, 1600 + aw * 40, 0.4);
-      set(beds.water.gain.gain, clamp(0.03 + sp / 40, 0, 0.5), 0.2);
-      set(beds.water.filter.frequency, 250 + sp * 45, 0.2);
+      set(beds.wind.gain.gain, clamp(0.05 + aw / 110, 0, 0.28), 0.5);
+      set(beds.wind.filter.frequency, 260 + Math.min(aw, 40) * 12, 0.6);
+      // The bow wave comes and goes with the swell rather than roaring steadily.
+      const swell = 0.8 + 0.2 * Math.sin(game.time * 2.2);
+      set(beds.water.gain.gain, clamp(0.04 + sp / 70, 0, 0.3) * swell, 0.35);
+      set(beds.water.filter.frequency, 220 + Math.min(sp, 40) * 14, 0.4);
       const luff = game.boat.luffing && game.status === 'sailing' ? clamp(aw / 30, 0.05, 0.3) * (0.5 + 0.5 * Math.sin(game.time * 42)) : 0;
       set(beds.luff.gain.gain, luff, 0.02);
       let rain = game.level.weather.rain || 0;

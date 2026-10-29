@@ -7,7 +7,7 @@ import { dist } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
 
 export const HAUL_R = 34; // how close alongside they can reach a line
-export const HAUL_SPEED = 5; // units/s (3 kn): any faster and they can't hold on
+export const HAUL_SPEED = 5; // units/s (7 kn): any faster and they can't hold on
 export const HAUL_TIME = 1.4; // seconds alongside to haul them in
 export const SIGHT_R = 520; // close enough to hear them shout
 

@@ -4,7 +4,7 @@
 import { LEVELS } from './data/levels.js';
 import { CAMPAIGN, voyageDef } from './data/worlds.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
-import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
+import { createGame, stepGame, drainEvents, speedOf, PACE } from './world/game.js';
 import { openSeaDef, reviveRun } from './world/opensea.js';
 import { regattaDef, fleetFor, ordinal } from './world/regatta.js';
 import { compassPoint } from './core/math.js';
@@ -848,12 +848,14 @@ function frame(now) {
   clock += raw;
   frames += 1;
   const dt = raw;
+  // The sea runs ahead of the wall clock; the prologue film keeps real time.
+  const sea = dt * PACE;
 
   if (mode === 'title') {
     // Demo voyage under autopilot behind the menus.
     for (let k = 0; k < timeScale; k++) {
-      const cmd = autopilotInput(autopilot, game, dt);
-      stepGame(game, cmd, dt);
+      const cmd = autopilotInput(autopilot, game, sea);
+      stepGame(game, cmd, sea);
     }
     handleEvents(drainEvents(game), false);
     demoTimer -= dt;
@@ -868,19 +870,19 @@ function frame(now) {
     for (let k = 0; k < timeScale; k++) {
       const cmd = input.read(dt);
       if (autopilot) {
-        const ap = autopilotInput(autopilot, game, dt);
+        const ap = autopilotInput(autopilot, game, sea);
         cmd.steer = ap.steer;
         cmd.autoTrim = true;
         if (ap.boost) cmd.boost = true;
       }
-      stepGame(game, cmd, dt);
+      stepGame(game, cmd, sea);
       if (recorder) recordGhost(recorder, game);
       handleEvents(drainEvents(game), true);
       if (mode !== 'playing') break;
     }
   } else if (mode === 'finishing') {
     // Let the boat coast into the harbor before the results card.
-    stepGame(game, { steer: 0, trimTarget: 1, autoTrim: true, boost: false }, dt);
+    stepGame(game, { steer: 0, trimTarget: 1, autoTrim: true, boost: false }, sea);
     drainEvents(game);
     finishTimer -= dt;
     if (finishTimer <= 0) {
@@ -888,7 +890,7 @@ function frame(now) {
       else showResults();
     }
   } else if (mode === 'offer') {
-    stepGame(game, { steer: 0, trimTarget: 1, autoTrim: true, boost: false }, dt);
+    stepGame(game, { steer: 0, trimTarget: 1, autoTrim: true, boost: false }, sea);
     drainEvents(game);
   }
 

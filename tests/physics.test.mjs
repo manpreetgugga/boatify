@@ -56,5 +56,5 @@ test('Beaufort and knots conversions', () => {
   assert.equal(beaufort(0.5).force, 0);
   assert.equal(beaufort(10).force, 3);
   assert.equal(beaufort(30).force, 7);
-  assert.ok(Math.abs(toKnots(10) - 6) < 1e-9);
+  assert.ok(Math.abs(toKnots(10) - 14) < 1e-9);
 });

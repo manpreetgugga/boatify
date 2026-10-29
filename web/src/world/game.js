@@ -18,6 +18,9 @@ import { prepareCastaways, updateCastaways, castawaysAboard } from './castaways.
 import { placeBlackPearl } from './blackpearls.js';
 
 export const STEP = 1 / 120;
+// Game seconds per real second while sailing. Everything on the water runs
+// this much faster than the clock on the wall (star times are game seconds).
+export const PACE = 1.3;
 const MAX_STEPS = 12;
 // How hard each material hits, per unit of impact speed over the limit.
 const DAMAGE = {

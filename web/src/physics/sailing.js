@@ -124,15 +124,18 @@ export function beaufort(knots) {
   return { force: 12, name: 'Hurricane' };
 }
 
-// Game speed units -> knots shown on the instruments.
-export const KNOTS_PER_UNIT = 0.6;
+// Game speed units -> knots shown on the instruments. Sailing runs a little
+// faster than real time (PACE in world/game.js), and the dial reads to match:
+// the best angle shows 25 knots in a fresh breeze and 30 in a strong one.
+export const KNOTS_PER_UNIT = 1.4;
 
 export function toKnots(unitsPerSecond) {
   return unitsPerSecond * KNOTS_PER_UNIT;
 }
 
 // One game unit is about 0.31 m: the 11-unit sloop is a 3.4 m dinghy.
-export const METERS_PER_UNIT = KNOTS_PER_UNIT * 0.5144;
+// Fixed, so distances, Open Sea records and medals keep their meaning.
+export const METERS_PER_UNIT = 0.6 * 0.5144;
 
 export function toMeters(units) {
   return units * METERS_PER_UNIT;

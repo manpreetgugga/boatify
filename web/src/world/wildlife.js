@@ -8,7 +8,7 @@ import { DEG, angleDiff, clamp, dist } from '../core/math.js';
 import { createRng } from '../core/rng.js';
 import { boatSpeed } from '../physics/boat.js';
 
-export const JOIN_SPEED = 8; // about 5 knots
+export const JOIN_SPEED = 8; // about 11 knots
 export const JOIN_RANGE = 150;
 export const ESCORT_TIME = 14;
 export const ESCORT_COOLDOWN = 20;
@@ -229,7 +229,7 @@ function updatePod(game, pod, dt) {
 
 function updateWhale(game, w, dt) {
   const { boat } = game;
-  // Cruise around an ellipse at about 3 knots.
+  // Cruise around an ellipse at about 8 knots.
   const perim = Math.PI * (w.rx + w.ry);
   w.t += ((6 * 2 * Math.PI) / perim) * dt;
   const nx = w.cx + Math.cos(w.t) * w.rx;
