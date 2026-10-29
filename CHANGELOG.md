@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.17.0] - 2026-10-29
+
+Ready for Google Play.
+
+- **Android 16.** The app now targets Android 16 (API 36), which Google Play requires for new apps. It's marked as a game, so tablets and foldables keep it in landscape.
+- **A bundle for the store.** Each release can carry the Play bundle (`.aab`) next to the APK, signed with your Play upload key once it's added to the repository's secrets. The APK keeps the same key as before, so it still installs over older versions and keeps your progress.
+- **Store listing.** The title, short and full description, release notes, the 512 px icon, the feature graphic and eight screenshots each for phones and 7-inch and 10-inch tablets, all drawn from the game itself (`npm run store-art`).
+- **Privacy policy.** `PRIVACY.md`: the game collects nothing, makes no network connections and keeps your progress on your phone.
+- **Publishing guide.** `docs/PLAY_STORE.md` goes step by step through signing up for Play Console, making the upload key, the closed test and every form Play asks you to fill in.
+
 ## [0.16.0] - 2026-10-28
 
 Follow the dolphins.

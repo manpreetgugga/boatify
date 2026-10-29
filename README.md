@@ -20,6 +20,13 @@ Every version is published as a pre-release on the
 APK. Download `no-paddle-vX.Y.Z.apk` on your phone, open it and allow installing
 from that source. Android 8.0 or newer.
 
+### Google Play
+
+The store listing (text, icon, feature graphic and screenshots) is in
+`fastlane/metadata/android/en-US/`, and the privacy policy is
+[PRIVACY.md](PRIVACY.md). [docs/PLAY_STORE.md](docs/PLAY_STORE.md) walks
+through signing up for Play Console and publishing.
+
 ## How to play
 
 | | Touch | Keyboard |
@@ -76,6 +83,7 @@ npm start           # play the dev build at http://localhost:5173
 npm test            # the prologue film, dolphin guides, harbor talk and secret medals, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas, castaways, medals, the Sail Locker, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
+npm run store-art   # redraw the Play store icon, feature graphic and screenshots (Playwright)
 ```
 
 The game is plain JavaScript modules in `web/src`:
@@ -97,8 +105,9 @@ cd android
 ```
 
 CI (`.github/workflows/build.yml`) runs the tests, builds the APK and creates a
-pre-release for each new version in `package.json`. See
-`android/keystore/README.md` for signing.
+pre-release for each new version in `package.json`, with the Play bundle
+(`.aab`) when the upload key is set up. See `android/keystore/README.md` for
+signing and `docs/PLAY_STORE.md` for Google Play.
 
 ## Credits
 
