@@ -5,6 +5,7 @@
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { dateKey } from '../data/daily.js';
 import { blankWallet, cleanWallet } from '../data/economy.js';
+import { cleanOrders } from '../data/orders.js';
 
 const KEY = 'boatify.save.v1';
 const GHOST_KEY = 'boatify.ghosts.v1';
@@ -78,6 +79,7 @@ function blank() {
     sailed: [], // boats that have finished a voyage
     sightings: {}, // sea life the player has had the first-meeting tip for
     wallet: blankWallet(), // coins, black pearls and what they bought
+    orders: null, // today's orders from the harbourmaster (data/orders.js)
     seenIntro: false,
     seenFilm: false, // the prologue has played through or been skipped
   };
@@ -113,6 +115,7 @@ export function loadSave() {
     sailed: Array.isArray(data.sailed) ? data.sailed : [],
     sightings: isObj(data.sightings) ? data.sightings : {},
     wallet: cleanWallet(data.wallet),
+    orders: cleanOrders(data.orders),
   };
 }
 
@@ -266,11 +269,11 @@ export function totalStars(save) {
 }
 
 // The wallet stays: what was bought (and the black pearls already found) isn't
-// progress to start over.
+// progress to start over. Today's orders stay too, so they never pay twice.
 export function resetProgress(save) {
-  const { settings, wallet } = save;
+  const { settings, wallet, orders } = save;
   const fresh = blank();
-  Object.assign(save, fresh, { settings, wallet });
+  Object.assign(save, fresh, { settings, wallet, orders });
   writeSave(save);
   clearGhosts();
 }

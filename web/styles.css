@@ -935,6 +935,146 @@ button:focus-visible {
   transform: scale(1);
 }
 
+/* Orders finished on the results card. */
+.order-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--foam-faint);
+}
+
+.order-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ok);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(15px * var(--text, 1));
+  background: rgba(61, 220, 151, 0.14);
+  animation: chip-in 0.35s 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+.order-chip b {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+  color: var(--brass);
+}
+
+.order-chip.chest {
+  border-color: var(--gem);
+  background: rgba(205, 184, 255, 0.14);
+}
+
+.order-chip.chest b {
+  color: var(--gem);
+}
+
+.order-note {
+  flex-basis: 100%;
+  font-size: calc(13px * var(--text, 1));
+  color: var(--foam-dim);
+}
+
+.order-note b {
+  color: var(--foam);
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* The orders board. */
+.order-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 8px;
+}
+
+.order-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.order-meter .medal-meter {
+  flex: 1;
+  margin: 0;
+}
+
+.shop-item.order .shop-art {
+  color: var(--brass);
+}
+
+.shop-item.order.chest .shop-art {
+  color: var(--gem);
+}
+
+.shop-item.order.done {
+  border-color: rgba(61, 220, 151, 0.5);
+  background: rgba(61, 220, 151, 0.08);
+}
+
+.shop-item.order.done .shop-art {
+  color: var(--ok);
+}
+
+.order-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.order-pay {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(17px * var(--text, 1));
+  color: var(--brass);
+}
+
+.order-pay.gem {
+  color: var(--gem);
+}
+
+.order-pay.done {
+  font-size: calc(14px * var(--text, 1));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+
+.order-foot {
+  margin: 12px 0 0;
+  font-size: calc(13px * var(--text, 1));
+  color: var(--foam-dim);
+}
+
+.btn-tally {
+  margin-left: 6px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Inline text button, e.g. "Change" next to the boat in the briefing. */
 .link {
   margin-left: 6px;
@@ -1765,13 +1905,39 @@ button:focus-visible {
   .sheet-note {
     display: none;
   }
-  .medal-strip {
+  .medal-strip,
+  .order-strip {
     margin-top: 8px;
     padding-top: 6px;
   }
-  .result-stars {
-    font-size: 38px;
-    margin-bottom: 8px;
+  /* The stars move up beside the heading, to leave room for the pay,
+     orders and medals. */
+  .sheet.results-sheet {
+    position: relative;
+  }
+  .results-sheet .result-stars {
+    position: absolute;
+    top: 16px;
+    right: 22px;
+    gap: 8px;
+    margin: 0;
+    font-size: 30px;
+  }
+  /* The pay on one line: the sum, then what it was for. */
+  .results-sheet .reward {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 8px;
+    padding: 6px 12px;
+  }
+  .results-sheet .reward-sum {
+    flex: none;
+    font-size: calc(21px * var(--text, 1));
+  }
+  .results-sheet .reward small {
+    margin: 0;
+    line-height: 1.3;
   }
   .howto svg {
     max-height: 52vh;

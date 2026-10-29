@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.27.0] - 2026-10-29
+
+A reason to come back every day: the harbourmaster's orders.
+
+- **Three orders a day.** Once the daily voyage opens, the new Orders board on the title screen has three small jobs from the harbourmaster, the same for everyone and new at midnight. One is easy, like setting sail three times or collecting fifteen pearls. One asks for good sailing: three stars twice, two voyages without a bump, or a best time beaten. One sends you somewhere: bring a castaway home, sail through eight Open Sea gates, finish a regatta in the top three, or ride with the dolphins.
+- **Paid on the spot.** Each order pays 50 to 100 coins the moment it's done, and finishing all three opens the harbourmaster's chest, with a black pearl inside. The results card shows the orders a voyage finished and how far it took the rest.
+- **One swap a day.** Don't fancy an order? Swap it for another of its kind, once a day.
+- **Fixes.** On a phone held sideways, the results card puts the stars beside the heading and the pay on one line, so the orders and new medals fit, and new medals scroll into view when they pop up.
+
 ## [0.26.0] - 2026-10-29
 
 Ads only: nothing in the game will ever be sold for money.

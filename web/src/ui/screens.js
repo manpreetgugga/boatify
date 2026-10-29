@@ -17,6 +17,7 @@ import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
 import { ads, REWARDS, watchVideo, videosLeft } from '../platform/ads.js';
+import { CHEST, dayOrders, todaysOrders, swapOrder } from '../data/orders.js';
 import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
 import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
@@ -196,6 +197,26 @@ function medalStrip(medals = []) {
   const gear = medals.map((m) => rewardFor(m.id)).filter(Boolean);
   const note = gear.length ? `<p class="locker-note">New in the Sail Locker: ${gear.map((r) => esc(r.label)).join(', ')}</p>` : '';
   return `<div class="medal-strip"><span class="eyebrow">New medal${medals.length > 1 ? 's' : ''}</span>${chips}${note}</div>`;
+}
+
+// The orders a voyage finished or moved along, for the results card.
+function orderStrip(r) {
+  if (!r || (!r.done.length && !r.moved.length)) return '';
+  const chips = r.done.map((o) => `<span class="order-chip">${icon(o.icon, 17)}${esc(o.text)}<b>${icon('coin', 15)}${o.pay}</b></span>`).join('');
+  const chest = r.blackPearls ? `<span class="order-chip chest">${icon('chest', 17)}Harbourmaster's chest<b>${icon('blackPearl', 15)}${r.blackPearls}</b></span>` : '';
+  const notes = r.moved.map((o) => `${esc(o.text)} <b>${Math.floor(o.progress)} / ${o.goal}</b>`);
+  if (r.left) notes.push(`${r.left} more to open the chest`);
+  const note = notes.length ? `<small class="order-note">${notes.join(' · ')}</small>` : '';
+  const head = r.done.length ? `Order${r.done.length > 1 ? 's' : ''} done` : 'Orders';
+  return `<div class="order-strip"><span class="eyebrow">${head}</span>${chips}${chest}${note}</div>`;
+}
+
+// "5 h 20 min" to the next day's orders.
+function untilMidnight(now = new Date()) {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const mins = Math.max(1, Math.ceil((next - now) / 60000));
+  const h = Math.floor(mins / 60);
+  return h ? `${h} h ${mins % 60} min` : `${mins} min`;
 }
 
 function polarSvg() {
@@ -543,6 +564,7 @@ export function createUI(root, levels, handlers) {
       const dailyOpen = isDailyUnlocked(save, levels);
       const sailedToday = !!save.daily[dailyId(today)];
       const streak = currentStreak(save, today);
+      const orders = dailyOpen ? dayOrders(save, today) : null;
       const node = el(`<section class="screen scrim title" aria-label="Title">
         <div class="title-wrap">
           <div class="eyebrow">A sailing voyage</div>
@@ -555,6 +577,7 @@ export function createUI(root, levels, handlers) {
             <button class="btn" data-act="howto">How to sail</button>
           </div>
           <div class="title-buttons">
+            ${orders ? `<button class="btn small ${orders.seen || orders.done.length === orders.picks.length ? '' : 'fresh'}" data-act="orders" aria-label="Orders, ${orders.done.length} of ${orders.picks.length} done">Orders <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span></button>` : ''}
             ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
             ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">Open Sea</button>` : ''}
             ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">Regatta</button>` : ''}
@@ -570,6 +593,7 @@ export function createUI(root, levels, handlers) {
       </section>`);
       click(node, '[data-act=play]', () => ui.begin(save));
       click(node, '[data-act=voyages]', () => ui.voyages(save, true));
+      click(node, '[data-act=orders]', () => ui.orders(save));
       click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
       click(node, '[data-act=sea]', () => ui.seaBriefing(save));
       click(node, '[data-act=regatta]', () => ui.regattaBriefing(save));
@@ -928,6 +952,7 @@ export function createUI(root, levels, handlers) {
               ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
             ${rewardStrip(improved.pay)}
+            ${orderStrip(improved.orders)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
@@ -955,6 +980,8 @@ export function createUI(root, levels, handlers) {
         setTimeout(() => {
           if (current !== 'results') return;
           medalEls.forEach((m) => m.classList.add('on'));
+          // On a short screen the strip can sit below the fold.
+          medalEls[0].parentNode.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           handlers.onMedal();
         }, 500 + result.stars * 320);
       }
@@ -976,6 +1003,7 @@ export function createUI(root, levels, handlers) {
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
             </div>
             ${rewardStrip(improved.pay)}
+            ${orderStrip(improved.orders)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
@@ -991,6 +1019,8 @@ export function createUI(root, levels, handlers) {
         setTimeout(() => {
           if (current !== 'results') return;
           medalEls.forEach((m) => m.classList.add('on'));
+          // On a short screen the strip can sit below the fold.
+          medalEls[0].parentNode.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           handlers.onMedal();
         }, 500);
       }
@@ -1021,6 +1051,7 @@ export function createUI(root, levels, handlers) {
               ${stepUp ? `<span class="k">Next race</span><span class="v">${esc(FLEETS[fleetFor(rec.wins)].name)} fleet<span class="badge">STEP UP</span></span>` : ''}
             </div>
             ${rewardStrip(improved.pay)}
+            ${orderStrip(improved.orders)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
@@ -1044,6 +1075,8 @@ export function createUI(root, levels, handlers) {
         setTimeout(() => {
           if (current !== 'results') return;
           medalEls.forEach((m) => m.classList.add('on'));
+          // On a short screen the strip can sit below the fold.
+          medalEls[0].parentNode.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           handlers.onMedal();
         }, 500 + result.stars * 320);
       }
@@ -1354,6 +1387,62 @@ export function createUI(root, levels, handlers) {
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       show('logbook', node, { push: true });
+    },
+
+    // The harbourmaster's three jobs for today, the chest for all three, and
+    // one swap a day. `restore` redraws it after a swap.
+    orders(save, restore = false) {
+      const today = dateKey();
+      const list = todaysOrders(save, today);
+      const o = save.orders;
+      const done = list.filter((d) => d.done).length;
+      const row = (d) => {
+        const p = Math.floor(d.progress);
+        const side = d.done
+          ? `<span class="order-pay done">Done</span>`
+          : `<span class="order-pay">${icon('coin', 16)}${d.pay}</span>${o.swapped ? '' : `<button class="btn small" data-swap="${d.id}" aria-label="Swap ${esc(d.text)}">Swap</button>`}`;
+        return `<div class="shop-item order ${d.done ? 'done' : ''}">
+            <span class="shop-art">${icon(d.icon, 28)}</span>
+            <span class="shop-text"><b>${esc(d.text)}</b><small>${esc(d.note)}</small><span class="order-meter"><span class="medal-meter"><i style="width:${Math.round((100 * p) / d.goal)}%"></i></span><span class="medal-count">${p} / ${d.goal}</span></span></span>
+            <span class="order-side">${side}</span>
+          </div>`;
+      };
+      const chest = `<div class="shop-item order chest ${o.chest ? 'done' : ''}">
+          <span class="shop-art">${icon('chest', 28)}</span>
+          <span class="shop-text"><b>Harbourmaster's chest</b><small>${o.chest ? 'Opened today. Another waits tomorrow.' : 'Finish all three orders today to open it.'}</small></span>
+          <span class="order-side">${o.chest ? '<span class="order-pay done">Opened</span>' : `<span class="order-pay gem">${icon('blackPearl', 16)}${CHEST}</span>`}</span>
+        </div>`;
+      const node = el(`<section class="screen dim" aria-label="Orders">
+        <div class="sheet">
+          <div class="sheet-head"><h2>Orders</h2><span class="eyebrow">${done} / ${list.length} done</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">
+            <p class="sheet-note">Three jobs from the harbourmaster, new every day. Each one pays the moment it's done, and all three open the chest.</p>
+            <div class="order-list">${list.map(row).join('')}${chest}</div>
+            <p class="order-foot">${o.swapped ? "You've swapped an order today." : 'You can swap one order a day.'} New orders in ${untilMidnight()}.</p>
+          </div>
+        </div></section>`);
+      click(node, '[data-swap]', (e, b) => {
+        const order = list.find((d) => d.id === b.dataset.swap);
+        ui.confirm({
+          title: 'Swap this order?',
+          text: `“${order.text}” goes back and another order of its kind takes its place.${order.progress ? ' Its progress is lost.' : ''} You can swap one order a day.`,
+          ok: 'Swap',
+          onOk: () => {
+            const next = swapOrder(save, dateKey(), order.id);
+            if (!next) return;
+            handlers.onSeen();
+            if (current !== 'orders') return;
+            ui.orders(save, true);
+            ui.toast(`New order: ${next.text}.`, 'good', 2400);
+          },
+        });
+      });
+      click(node, '[data-act=back]', () => ui.back());
+      show('orders', node, restore ? { keep: true } : { push: true });
+      if (!o.seen) {
+        o.seen = true;
+        handlers.onSeen();
+      }
     },
 
     // A black pearl for a video, supplies for coins, boats for black pearls.

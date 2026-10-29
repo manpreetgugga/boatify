@@ -28,6 +28,7 @@ import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
+import { tallyOrders } from './data/orders.js';
 import { ads, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/ads.js';
 
 // Things that thud rather than crack when you hit them.
@@ -363,6 +364,8 @@ function windOnOffer() {
 // Record the voyage, award medals and pay out. Returns what the results show.
 function settleVoyage(result) {
   settleJars(result.jarsLeft || 0);
+  // Orders open with the daily voyage; the voyage that opens them doesn't count.
+  const ordersOpen = isDailyUnlocked(save, LEVELS);
   let improved;
   if (game.sea) {
     improved = recordSeaRun(save, result);
@@ -387,9 +390,22 @@ function settleVoyage(result) {
       storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
     }
   }
+  if (ordersOpen) payOrders(improved, result);
   countVoyage(save, voyagesHome());
   writeSave(save);
   return { improved, result };
+}
+
+// Today's orders done on this voyage go on its bill, the chest's black pearl too.
+function payOrders(improved, result) {
+  const kind = game.sea ? 'sea' : game.race ? 'race' : game.def.daily ? 'daily' : 'voyage';
+  const r = tallyOrders(save, dateKey(), kind, result, improved);
+  improved.orders = r;
+  if (!r.coins && !r.blackPearls) return;
+  const extra = payOut(save, r.coins ? [{ label: 'Orders', coins: r.coins }] : []);
+  save.wallet.blackPearls += r.blackPearls;
+  const pay = improved.pay;
+  improved.pay = { coins: pay.coins + extra.coins, blackPearls: pay.blackPearls + r.blackPearls, lines: [...pay.lines, ...extra.lines] };
 }
 
 function showResults() {

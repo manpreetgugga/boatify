@@ -326,6 +326,27 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.waitForTimeout(300);
   await snap('13-settings');
 
+  step('orders: none before the daily voyage opens, then three jobs and a chest');
+  await tab.evaluate(() => window.__boatify.showTitle());
+  await tab.waitForSelector('section[aria-label="Title"].open');
+  if (await tab.locator('section[aria-label="Title"].open [data-act=orders]').count()) throw new Error('orders before the daily voyage opens');
+  await tab.evaluate(() => {
+    const b = window.__boatify;
+    for (const l of b.levels.slice(0, 3)) b.save.levels[l.id] ||= { best: 999, stars: 1, pearls: 0, pearlsTotal: 5, rescued: 0, castaways: 0, runs: 1 };
+    b.showTitle();
+  });
+  await tab.locator('section[aria-label="Title"].open [data-act=orders]').click();
+  await tab.waitForSelector('section[aria-label="Orders"].open');
+  const board = await tab.evaluate(() => {
+    const s = document.querySelector('section[aria-label="Orders"]');
+    return [s.querySelectorAll('.order:not(.chest)').length, s.querySelectorAll('.order.chest').length, s.querySelectorAll('[data-swap]').length, window.__boatify.save.orders.seen];
+  });
+  if (board.join() !== '3,1,3,true') throw new Error(`orders board ${JSON.stringify(board)}`);
+  await tab.waitForTimeout(300);
+  await snap('13b-orders');
+  // Today's three, set for the test, so the castaway voyage next finishes one.
+  await tab.evaluate(() => Object.assign(window.__boatify.save.orders, { picks: ['voyages', 'gold', 'rescue'], progress: {}, done: [] }));
+
   step('castaway: heave to alongside, haul them aboard and bring them home');
   await tab.evaluate(() => window.__boatify.startLevel(1));
   await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
@@ -348,6 +369,10 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   const rescuedRow = await tab.locator('section[aria-label="Voyage complete"] .stat-rows').textContent();
   if (home.join('|') !== `${castaway}|${castaway}` || !rescuedRow.includes(castaway)) throw new Error(`rescue of ${castaway}: ${JSON.stringify(home)} / ${rescuedRow}`);
   step(`${castaway} is safe ashore and in the logbook`);
+  const strip = await tab.locator('section[aria-label="Voyage complete"] .order-strip').textContent();
+  const orders = await tab.evaluate(() => window.__boatify.save.orders);
+  if (!strip.includes('Bring a castaway home') || !orders.done.includes('rescue') || orders.progress.voyages !== 1) throw new Error(`orders after the rescue: ${strip} / ${JSON.stringify(orders)}`);
+  step('the rescue finished an order: "Bring a castaway home"');
 
   await browser.close();
   if (errors.length) {
