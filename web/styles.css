@@ -1199,6 +1199,13 @@ button:focus-visible {
   margin-bottom: 14px;
 }
 
+/* Like a sheet note, but kept on short screens: it stands in for a whole group. */
+.shop-empty {
+  margin: 0;
+  font-size: calc(14px * var(--text, 1));
+  color: var(--foam-dim);
+}
+
 .shop-item {
   display: flex;
   align-items: center;

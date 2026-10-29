@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.25.0] - 2026-10-29
+
+Ready for ads between voyages, done gently, and a way to turn them off. Like the rest of the store, it's all switched off until the ads and billing SDKs are in the Android app, so nothing changes for players yet.
+
+- **An ad between voyages.** Once switched on, a short ad plays after every three voyages, as you move on from the results. It never interrupts sailing and never holds up a Retry. Home Waters is free of them, so the first comes three voyages into the Volcano Isles, and there's never one within four minutes of another ad, a video for black pearls included. If no ad is loaded, the game just carries on.
+- **No ads.** A one-time purchase in the Shop ends the ads between voyages for good, and comes back after a reinstall. Buying any black pearls ends them too. Videos for black pearls stay, since they only play when you ask for one.
+- **Fixes.** On a phone held sideways, the Shop's Boats group no longer shows an empty heading once every boat is yours.
+- [docs/MONETIZATION.md](docs/MONETIZATION.md) covers the `no_ads` product, the interstitial and the `breakReady()` bridge flag.
+
 ## [0.24.0] - 2026-10-29
 
 The last three worlds and thirty more voyages: the frozen north, a bay full of toys and a sea up in the clouds. That makes a hundred voyages beyond Home Waters.

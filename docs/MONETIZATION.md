@@ -15,8 +15,8 @@ store yet.
   stars do, buy an Open Sea *second wind* (30 more seconds and a patched hull),
   or trade for 150 coins.
 
-Buying black pearls and watching rewarded videos for them are built but switched
-off. With no store in the app the game uses the `none` provider in
+Buying black pearls, watching rewarded videos for them, the short ad between
+voyages and the one-time **No ads** purchase are built but switched off. With no store in the app the game uses the `none` provider in
 `web/src/platform/commerce.js`, and the Shop says **Coming soon**. To switch
 them on, add Google Play Billing and a rewarded-video SDK to the Android
 shell, then expose them to the page through the bridge below. Nothing in the
@@ -35,12 +35,41 @@ These are **consumable** in-app products. Create them in Play Console under
 the store returns, in the player's own currency, so prices are only set in
 Play Console.
 
+One more product is bought once and kept:
+
+| Product id | What it does                                  | Suggested price      |
+| ---------- | --------------------------------------------- | -------------------- |
+| `no_ads`   | ends the ads between voyages for good          | about the middle tier |
+
+`no_ads` is a **non-consumable** in-app product (`NO_ADS` in `commerce.js`).
+Videos for black pearls stay: they only ever play when the player asks for
+one. Any purchase at all, a black pearl pack included, also ends the ads
+between voyages, since someone who has paid shouldn't sit through them.
+
 Rewarded video placements (`REWARDS` in `commerce.js`):
 
 | Placement id         | Reward                                   | Per day |
 | -------------------- | ---------------------------------------- | ------- |
 | `reward_black_pearl` | 1 black pearl (Shop)                     | 3       |
 | `reward_second_wind` | an Open Sea second wind, no black pearls | 3       |
+
+### The ad between voyages
+
+An interstitial (`BREAK` in `commerce.js`, placement id `break_voyage`). The
+rules are there to keep players coming back, not to wear them out:
+
+- It never interrupts sailing. It plays only as the player moves on from a
+  voyage's results (Next, Voyages, Done), never on Retry.
+- Home Waters (the first 10 voyages) is free of it. It starts once more than
+  10 voyages are home, so the first one comes three voyages into the
+  Volcano Isles.
+- Then once every 3 voyages finished (any kind: voyages, Open Sea runs,
+  regattas, the daily).
+- Never within 4 minutes of the last ad of any kind, rewarded videos
+  included.
+- If none is loaded the game simply moves on, and tries again after the next
+  voyage.
+- Never for anyone who has bought No ads or anything else.
 
 ## The bridge
 
@@ -50,12 +79,13 @@ The shell adds a JavaScript interface named `BoatifyStore` to the WebView.
 webView.addJavascriptInterface(StoreBridge(this, webView), "BoatifyStore")
 ```
 
-It has three methods, all annotated `@JavascriptInterface`:
+It has four methods, all annotated `@JavascriptInterface`:
 
 | Method                                         | Returns  | Meaning                                                                |
 | ---------------------------------------------- | -------- | ---------------------------------------------------------------------- |
 | `storeReady()`                                 | boolean  | Billing is connected and the products were found.                      |
 | `adsReady()`                                   | boolean  | A rewarded video is loaded and can be shown now.                       |
+| `breakReady()`                                 | boolean  | An interstitial is loaded and can be shown now.                        |
 | `request(id: Int, method: String, arg: String)` | nothing  | Start a call. Reply later with `BoatifyStoreReply(id, json)`.          |
 
 Reply from the UI thread:
@@ -76,6 +106,7 @@ gives up on a call after two minutes.
 | `pending`  | empty                                   | `{ "ok": true, "orders": [ { "id": "…", "product": "…" } ] }`     |
 | `finish`   | an order id                             | `{ "ok": true }`                                                  |
 | `rewarded` | a placement id                          | `{ "ok": true }`, only once the video was watched to the end       |
+| `interstitial` | a placement id                      | `{ "ok": true }` once the ad has closed                            |
 
 ### Purchases: credit first, then consume
 
@@ -83,10 +114,13 @@ gives up on a call after two minutes.
    `PURCHASED` (not `PENDING`). Use the purchase token as the order id.
 2. The game credits the black pearls, writes the save, then calls `finish`
    with that order id.
-3. On `finish`, **consume** the purchase (`consumeAsync`) so it can be bought
-   again and Play doesn't refund it after three days.
+3. On `finish`, **consume** a black pearl pack (`consumeAsync`) so it can be
+   bought again and Play doesn't refund it after three days. For `no_ads`,
+   **acknowledge** it instead (`acknowledgePurchase`, once) and never consume
+   it.
 4. At every launch the game calls `pending`. Reply with every purchase that
-   is `PURCHASED` but not yet consumed (from `queryPurchasesAsync`). The game
+   is `PURCHASED` but not yet consumed (from `queryPurchasesAsync`), and with
+   `no_ads` for as long as it is owned, so a reinstall gets it back. The game
    credits each one it hasn't seen before and calls `finish` again.
 
 The wallet remembers the order ids it has credited, so an order is never
@@ -103,6 +137,17 @@ today, so this is the step that would add one.
 `{ "ok": false, "reason": "cancelled" }`. Load the next video straight away
 so `adsReady()` is true again soon.
 
+### The ad between voyages
+
+`interstitial` shows the loaded interstitial. Reply `{ "ok": true }` from
+the SDK's "dismissed" callback, or `{ "ok": false, "reason": "…" }` if it
+failed to show (the game counts it as not played and tries again after the
+next voyage). The game pauses while the ad covers it, since the activity's
+`onPause` already tells the page. Load the next one once it closes so
+`breakReady()` is true by the next break. Create the ad unit in AdMob as an
+*Interstitial* (not *Rewarded interstitial*), and keep the frequency cap in
+AdMob no tighter than the game's own rules above.
+
 ## Before release
 
 - **Privacy policy.** `PRIVACY.md` says the game has no ads and makes no
@@ -113,6 +158,9 @@ so `adsReady()` is true again soon.
   (device or other IDs, app interactions, diagnostics) and that it is shared
   with the ad network for advertising.
 - **Ads declaration** in Play Console: "Yes, my app contains ads".
+- **Disruptive ads.** Play's ads policy forbids interstitials that appear
+  unexpectedly during play or as the app opens. The game shows them only at
+  a natural break, after a voyage's results.
 - **Consent.** In the EEA, UK and Switzerland, show Google's User Messaging
   Platform (UMP) consent form before loading ads.
 - **Families policy.** If the target audience includes children, use only
@@ -128,5 +176,6 @@ so `adsReady()` is true again soon.
 
 `setCommerceProvider()` takes any object with the same methods as the `none`
 provider. `tests/economy.test.mjs` uses fake providers and a fake bridge to
-check that orders are credited once, saved before `finish`, and that videos
-pay only when watched and only a few times a day.
+check that orders are credited once, saved before `finish`, that videos pay
+only when watched and only a few times a day, that the ad between voyages
+keeps to its rules, and that `no_ads` is restored after a reinstall.

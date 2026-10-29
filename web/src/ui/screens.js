@@ -16,7 +16,7 @@ import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
-import { commerce, PACKS, REWARDS, buyPack, watchVideo, videosLeft } from '../platform/commerce.js';
+import { commerce, PACKS, NO_ADS, REWARDS, buyPack, watchVideo, videosLeft } from '../platform/commerce.js';
 import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
 import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
@@ -1356,8 +1356,9 @@ export function createUI(root, levels, handlers) {
       show('logbook', node, { push: true });
     },
 
-    // Black pearls (one day for money or a video), supplies for coins, boats for
-    // black pearls. Buying and videos say "Coming soon" until the store is in.
+    // Black pearls (one day for money or a video), no ads, supplies for coins,
+    // boats for black pearls. Buying and videos say "Coming soon" until the store
+    // is in.
     shop(save, restore = false) {
       const store = commerce();
       const today = dateKey();
@@ -1379,6 +1380,13 @@ export function createUI(root, levels, handlers) {
         `One black pearl · <span data-left>${videosLeft(save, REWARDS.blackPearl, today)}</span> left today`,
         `<button class="btn small" data-video ${ads ? '' : 'disabled'}>${ads ? 'Watch' : 'Coming soon'}</button>`,
       );
+      const adFree = save.wallet.noAds;
+      const noAds = item(
+        icon('shield', 28),
+        NO_ADS.name,
+        adFree ? 'No ads between voyages. Thank you!' : 'One payment and the ads between voyages stop for good. Buying any black pearls stops them too.',
+        `<button class="btn small" data-pack="${NO_ADS.id}" ${selling && !adFree ? '' : 'disabled'}>${adFree ? 'Ads off' : selling ? 'Buy' : 'Coming soon'}</button>`,
+      );
       const boats = BOAT_ORDER.filter((id) => BOAT_PRICES[id] && !isBoatUnlocked(save, id));
       const node = el(`<section class="screen dim" aria-label="Shop">
         <div class="sheet wide">
@@ -1386,7 +1394,7 @@ export function createUI(root, levels, handlers) {
           <div class="sheet-body">
             <h3 class="setting-group">Black pearls</h3>
             <p class="sheet-note">Black pearls are rare, far rarer than the white ones. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.</p>
-            <div class="shop-grid">${packs}${video}</div>
+            <div class="shop-grid">${packs}${video}${noAds}</div>
             <h3 class="setting-group">Supplies</h3>
             <div class="shop-grid">
               ${item(icon('wind', 28), 'Gust jar', `Goes aboard on your next voyage. In the hold: <b data-jars>${save.wallet.jars}</b> / ${JAR_HOLD}`, `<button class="btn small" data-buy="jar">${priceTag({ coins: JAR_PRICE })}</button>`)}
@@ -1401,7 +1409,7 @@ export function createUI(root, levels, handlers) {
                       return item(`<canvas class="shop-boat" data-type="${id}" aria-hidden="true"></canvas>`, esc(t.name), `${esc(t.tag)} · or ★ ${t.unlock}`, `<button class="btn small gem-btn" data-boat="${id}" aria-label="Unlock the ${esc(t.name)} for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })}</button>`);
                     })
                     .join('')
-                : '<p class="sheet-note">Every boat in the Shipyard is yours.</p>'
+                : '<p class="shop-empty">Every boat in the Shipyard is yours.</p>'
             }</div>
             <h3 class="setting-group">Sails and paints</h3>
             <div class="shop-grid">${item(icon('crown', 28), 'Sail Locker', 'Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.', '<button class="btn small" data-act="locker">Open</button>')}</div>
@@ -1448,8 +1456,10 @@ export function createUI(root, levels, handlers) {
         b.disabled = false;
         if (current !== 'shop') return;
         if (r.ok && r.blackPearls) ui.toast(`+${r.blackPearls} black pearls. Thank you!`, 'good');
+        else if (r.ok && b.dataset.pack === NO_ADS.id) ui.toast('No more ads between voyages. Thank you!', 'good');
         else if (r.reason && r.reason !== 'cancelled') ui.toast("The store couldn't finish that. You haven't been charged.", 'warn');
-        redraw();
+        if (r.ok && !adFree) ui.shop(save, true);
+        else redraw();
       });
       click(node, '[data-video]', async (e, b) => {
         if (!videosLeft(save, REWARDS.blackPearl, today)) {
@@ -1476,7 +1486,7 @@ export function createUI(root, levels, handlers) {
       if (selling) {
         store.prices().then((prices) => {
           node.querySelectorAll('[data-pack]').forEach((b) => {
-            if (prices[b.dataset.pack]) b.textContent = prices[b.dataset.pack];
+            if (prices[b.dataset.pack] && !(b.dataset.pack === NO_ADS.id && adFree)) b.textContent = prices[b.dataset.pack];
           });
         });
       }

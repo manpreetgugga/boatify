@@ -28,7 +28,7 @@ import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
-import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, REWARDS } from './platform/commerce.js';
+import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/commerce.js';
 
 // Things that thud rather than crack when you hit them.
 const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice', 'jungle', 'mangrove', 'fern', 'hippo', 'ghost', 'sandcastle', 'ball', 'rubber', 'cloud', 'puff', 'balloon']);
@@ -76,6 +76,7 @@ let finishTimer = 0;
 let pending = null;
 let carried = 0; // gust jars brought from the hold this voyage
 let windTaken = false; // a second wind already used this Open Sea run
+let onBreak = false; // the ad between voyages is playing
 let guideTold = {}; // which dolphin hints this voyage has explained
 let cancelCountdown = null;
 let timeScale = 1;
@@ -203,13 +204,14 @@ const ui = createUI(root, CAMPAIGN, {
     audio.unlock();
     audio.sfx.click();
   },
-  onPlay: (i) => startLevel(i),
+  onPlay: (i) => moveOn(() => startLevel(i)),
   onResume: () => resume(),
   onRestart: () => startLevel(levelIndex),
-  onQuit: () => {
-    showTitle(false);
-    ui.voyages(save);
-  },
+  onQuit: () =>
+    moveOn(() => {
+      showTitle(false);
+      ui.voyages(save);
+    }),
   onSettings: () => {
     applySettings();
     writeSave(save);
@@ -385,6 +387,7 @@ function settleVoyage(result) {
       storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
     }
   }
+  countVoyage(save, voyagesHome());
   writeSave(save);
   return { improved, result };
 }
@@ -395,6 +398,24 @@ function showResults() {
   else if (game.race) ui.raceResults(pending.result, pending.improved, save);
   else ui.results(levelIndex, pending.result, pending.improved, save);
   if (pending.improved.pay.coins || pending.improved.pay.blackPearls) setTimeout(() => mode === 'results' && audio.sfx.coins(), 900);
+}
+
+function voyagesHome() {
+  return Object.values(save.levels).filter((l) => l && l.best !== null).length;
+}
+
+// Moving on from the results. When an ad between voyages is due it plays
+// first; taps while it plays are ignored. Retrying never waits for one.
+function moveOn(go) {
+  if (mode !== 'results') return go();
+  if (onBreak) return;
+  if (!breakDue(save, voyagesHome()) || !commerce().breakReady()) return go();
+  onBreak = true;
+  takeBreak(save).then((r) => {
+    onBreak = false;
+    if (r.ok) writeSave(save);
+    if (mode === 'results') go();
+  });
 }
 
 // The run ended: sail on for black pearls or a video, or call it a day.

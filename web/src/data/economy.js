@@ -50,7 +50,10 @@ export function blankWallet() {
     jars: 0, // gust jars in the hold
     owned: [], // boats and paints bought: 'boat:proa', 'gear:royal'
     orders: [], // store order ids already credited, so none is paid twice
-    ads: { day: null, seen: {} }, // rewarded videos watched today, by placement
+    // Rewarded videos watched today, by placement; voyages finished since the
+    // last ad between voyages; and when the last ad of any kind played.
+    ads: { day: null, seen: {}, since: 0, last: 0 },
+    noAds: false, // no ads between voyages: bought, or anything bought
   };
 }
 
@@ -70,7 +73,8 @@ export function cleanWallet(w) {
     jars: Math.min(JAR_HOLD, count(w.jars)),
     owned: Array.isArray(w.owned) ? w.owned.filter((s) => typeof s === 'string') : [],
     orders: Array.isArray(w.orders) ? w.orders.filter((s) => typeof s === 'string').slice(-200) : [],
-    ads: isObj(w.ads) && isObj(w.ads.seen) ? { day: w.ads.day || null, seen: w.ads.seen } : base.ads,
+    ads: isObj(w.ads) && isObj(w.ads.seen) ? { day: w.ads.day || null, seen: w.ads.seen, since: count(w.ads.since), last: count(w.ads.last) } : base.ads,
+    noAds: w.noAds === true,
   };
 }
 
