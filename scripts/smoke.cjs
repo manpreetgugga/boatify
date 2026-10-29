@@ -244,7 +244,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.getByRole('button', { name: 'Sail Locker' }).click();
   await tab.waitForSelector('section[aria-label="Sail Locker"].open');
   const gear = await tab.locator('.gear').count();
-  if (gear !== 36) throw new Error(`sail locker shows ${gear} items`);
+  if (gear !== 40) throw new Error(`sail locker shows ${gear} items`);
   await tab.getByRole('button', { name: 'Jolly Roger, locked' }).click();
   await tab.waitForFunction(() => /secret medal unlocks the Jolly Roger sail\. “.+”/.test(document.querySelector('#toasts').textContent));
   await tab.getByRole('button', { name: 'Harbor Stripe' }).click();

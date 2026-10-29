@@ -7,59 +7,10 @@
 // Everything here is in world units with the camera applied.
 
 import { pointInPolygon, clamp } from '../core/math.js';
-import { C, rgba } from './palette.js';
-
-const TAU = Math.PI * 2;
-const cache = new WeakMap();
-
-// A steady number in [0, 1) for a seed, so decoration never flickers.
-function hash(n) {
-  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-// The long axis of a shape (radians) and its half length and half width.
-function axisOf(isl) {
-  let c = cache.get(isl);
-  if (c && c.axis) return c.axis;
-  let sxx = 0;
-  let syy = 0;
-  let sxy = 0;
-  for (const [x, y] of isl.pts) {
-    const dx = x - isl.cx;
-    const dy = y - isl.cy;
-    sxx += dx * dx;
-    syy += dy * dy;
-    sxy += dx * dy;
-  }
-  const a = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-  const ca = Math.cos(a);
-  const sa = Math.sin(a);
-  let hl = 0;
-  let hw = 0;
-  for (const [x, y] of isl.pts) {
-    const dx = x - isl.cx;
-    const dy = y - isl.cy;
-    hl = Math.max(hl, Math.abs(dx * ca + dy * sa));
-    hw = Math.max(hw, Math.abs(-dx * sa + dy * ca));
-  }
-  c = c || {};
-  c.axis = { a, hl, hw };
-  cache.set(isl, c);
-  return c.axis;
-}
-
-function store(isl) {
-  let c = cache.get(isl);
-  if (!c) {
-    c = {};
-    cache.set(isl, c);
-  }
-  return c;
-}
+import { TAU, hash, axisOf, store, raised, dangerRing, drawPerson, SHIRTS } from './artkit.js';
+import { drawWildShallows, drawWildIsland, drawWildRock, drawWildFloe, drawWildLair, wildLights } from './wildart.js';
 
 const CONTAINER_COLORS = ['#d6452f', '#2f7fb8', '#e8b21e', '#3a9a5b', '#e07a2f', '#7a4fd6', '#c9ccd0', '#1f6f78'];
-const SHIRTS = ['#e5484d', '#3b8fe0', '#f5c518', '#3ddc97', '#f28c28', '#ffffff', '#8b5cf6'];
 
 // --- Shallows ----------------------------------------------------------------
 
@@ -96,7 +47,7 @@ export function drawWorldShallows(ctx, isl, path, time) {
       return true;
     }
     default:
-      return false;
+      return drawWildShallows(ctx, isl, path, time);
   }
 }
 
@@ -120,19 +71,10 @@ export function drawWorldIsland(ctx, isl, path, decor, time, game) {
       drawSporeIsle(ctx, isl, path, decor, time, game);
       return true;
     default:
-      return false;
+      return drawWildIsland(ctx, isl, path, decor, time);
   }
 }
 
-function raised(ctx, path, under, top, lift = 1) {
-  ctx.fillStyle = under;
-  ctx.fill(path);
-  ctx.clip(path);
-  ctx.translate(-2.5 * lift, -3.5 * lift);
-  ctx.fillStyle = top;
-  ctx.fill(path);
-  ctx.translate(2.5 * lift, 3.5 * lift);
-}
 
 // A volcano: dark slopes, glowing rivulets, a crater of lava, and smoke that
 // leans with the wind.
@@ -368,33 +310,6 @@ function drawQuay(ctx, isl, path, time, game) {
   ctx.restore();
 }
 
-// Someone standing, seen from above: shoulders, head, and an arm that waves.
-function drawPerson(ctx, x, y, facing, shirt, wave) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(10, 14, 18, 0.3)';
-  ctx.beginPath();
-  ctx.ellipse(1, 1.5, 3.6, 2.4, 0, 0, TAU);
-  ctx.fill();
-  ctx.fillStyle = shirt;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 3.4, 2.2, 0, 0, TAU);
-  ctx.fill();
-  if (wave !== null) {
-    ctx.strokeStyle = shirt;
-    ctx.lineWidth = 1.4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(2.6, 0);
-    ctx.lineTo(4 + wave * 1.6, facing * 4);
-    ctx.stroke();
-  }
-  ctx.fillStyle = '#e0b48a';
-  ctx.beginPath();
-  ctx.arc(0, 0, 1.6, 0, TAU);
-  ctx.fill();
-  ctx.restore();
-}
 
 // Crystal isle: violet stone and clusters of glowing crystal.
 function drawCrystalIsle(ctx, isl, path, decor, time) {
@@ -538,7 +453,7 @@ export function drawWorldRock(ctx, r, time) {
       drawPod(ctx, r, time);
       return true;
     default:
-      return false;
+      return drawWildRock(ctx, r, time);
   }
 }
 
@@ -665,7 +580,7 @@ export function drawWorldFloe(ctx, f, path, decor, time) {
       drawJelly(ctx, f, path, time);
       return true;
     default:
-      return false;
+      return drawWildFloe(ctx, f, path, decor, time);
   }
 }
 
@@ -817,20 +732,10 @@ export function drawLair(ctx, k, time) {
       drawBeast(ctx, k, time);
       return true;
     default:
-      return false;
+      return drawWildLair(ctx, k, time);
   }
 }
 
-function dangerRing(ctx, k, time, t) {
-  ctx.strokeStyle = rgba(C.danger, 0.35 + 0.45 * Math.abs(Math.sin(time * 10)));
-  ctx.lineWidth = 3;
-  ctx.setLineDash([10, 8]);
-  ctx.beginPath();
-  ctx.arc(0, 0, k.r, 0, TAU);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  return t;
-}
 
 // A steam vent on the sea floor: it breathes, it glows, then it blows.
 function drawVent(ctx, k, time) {
@@ -1098,5 +1003,5 @@ export function worldLights(level, time) {
     else if (k.look === 'beast' && k.phase !== 'idle') out.push([k.x, k.y, k.r, 0.6]);
   }
   for (const r of level.rocks) if (r.material === 'shard' || r.material === 'pod') out.push([r.x, r.y, r.r * 3, 0.4]);
-  return out;
+  return out.concat(wildLights(level, time));
 }

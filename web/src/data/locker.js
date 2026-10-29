@@ -165,6 +165,31 @@ export const SAILS = [
       { dots: [[0.18, 0.3], [0.44, 0.22], [0.26, 0.6], [0.12, 0.74], [0.56, 0.14]], r: 0.035, color: '#e8fff7' },
     ],
   },
+  {
+    id: 'canopy',
+    name: 'Canopy',
+    medal: 'world-jungle',
+    cloth: '#3f7f34',
+    shade: '#30652a',
+    marks: [
+      { line: [0.3, 0.06, 3], width: 0.08, color: '#7cc04a' },
+      { line: [0.62, 0.05, 2.5], width: 0.06, color: '#2a5222' },
+      { dots: [[0.2, 0.2], [0.5, 0.42], [0.28, 0.74], [0.6, 0.26], [0.14, 0.5]], r: 0.04, color: '#ff5fa2' },
+    ],
+  },
+  {
+    id: 'mosaic',
+    name: 'Mosaic',
+    medal: 'world-sunken',
+    cloth: '#f2ead6',
+    shade: '#d8ccb0',
+    marks: [
+      { grid: 6, color: 'rgba(63, 138, 122, 0.45)' },
+      { band: [0.08, 0.14], color: '#3f8a7a' },
+      { disc: [0.3, 0.45, 0.13], color: '#3f8a7a' },
+      { disc: [0.3, 0.45, 0.07], color: '#e8b21e' },
+    ],
+  },
   // Bought with coins in the locker.
   {
     id: 'royal',
@@ -219,6 +244,8 @@ export const HULLS = [
   { id: 'copper', name: 'Copper Bottom', medal: 'long-haul', hull: '#b06a3b', hullDark: '#6e3c1c', trim: '#58b39a' },
   { id: 'rescue', name: 'Rescue Orange', medal: 'no-one-left-behind', hull: '#f26a21', hullDark: '#a8430f', trim: '#f5f0e4' },
   { id: 'pilot', name: 'Harbor Pilot', medal: 'world-harbor', hull: '#e8b21e', hullDark: '#9a7310', trim: '#1f2a33' },
+  { id: 'fossil', name: 'Fossil', medal: 'world-dino', hull: '#c9a46a', hullDark: '#7a5a30', deck: '#efe7cf', trim: '#5a3a1c' },
+  { id: 'phantom', name: 'Phantom', medal: 'world-ghost', hull: '#2e3a36', hullDark: '#141a18', deck: '#56625c', trim: '#8affc1' },
   // Bought with coins in the locker.
   { id: 'ocean', name: 'Ocean Blue', price: 300, hull: '#2f6fb0', hullDark: '#1c4370', trim: '#f5f0e4' },
   { id: 'cherry', name: 'Cherry Red', price: 300, hull: '#b8282f', hullDark: '#6e161b', trim: '#f2d27a' },

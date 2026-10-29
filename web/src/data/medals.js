@@ -246,7 +246,15 @@ export const MEDALS = [
 
 // One medal for sailing every voyage of each far world.
 function worldMedals() {
-  const looks = { volcano: ['Fire Walker', 'flame'], harbor: ['Harbor Master', 'lifebuoy'], alien: ['Star Sailor', 'horizon'] };
+  const looks = {
+    volcano: ['Fire Walker', 'flame'],
+    harbor: ['Harbor Master', 'lifebuoy'],
+    alien: ['Star Sailor', 'horizon'],
+    jungle: ['River Pilot', 'leaf'],
+    dino: ['Fossil Hunter', 'bone'],
+    sunken: ['Atlantean', 'column'],
+    ghost: ['Spirit Sailor', 'lantern'],
+  };
   return WORLDS.filter((w) => looks[w.id]).map((w) => ({
     id: `world-${w.id}`,
     name: looks[w.id][0],

@@ -31,7 +31,7 @@ import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJ
 import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, REWARDS } from './platform/commerce.js';
 
 // Things that thud rather than crack when you hit them.
-const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice']);
+const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice', 'jungle', 'mangrove', 'fern', 'hippo', 'ghost']);
 
 // What a lair's ring means, in each world.
 const LAIR_WARNINGS = {
@@ -39,6 +39,10 @@ const LAIR_WARNINGS = {
   vent: 'The vent is about to blow! Get out of the ring!',
   crane: 'A container is coming down! Get out of the ring!',
   beast: 'Something is rising! Get out of the ring!',
+  croc: 'Crocodile! Get out of the ring!',
+  plesio: 'Something huge is rising! Get out of the ring!',
+  eel: 'The eel is about to lunge! Get out of the ring!',
+  wraith: 'The wraith is coming! Get out of the ring!',
 };
 
 const root = document.getElementById('boatify');
@@ -987,6 +991,11 @@ window.__boatify = {
     if (!game) return null;
     return { x: c.w / 2 + c.ox + (game.boat.x - c.x) * c.scale, y: c.h / 2 + c.oy + (game.boat.y - c.y) * c.scale, scale: c.scale };
   },
+  // Where a point of the sea is drawn, in CSS pixels.
+  toScreen(x, y) {
+    const c = renderer.cam;
+    return { x: c.w / 2 + c.ox + (x - c.x) * c.scale, y: c.h / 2 + c.oy + (y - c.y) * c.scale, scale: c.scale };
+  },
   // Fill the purse for a test.
   give({ coins = 0, blackPearls = 0 } = {}) {
     save.wallet.coins += coins;
@@ -1028,6 +1037,23 @@ window.__boatify = {
     const vy = Math.sin(heading) * speed;
     Object.assign(game.boat, { x: e.x + e.nx * off - vx * 2, y: e.y + e.ny * off - vy * 2, vx, vy, heading, yawRate: 0 });
     return { x, y };
+  },
+  // Heave to beside the first drifter ('floe'), lair ('lair'), rock
+  // ('rock') or island of a kind, `off` past its edge. Returns where it is.
+  // Heave to beside the first thing of a kind to look at it; for a lair,
+  // `warned` winds the clock to that many seconds into its warning.
+  lookAt(what, off = 40, warned = null) {
+    if (!game) return null;
+    const l = game.level;
+    const f = l.floes[0];
+    const isl = l.islands.find((i) => i.kind === what);
+    const spot =
+      what === 'floe' ? f && { x: f.cx + f.ox, y: f.cy + f.oy, r: f.radius } : what === 'lair' ? l.krakens[0] : what === 'rock' ? l.rocks[0] : isl && { x: isl.cx, y: isl.cy, r: isl.radius };
+    if (!spot) return null;
+    Object.assign(game.boat, { x: spot.x, y: spot.y + spot.r + off, vx: 0, vy: 0, heading: game.wind.angle + Math.PI, yawRate: 0 });
+    if (what === 'lair' && warned !== null) game.time += (((spot.period - 3.4 + warned - spot.offset - game.time) % spot.period) + spot.period) % spot.period;
+    resetView(renderer, game);
+    return { x: spot.x, y: spot.y, r: spot.r };
   },
   // What the skipper is up to on deck.
   skipper() {

@@ -385,6 +385,42 @@ export function drawAsh(ctx, fx, game, w, h, dt, time) {
   }
 }
 
+// Fireflies and will-o'-wisps: soft glows that wander about the screen,
+// brighter after dark.
+export function drawMotes(ctx, fx, game, w, h, dt, time) {
+  const weather = game.level.weather;
+  const amount = weather.motes || 0;
+  const count = Math.floor(amount * (fx.calm ? 30 : 70));
+  fx.motes = fx.motes || [];
+  while (fx.motes.length < count) fx.motes.push({ x: Math.random() * w, y: Math.random() * h, p: Math.random() * 40, s: 0.6 + Math.random() * 0.8 });
+  fx.motes.length = count;
+  if (!count) return;
+  const rgb = weather.moteColor || '230, 255, 120';
+  const bright = weather.night ? 1 : 0.6;
+  const wx = game.windHere.wx;
+  const wy = game.windHere.wy;
+  for (const m of fx.motes) {
+    m.x += (Math.sin(time * 0.7 + m.p) * 16 + wx * 0.6) * m.s * dt;
+    m.y += (Math.cos(time * 0.55 + m.p * 1.3) * 12 + wy * 0.6) * m.s * dt;
+    if (m.x < -10) m.x += w + 20;
+    if (m.x > w + 10) m.x -= w + 20;
+    if (m.y < -10) m.y += h + 20;
+    if (m.y > h + 10) m.y -= h + 20;
+    const blink = Math.max(0, Math.sin(time * 1.6 * m.s + m.p));
+    if (blink < 0.05) continue;
+    const a = blink * bright;
+    const r = 5 + m.s * 4;
+    const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
+    g.addColorStop(0, `rgba(${rgb}, ${(0.85 * a).toFixed(3)})`);
+    g.addColorStop(0.35, `rgba(${rgb}, ${(0.3 * a).toFixed(3)})`);
+    g.addColorStop(1, `rgba(${rgb}, 0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 export function drawLightning(ctx, fx, game, w, h) {
   if (game.flash <= 0) {
     fx.bolt = null;

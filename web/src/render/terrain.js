@@ -90,6 +90,22 @@ const ROCK_HALO = {
   container: 'rgba(4, 16, 22, 0.25)',
   shard: 'rgba(190, 150, 255, 0.2)',
   pod: 'rgba(120, 240, 200, 0.2)',
+  snag: 'rgba(30, 40, 20, 0.22)',
+  bones: 'rgba(200, 240, 220, 0.16)',
+  column: 'rgba(220, 245, 240, 0.18)',
+  statue: 'rgba(220, 245, 240, 0.18)',
+  mast: 'rgba(4, 12, 12, 0.3)',
+};
+
+// Rocks that aren't round draw their own wash.
+const OWN_FOAM = new Set(['snag', 'bones', 'mast']);
+
+// The water a drifter stirs up, by its look.
+const FLOE_RING = {
+  jelly: 'rgba(255, 160, 220, 0.18)',
+  ice: 'rgba(150, 220, 235, 0.18)',
+  hippo: 'rgba(120, 100, 70, 0.22)',
+  ghostship: 'rgba(150, 255, 200, 0.16)',
 };
 
 // Ice: `lift` is how far the top stands out of the water, so tall bergs
@@ -149,7 +165,7 @@ export function drawFloes(ctx, game, cam, time) {
       ctx.stroke(path);
       ctx.restore();
     }
-    ctx.strokeStyle = f.look === 'jelly' ? 'rgba(255, 160, 220, 0.18)' : f.look === 'ice' ? 'rgba(150, 220, 235, 0.18)' : 'rgba(232, 244, 242, 0.1)';
+    ctx.strokeStyle = FLOE_RING[f.look] || 'rgba(232, 244, 242, 0.1)';
     ctx.lineWidth = 16;
     ctx.stroke(path);
     if (speed > 0.5) {
@@ -248,10 +264,12 @@ export function drawIslands(ctx, game, cam, time) {
   for (const r of game.level.rocks) {
     if (r.x + r.r < v.minX || r.x - r.r > v.maxX || r.y + r.r < v.minY || r.y - r.r > v.maxY) continue;
     const coral = r.material === 'coral';
-    ctx.fillStyle = 'rgba(232, 244, 242, 0.45)';
-    ctx.beginPath();
-    ctx.arc(r.x, r.y, r.r + 1.6 + Math.sin(time * 2 + r.x) * 0.6, 0, Math.PI * 2);
-    ctx.fill();
+    if (!OWN_FOAM.has(r.material)) {
+      ctx.fillStyle = 'rgba(232, 244, 242, 0.45)';
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r + 1.6 + Math.sin(time * 2 + r.x) * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (drawWorldRock(ctx, r, time)) continue;
     ctx.fillStyle = coral ? C.coralDark : C.rockDark;
     ctx.beginPath();

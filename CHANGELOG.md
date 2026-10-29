@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.23.0] - 2026-10-29
+
+Four more worlds and forty more voyages: a jungle river, a lagoon from the age of dinosaurs, a drowned city and a haunted sea.
+
+- **Jungle Delta.** A brown river runs out to sea between jungle isles thick with canopy, flowers and macaws. Mangroves stand on their roots in the water, lily pads float in the shallows, and drowned trees lie just under the surface. Hippos wallow on the tide, and some of the logs have eyes: a crocodile waits in its pool and snaps its jaws when the ring turns red. The monsoon brings rain, and on Firefly Night the air is full of blinking lights.
+- **Dino Lagoon.** Fern isles with eggs in their nests and long-necked sauropods wading through the ferns, and red cliffs where pterosaurs wheel overhead. Giant ribs and bones stick out of the water, sea turtles drift on the current, and a plesiosaur rises out of the deep with its long neck and snapping jaws.
+- **Sunken City.** You sail over the streets of a drowned city. Broken columns stand up to the surface, stone heads stare up from the shallows, and the round tops of towers with copper domes show above the water. Galleys row up and down the lanes, with rowers at the oars and eyes painted on the bow. In the city gate, a giant eel waits in its doorway and lunges.
+- **Ghost Sea.** Grey water and green lanterns. Islands of graves and dead trees, with bats and drifting mist, and the wrecks of the ships that ran into them. Broken masts stick out of the water, ghost ships with no crew glide through the mist, and wisps gather on the water before a wraith bursts out.
+- **New castaways.** Tomas, Amara and Professor Lim in the Jungle Delta; Rex, Dr. Petra Stone and Ugg in Dino Lagoon; Marina, Old Theo and Nerissa in the Sunken City; Wilhelmina, Captain Bones and Lantern Lou on the Ghost Sea.
+- **Four new medals.** River Pilot, Fossil Hunter, Atlantean and Spirit Sailor are for finishing every voyage in a world. They unlock the Canopy sail, the Fossil hull paint, the Mosaic sail and the Phantom hull paint.
+- **Fireflies and wisps.** Some waters now have little blinking lights that wander over the sea, brighter at night.
+- **Fixes.** Penguins only ride ice floes now, not hippos, jellies or rafts.
+
 ## [0.22.0] - 2026-10-29
 
 Three new worlds with thirty new voyages, black pearls, and pinch to zoom.

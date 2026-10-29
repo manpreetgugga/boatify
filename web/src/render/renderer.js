@@ -19,6 +19,7 @@ import {
   drawRain,
   drawSnow,
   drawAsh,
+  drawMotes,
   drawLightning,
 } from './effects.js';
 import { themeOf } from './themes.js';
@@ -162,6 +163,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawSnow(ctx, r.fx, game, r.w, r.h, dt, time);
   drawAsh(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLighting(ctx, r.light, game, cam, time, r.w, r.h);
+  drawMotes(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLightning(ctx, r.fx, game, r.w, r.h);
   if (film) drawFilmLight(ctx, film, r.w, r.h);
   ctx.restore();

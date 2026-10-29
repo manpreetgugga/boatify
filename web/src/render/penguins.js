@@ -107,9 +107,9 @@ export function placeColonies(level) {
       });
     }
   });
-  // A few riding each floe big enough to stand on.
+  // A few riding each ice floe big enough to stand on (not the ferries).
   (level.floes || []).forEach((f, n) => {
-    if (f.radius < 40) return;
+    if (f.look !== 'ice' || f.radius < 40) return;
     const rng = createRng((f.seed || n + 1) * 3571 + 97);
     const penguins = [];
     const count = rng.int(2, 4);

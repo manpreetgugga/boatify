@@ -37,6 +37,23 @@ const DAMAGE = {
   spore: 1.2,
   pod: 1.2,
   jelly: 1.4,
+  jungle: 1.6,
+  mangrove: 1.4,
+  snag: 1.8,
+  hippo: 1.3,
+  fern: 1.4,
+  cliff: 2.6,
+  bones: 2,
+  shell: 2.2,
+  ruin: 2.4,
+  tower: 2.6,
+  column: 2.4,
+  statue: 2.4,
+  wood: 2,
+  grave: 2,
+  hulk: 2,
+  mast: 1.8,
+  ghost: 1.6,
 };
 
 // options: { boat, seed, guide, startJars, blackPearl } where `blackPearl` puts
