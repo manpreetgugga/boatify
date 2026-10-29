@@ -1,7 +1,7 @@
 // Sea life on screen: dolphins that porpoise along beside the bow, whales that
 // spout, dive and breach, the swell a breach sends out, gulls that perch on a
 // slow boat or circle the harbor, and schools of flying fish that skim away
-// from a fast one. Gulls and flying fish are decoration only. A guide pod
+// from a fast one. Penguins and the gulls on the ice are in penguins.js. Gulls and flying fish are decoration only. A guide pod
 // trails a line of foam from the bow, curving the way to turn.
 
 import { clamp, dist } from '../core/math.js';
@@ -474,16 +474,18 @@ function gullWings(ctx, flap) {
   }
 }
 
-function drawGull(ctx, x, y, heading, flap, height) {
+export function drawGull(ctx, x, y, heading, flap, height, k = 1) {
   ctx.save();
   ctx.translate(x + height * 0.5, y + height * 0.7);
   ctx.rotate(heading);
+  ctx.scale(k, k);
   ctx.fillStyle = 'rgba(4, 22, 30, 0.18)';
   gullWings(ctx, flap);
   ctx.restore();
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(heading);
+  ctx.scale(k, k);
   ctx.fillStyle = '#d9e1e5';
   gullWings(ctx, flap);
   // Black wingtips.
@@ -509,10 +511,16 @@ function drawGull(ctx, x, y, heading, flap, height) {
 }
 
 function drawPerchedGull(ctx, g, boat, time) {
-  ctx.save();
-  ctx.translate(g.x, g.y);
   // Faces into the wind like gulls do; here, roughly toward the bow with a fidget.
-  ctx.rotate(boat.heading + Math.sin(time * 0.7) * 0.5);
+  drawStandingGull(ctx, g.x, g.y, boat.heading + Math.sin(time * 0.7) * 0.5);
+}
+
+// A gull standing, wings folded: on a boat's stern or on the ice.
+export function drawStandingGull(ctx, x, y, heading, k = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(heading);
+  ctx.scale(k, k);
   ctx.fillStyle = 'rgba(4, 22, 30, 0.2)';
   ctx.beginPath();
   ctx.ellipse(0.4, 0.5, 1.9, 1, 0, 0, TAU);

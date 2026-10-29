@@ -1,9 +1,9 @@
 // Instruments and on-screen controls, drawn in screen space (CSS pixels).
 
-import { clamp, DEG, formatTime, compassPoint } from '../core/math.js';
-import { beaufort, toKnots, toMeters, formatDistance } from '../physics/sailing.js';
-import { HEEL_WARNING, CAPSIZE_ANGLE, boatSpeed } from '../physics/boat.js';
-import { relativeWindAngle, vmgToFinish, distanceToFinish } from '../world/game.js';
+import { clamp, DEG, formatTime, compassPoint, toBearing, fromBearing, wrapAngle } from '../core/math.js';
+import { toKnots, toMeters, formatDistance } from '../physics/sailing.js';
+import { HEEL_WARNING, boatSpeed } from '../physics/boat.js';
+import { relativeWindAngle, distanceToFinish } from '../world/game.js';
 import { windFromBearing } from '../world/wind.js';
 import { ESCORT_TIME } from '../world/wildlife.js';
 import { chasingShip } from '../world/pirates.js';
@@ -513,6 +513,10 @@ function drawPointers(ctx, game, cam, L, time) {
       [px, py] = [slide(side), slide(-side)].find(fits) || slide(side);
     }
     if (!first) first = { x: px, y: py };
+    // A soft dark halo keeps the pointer and its label readable over ice.
+    ctx.save();
+    ctx.shadowColor = 'rgba(6, 20, 29, 0.9)';
+    ctx.shadowBlur = 5;
     ctx.save();
     ctx.translate(px, py);
     const pulse = 1 + 0.08 * Math.sin(time * 5);
@@ -533,35 +537,41 @@ function drawPointers(ctx, game, cam, L, time) {
       text(ctx, t.label, lx, ly - 7, 15, t.color, 'center', 800, FONT.display, true);
       text(ctx, `${Math.round(toMeters(t.dist))} m`, lx, ly + 8, 11, C.text, 'center', 600, FONT.body);
     }
+    ctx.restore();
   }
 }
 
+// Just what you sail by: a compass with the wind on it, the wind, your speed
+// and your heading. The boat on the compass reddens as she heels too far.
 function drawInstruments(ctx, game, L, controls, time) {
   const P = L.panel;
   panel(ctx, P.x, P.y, P.w, P.h, 14);
   const { boat } = game;
   const cy = P.y + P.h / 2;
 
-  // Wind dial, heading-up.
-  const R = P.h * 0.38;
-  const dx = P.x + R + 14;
+  // Compass, heading-up: your bow always points at the top.
+  const R = P.h * 0.42;
+  const dx = P.x + R + 12;
   ctx.save();
   ctx.translate(dx, cy);
-  ctx.strokeStyle = 'rgba(232, 244, 242, 0.25)';
-  ctx.lineWidth = 1.2;
+  ctx.fillStyle = 'rgba(6, 20, 29, 0.35)';
   ctx.beginPath();
   ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232, 244, 242, 0.3)';
+  ctx.lineWidth = 1.2;
   ctx.stroke();
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    const inner = i % 3 === 0 ? R - 6 : R - 3;
+  const turn = (a) => -Math.PI / 2 + a;
+  for (let i = 0; i < 16; i++) {
+    const a = turn(wrapAngle(fromBearing(i * 22.5) - boat.heading));
+    const inner = i % 4 === 0 ? R - 5 : R - 2.5;
     ctx.beginPath();
     ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
     ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R);
     ctx.stroke();
   }
   const rel = relativeWindAngle(game);
-  const windA = -Math.PI / 2 + rel;
+  const windA = turn(rel);
   const inIrons = Math.abs(rel) < 34 * DEG;
   ctx.fillStyle = inIrons ? rgba(C.danger, 0.35 + 0.2 * Math.sin(time * 8)) : 'rgba(214, 62, 169, 0.22)';
   ctx.beginPath();
@@ -569,15 +579,16 @@ function drawInstruments(ctx, game, L, controls, time) {
   ctx.arc(0, 0, R - 1, windA - 34 * DEG, windA + 34 * DEG);
   ctx.closePath();
   ctx.fill();
-  // Boat silhouette pointing up.
-  ctx.fillStyle = C.foam;
+  // Your boat, pointing up.
+  const heel = Math.abs(boat.heel);
+  ctx.fillStyle = heel > HEEL_WARNING ? C.danger : heel > HEEL_WARNING * 0.75 ? C.warn : C.foam;
   ctx.beginPath();
-  ctx.moveTo(0, -R * 0.42);
-  ctx.quadraticCurveTo(R * 0.2, -R * 0.05, R * 0.13, R * 0.38);
-  ctx.lineTo(-R * 0.13, R * 0.38);
-  ctx.quadraticCurveTo(-R * 0.2, -R * 0.05, 0, -R * 0.42);
+  ctx.moveTo(0, -R * 0.4);
+  ctx.quadraticCurveTo(R * 0.19, -R * 0.05, R * 0.12, R * 0.36);
+  ctx.lineTo(-R * 0.12, R * 0.36);
+  ctx.quadraticCurveTo(-R * 0.19, -R * 0.05, 0, -R * 0.4);
   ctx.fill();
-  // True wind arrow from the rim inward.
+  // The wind, from the rim inward.
   const ux = Math.cos(windA);
   const uy = Math.sin(windA);
   ctx.strokeStyle = C.brass;
@@ -593,140 +604,145 @@ function drawInstruments(ctx, game, L, controls, time) {
   ctx.lineTo(ux * R * 0.7 + uy * 5, uy * R * 0.7 - ux * 5);
   ctx.closePath();
   ctx.fill();
+  // North, east, south and west turn round the card as you turn, on top so
+  // the wind arrow never hides them.
+  ctx.lineJoin = 'round';
+  for (const [label, bearing] of [['N', 0], ['E', 90], ['S', 180], ['W', 270]]) {
+    const a = turn(wrapAngle(fromBearing(bearing) - boat.heading));
+    const r = R - 10;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r + 1;
+    ctx.font = font(label === 'N' ? 12 : 10, 800, FONT.display);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = 'rgba(6, 20, 29, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(label, x, y);
+    text(ctx, label, x, y, label === 'N' ? 12 : 10, label === 'N' ? C.signal : C.text, 'center', 800);
+  }
   ctx.restore();
 
-  const knots = toKnots(game.windHere.speed);
-  const bf = beaufort(knots);
-  const tx = dx + R + 14;
-  text(ctx, 'WIND', tx, P.y + 16, 11, C.textDim, 'left', 700);
-  text(ctx, `${knots.toFixed(0)} kn`, tx, P.y + 34, 19, C.text, 'left', 700);
-  text(ctx, `from ${compassPoint(windFromBearing(game.wind))}`, tx, P.y + 51, 12, C.textDim, 'left', 600, FONT.body);
-  text(ctx, `F${bf.force} ${bf.name}`, tx, P.y + 66, 11, C.textDim, 'left', 600, FONT.body);
-
-  // Speed and VMG.
-  const sx = P.x + P.w * 0.52;
-  const kn = toKnots(boatSpeed(boat));
-  const vmg = toKnots(vmgToFinish(game));
-  text(ctx, 'SPEED', sx, P.y + 16, 11, C.textDim, 'left', 700);
-  text(ctx, kn.toFixed(1), sx, P.y + 40, L.compact ? 30 : 34, C.text, 'left', 800, FONT.display, true);
-  ctx.font = font(L.compact ? 30 : 34, 800, FONT.display, true);
-  const numW = ctx.measureText(kn.toFixed(1)).width;
-  text(ctx, 'kn', sx + numW + 4, P.y + 46, 13, C.textDim, 'left', 600, FONT.body);
-  const vmgColor = vmg > 0.5 ? C.ok : vmg < -0.5 ? C.danger : C.warn;
-  text(ctx, `${game.sea ? 'to gate' : game.race && game.nextCheckpoint < game.level.checkpoints.length ? 'to mark' : 'to B'} ${vmg >= 0 ? '▲' : '▼'} ${Math.abs(vmg).toFixed(1)}`, sx, P.y + P.h - 16, 13, vmgColor, 'left', 700);
-
-  // Sail trim and heel.
-  const gx = P.x + P.w * 0.74;
-  const gw = P.x + P.w - 14 - gx;
-  let state = 'GOOD';
-  let stateColor = C.ok;
-  if (boat.luffing) {
-    state = 'LUFFING';
-    stateColor = C.warn;
-  } else if (boat.trim < boat.optimalTrim - 0.12) {
-    state = 'STALLED';
-    stateColor = C.warn;
-  } else if (boat.trimQuality < 0.75) {
-    state = 'TRIM';
-    stateColor = C.warn;
-  }
-  if (inIrons) {
-    state = 'IN IRONS';
-    stateColor = C.danger;
-  }
-  text(ctx, controls.manual ? 'SAIL' : 'SAIL · AUTO', gx, P.y + 16, 11, C.textDim, 'left', 700);
-  text(ctx, state, gx + gw, P.y + 16, 11, stateColor, 'right', 800);
-  const by = P.y + 28;
-  ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
-  ctx.fillRect(gx, by, gw, 10);
-  const opt = clamp(boat.optimalTrim, 0, 1);
-  ctx.fillStyle = rgba(C.ok, 0.45);
-  ctx.fillRect(gx + gw * clamp(opt - 0.07, 0, 1), by, gw * 0.14, 10);
-  const tm = gx + gw * clamp(boat.trim, 0, 1);
-  ctx.fillStyle = C.foam;
-  ctx.beginPath();
-  ctx.moveTo(tm, by - 1);
-  ctx.lineTo(tm - 5, by - 7);
-  ctx.lineTo(tm + 5, by - 7);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillRect(tm - 1, by, 2, 10);
-  text(ctx, 'IN', gx, by + 18, 9, C.textDim, 'left', 600, FONT.body);
-  text(ctx, 'OUT', gx + gw, by + 18, 9, C.textDim, 'right', 600, FONT.body);
-
-  // Heel meter.
-  const hy = P.y + P.h - 18;
-  const heelDeg = Math.abs(boat.heel) / DEG;
-  const hc = Math.abs(boat.heel) > HEEL_WARNING ? C.danger : Math.abs(boat.heel) > HEEL_WARNING * 0.75 ? C.warn : C.text;
-  text(ctx, 'HEEL', gx, hy, 11, C.textDim, 'left', 700);
-  const mx0 = gx + 34;
-  const mw = gw - 34 - 30;
-  ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
-  ctx.fillRect(mx0, hy - 3, mw, 6);
-  const warnFrac = HEEL_WARNING / CAPSIZE_ANGLE;
-  ctx.fillStyle = rgba(C.danger, 0.5);
-  ctx.fillRect(mx0 + mw * warnFrac, hy - 3, mw * (1 - warnFrac), 6);
-  ctx.fillStyle = hc;
-  ctx.fillRect(mx0, hy - 3, mw * clamp(Math.abs(boat.heel) / CAPSIZE_ANGLE, 0, 1), 6);
-  text(ctx, `${heelDeg.toFixed(0)}°`, gx + gw, hy, 13, hc, 'right', 700);
+  // Three readings: wind, speed, heading.
+  const x0 = dx + R + 14;
+  const colW = (P.x + P.w - 12 - x0) / 3;
+  const top = P.y + 15;
+  const big = L.compact ? 22 : 26;
+  const valueY = cy + 3;
+  const subY = P.y + P.h - 13;
+  const reading = (i, label, value, unit, sub, color = C.text) => {
+    const x = x0 + colW * i;
+    text(ctx, label, x, top, 11, C.textDim, 'left', 700);
+    text(ctx, value, x, valueY, big, color, 'left', 800, FONT.display, true);
+    if (unit) {
+      ctx.font = font(big, 800, FONT.display, true);
+      text(ctx, unit, x + ctx.measureText(value).width + 3, valueY + 3, 12, C.textDim, 'left', 600, FONT.body);
+    }
+    if (sub) text(ctx, sub, x, subY, 12, C.textDim, 'left', 600, FONT.body);
+  };
+  const heading = toBearing(boat.heading);
+  reading(0, 'WIND', toKnots(game.windHere.speed).toFixed(0), 'kn', `from ${compassPoint(windFromBearing(game.wind))}`);
+  reading(1, 'SPEED', toKnots(boatSpeed(boat)).toFixed(1), 'kn', inIrons ? 'in irons' : null, inIrons ? C.danger : C.text);
+  reading(2, 'HEADING', compassPoint(heading), null, `${String(Math.round(heading) % 360).padStart(3, '0')}°`);
 }
 
 function drawTouchControls(ctx, game, L, controls, time) {
-  // Helm.
+  // Steering: no wheel, just a ring under the thumb with a dot that follows it.
   const h = L.helm;
-  const active = controls.helm && controls.helm.active;
-  const ax = active ? controls.helm.ax : h.x;
-  const ay = active ? controls.helm.ay : h.y;
-  ctx.globalAlpha = active ? 0.95 : 0.6;
-  ctx.strokeStyle = 'rgba(232, 244, 242, 0.5)';
-  ctx.lineWidth = 2;
-  ctx.fillStyle = 'rgba(6, 20, 29, 0.35)';
-  ctx.beginPath();
-  ctx.arc(ax, ay, h.r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  // Wheel spokes rotate with the rudder.
-  ctx.save();
-  ctx.translate(ax, ay);
-  ctx.rotate(game.boat.rudder * 1.6);
-  ctx.strokeStyle = C.brass;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(0, 0, h.r * 0.55, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
+  const helm = controls.helm || {};
+  if (helm.active) {
+    const { ax, ay } = helm;
+    const r = h.r;
+    ctx.fillStyle = 'rgba(6, 20, 29, 0.3)';
+    ctx.strokeStyle = 'rgba(232, 244, 242, 0.55)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * h.r * 0.12, Math.sin(a) * h.r * 0.12);
-    ctx.lineTo(Math.cos(a) * h.r * 0.72, Math.sin(a) * h.r * 0.72);
-    ctx.stroke();
-  }
-  ctx.fillStyle = C.brass;
-  ctx.beginPath();
-  ctx.arc(0, 0, h.r * 0.14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-  if (active) {
-    ctx.fillStyle = C.foam;
-    ctx.beginPath();
-    ctx.arc(ax + clamp(controls.steer, -1, 1) * h.r * 0.8, ay, 9, 0, Math.PI * 2);
+    ctx.arc(ax, ay, r, 0, Math.PI * 2);
     ctx.fill();
-  } else {
-    text(ctx, '◀ STEER ▶', ax, ay + h.r + 14, 12, C.textDim, 'center', 700);
+    ctx.stroke();
+    // The side you're turning to lights up, more the harder you turn.
+    const steer = clamp(controls.steer, -1, 1);
+    if (Math.abs(steer) > 0.02) {
+      const mid = steer > 0 ? 0 : Math.PI;
+      const half = 0.25 + Math.abs(steer) * 0.9;
+      ctx.strokeStyle = C.signal;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(ax, ay, r, mid - half, mid + half);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+    ctx.fillStyle = 'rgba(232, 244, 242, 0.6)';
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(ax + s * (r - 7), ay);
+      ctx.lineTo(ax + s * (r - 15), ay - 6);
+      ctx.lineTo(ax + s * (r - 15), ay + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The dot sits under the thumb, kept inside the ring.
+    let dx = helm.x - ax;
+    let dy = helm.y - ay;
+    const d = Math.hypot(dx, dy);
+    const max = r * 0.85;
+    if (d > max) {
+      dx *= max / d;
+      dy *= max / d;
+    }
+    ctx.fillStyle = 'rgba(232, 244, 242, 0.92)';
+    ctx.strokeStyle = 'rgba(6, 20, 29, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ax + dx, ay + dy, r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (!helm.used) {
+    // Until the first touch: where a thumb could go, and what to do.
+    const pulse = 0.5 + 0.5 * Math.sin(time * 3);
+    ctx.globalAlpha = 0.45 + 0.25 * pulse;
+    // A dark disc so the hint still shows over white ice.
+    ctx.fillStyle = 'rgba(6, 20, 29, 0.28)';
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(232, 244, 242, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const slide = Math.sin(time * 1.6) * h.r * 0.45;
+    ctx.fillStyle = 'rgba(232, 244, 242, 0.85)';
+    ctx.beginPath();
+    ctx.arc(h.x + slide, h.y, h.r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // The words stay steady while the ring pulses.
+    ctx.globalAlpha = 0.9;
+    ctx.shadowColor = 'rgba(6, 20, 29, 0.95)';
+    ctx.shadowBlur = 5;
+    text(ctx, 'TOUCH AND SLIDE TO STEER', h.x, h.y + h.r + 14, 12, C.text, 'center', 700);
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
 
   // Gust jar button.
   const g = L.gust;
   const has = game.gustJars > 0;
   const boosting = game.boat.boostTime > 0;
-  ctx.fillStyle = boosting ? 'rgba(120, 220, 240, 0.45)' : has ? 'rgba(120, 220, 240, 0.22)' : 'rgba(6, 20, 29, 0.35)';
   ctx.strokeStyle = has ? '#bff3ff' : 'rgba(232, 244, 242, 0.3)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+  // Dark underneath so the button still shows over white ice.
+  ctx.fillStyle = 'rgba(6, 20, 29, 0.35)';
   ctx.fill();
+  if (has) {
+    ctx.fillStyle = boosting ? 'rgba(120, 220, 240, 0.45)' : 'rgba(120, 220, 240, 0.22)';
+    ctx.fill();
+  }
   ctx.stroke();
   ctx.globalAlpha = has ? 1 : 0.45;
   ctx.save();

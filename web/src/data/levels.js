@@ -30,7 +30,7 @@ export const LEVELS = [
     checkpoints: [{ x: 700, y: 430 }],
     tips: [
       { at: 0, text: 'A squall snapped your oar. Only the wind can get you to the harbor at B.' },
-      { at: 5, text: 'Steer with the wheel (left thumb) or A / D. Your sail trims itself for now.' },
+      { at: 5, text: 'Touch anywhere on the left and slide to steer, or A / D. Your sail trims itself for now.' },
       { at: 12, text: 'Wind streaks show where the air flows. Keep it behind or beside you for speed.' },
       { near: [1010, 400, 150], text: 'Rocks ahead! Hitting them damages the hull.' },
     ],
@@ -256,7 +256,7 @@ export const LEVELS = [
     ],
     checkpoints: [{ x: 420, y: 1000 }, { x: 900, y: 620 }, { x: 1240, y: 360 }],
     tips: [
-      { at: 0, text: 'Storm cells blow hard and gusty. Watch the heel meter.' },
+      { at: 0, text: 'Storm cells blow hard and gusty. If the little boat on the compass turns red, you are about to capsize.' },
       { at: 6, text: 'Heeling too far? Ease the sail (S / slide down) or turn downwind.' },
     ],
   },

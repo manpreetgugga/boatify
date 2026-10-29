@@ -241,17 +241,16 @@ function heelSvg() {
 }
 
 function helmSvg() {
-  return `<svg viewBox="0 0 220 200" role="img" aria-label="Drag the wheel left or right to steer">
+  return `<svg viewBox="0 0 220 200" role="img" aria-label="Put your thumb down anywhere and slide it left or right to steer">
     <g font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="14" fill="#e8f4f2">
     <g transform="translate(110 92)">
-      <circle r="62" fill="rgba(4,22,30,0.55)" stroke="rgba(232,244,242,0.35)" stroke-width="2"/>
-      <circle r="40" fill="none" stroke="#d9a441" stroke-width="7"/>
-      <g stroke="#d9a441" stroke-width="5" stroke-linecap="round">
-        <path d="M0 -40 L0 -54"/><path d="M0 40 L0 54"/><path d="M-40 0 L-54 0"/><path d="M40 0 L54 0"/>
-        <path d="M28 -28 L38 -38"/><path d="M-28 28 L-38 38"/><path d="M28 28 L38 38"/><path d="M-28 -28 L-38 -38"/></g>
-      <circle r="9" fill="#d9a441"/>
-      <path d="M-74 0 l12 -9 v18 Z M74 0 l-12 -9 v18 Z" fill="#ff6b35"/>
-      <circle cx="26" cy="10" r="14" fill="rgba(255,255,255,0.22)" stroke="#fff" stroke-width="2"/>
+      <circle r="56" fill="rgba(4,22,30,0.4)" stroke="rgba(232,244,242,0.55)" stroke-width="2.5"/>
+      <path d="M39.6 -39.6 A56 56 0 0 1 39.6 39.6" fill="none" stroke="#ffd166" stroke-width="5" stroke-linecap="round"/>
+      <path d="M-68 0 l10 -8 v16 Z M68 0 l-10 -8 v16 Z" fill="#e8f4f2" opacity="0.7"/>
+      <circle cx="0" cy="0" r="4" fill="rgba(232,244,242,0.45)"/>
+      <path d="M2 0 H22" stroke="rgba(232,244,242,0.45)" stroke-width="2" stroke-dasharray="3 3"/>
+      <circle cx="30" cy="0" r="17" fill="rgba(232,244,242,0.9)"/>
+      <path d="M22 26 q6 -14 8 -26 q4 0 6 4 l6 26 Z" fill="rgba(232,244,242,0.25)"/>
     </g>
     <text x="30" y="186" text-anchor="middle">port</text><text x="190" y="186" text-anchor="middle">starboard</text>
     <text x="110" y="186" text-anchor="middle" fill="#9fb8bd">A / D on a keyboard</text>
@@ -294,12 +293,12 @@ const HOWTO = [
     title: 'The wind is your engine',
     svg: polarSvg,
     body: `<p>Your oar is gone, so the sail is all you have. The pink curve shows how fast you go on each heading. <b>Wind across the boat (a beam reach) is fastest.</b></p>
-      <p>Pointing straight into the wind is the <b>no-go zone</b>: the sail just flaps and you stop. The shaded wedge on the wind dial marks it.</p>`,
+      <p>Pointing straight into the wind is the <b>no-go zone</b>: the sail just flaps and you stop. The shaded wedge on the compass marks it.</p>`,
   },
   {
-    title: 'Steer with the wheel',
+    title: 'Steer with your thumb',
     svg: helmSvg,
-    body: `<p><b>Touch:</b> put your thumb down anywhere on the left and slide it left or right. <b>Keyboard:</b> A / D or the arrow keys.</p>
+    body: `<p><b>Touch:</b> put your thumb down anywhere on the left: a ring appears under it. Slide right to turn right, left to turn left; let go to sail straight. <b>Keyboard:</b> A / D or the arrow keys.</p>
       <p>The rudder needs water flowing past it, so steering is sluggish when you are slow. The streaks on the water show where the wind blows; dark ruffled patches are gusts, pale glassy water is a lull.</p>`,
   },
   {
@@ -317,7 +316,7 @@ const HOWTO = [
   {
     title: 'Heel, gusts and capsizing',
     svg: heelSvg,
-    body: `<p>Strong wind leans the boat over. Past about 40° the heel meter hits its danger zone; push further and you <b>capsize</b>, losing time and hull.</p>
+    body: `<p>Strong wind leans the boat over. Past about 40° the little boat on the compass turns red; push further and you <b>capsize</b>, losing time and hull.</p>
       <p>To recover, ease the sail out or turn away from the wind. A <b>gust jar</b> gives a burst of bottled wind: great for escaping whirlpools or calms.</p>`,
   },
   {

@@ -31,17 +31,17 @@ through signing up for Play Console and publishing.
 
 | | Touch | Keyboard |
 | --- | --- | --- |
-| Steer | Drag the helm wheel (left thumb) | A / D or ← / → |
+| Steer | Touch anywhere on the left and slide (a ring appears under your thumb) | A / D or ← / → |
 | Gust jar | Tap the gust button | Space |
 | Sheet in / out (manual trim) | Slider on the right | W / S or ↑ / ↓ |
 | Pause | Pause button or back | P or Esc |
 | Restart, mute, toggle trim | | R, M, T |
 
 - **The prologue.** The first time you launch, a short film tells the story: a calm dawn, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, until dolphins show the way across it and she flies), and last the chart from A to B with the reefs, whirlpools, squalls and the fog in between. Skip it any time, or watch it again from the title screen's Prologue button.
-- **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the wind dial shows where the sail stops working.
+- **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the compass shows where the sail stops working.
 - **Beam reach is fastest.** Wind from the side gives the most speed; dead downwind is slower than you'd think.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".
-- **Watch the heel.** Gusts lean the boat over. Past the danger mark you capsize. Ease out or bear away.
+- **Watch the heel.** Gusts lean the boat over. When the little boat on the compass turns red you're close to capsizing. Ease out or bear away.
 - **Follow the dolphins.** Stuck head to wind, or sailing off away from B? A few dolphins surface off the bow on the side to turn to and swim the way to go, with a line of foam curving from your bow to them. Follow them up to speed and they ride your bow wave. Turn the hint off in Settings.
 - **Read the water.** Dark ruffled patches are gusts, pale glassy water is a lull or an island's wind shadow. Streaks show how the air flows.
 - **Daily voyage.** After the first three voyages, a new course is charted every day: the same one for everyone that day. Sail it on consecutive days to build a streak.
@@ -53,7 +53,7 @@ through signing up for Play Console and publishing.
 - **Sail Locker.** Every medal unlocks a sail design or a hull paint: the Jolly Roger, a rainbow sail, Admiral's Blue, a gilded hull and more. Looks only: they never change how a boat sails.
 - **Race your ghost.** Once you've finished a voyage, a pale ghost boat replays your fastest run, and a chip under the timer says how far ahead or behind you are. Turn it off in Settings.
 - **Pirates.** On Pirate Waters a square-rigged brig hunts you. It's fast downwind but can't sail close to the wind, so reach across the wind, get upwind, or thread a reef gap too narrow for it. Dodge the cannonballs: a red ring marks where each will land.
-- **Sea life.** Dolphins ride your bow wave and push you along if you sail fast enough. Whales spout, dive and breach, sending out a swell that rocks your boat. Flying fish skim past and gulls land on the stern when you stop.
+- **Sea life.** Dolphins ride your bow wave and push you along if you sail fast enough. Whales spout, dive and breach, sending out a swell that rocks your boat. Flying fish skim past and gulls land on the stern when you stop. On the ice, penguins huddle on the bergs and floes; sail close and they belly-slide into the sea for a swim, while gulls wheel overhead.
 - **Play your way.** Settings has colour-blind friendly colours (blue and orange instead of green and red), a reduce-motion mode (no screen shake or lightning flashes; it follows your phone's setting until you choose), three text sizes, left-handed controls, steering sensitivity and the dolphin hints.
 
 ### Voyages

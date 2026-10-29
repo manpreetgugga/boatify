@@ -83,7 +83,18 @@ const SHOTS = [
   ['4-pirates', async (tab) => (await quiet(tab), sailTo(tab, 9, 61.6))],
   ['5-kraken', async (tab) => (await quiet(tab), sailTo(tab, 7, 40))],
   ['6-storm', async (tab) => (await quiet(tab), sailTo(tab, 6, 44))],
-  ['7-ice', async (tab) => (await quiet(tab), sailTo(tab, 8, 35))],
+  [
+    '7-ice',
+    async (tab) => {
+      // Sail on until the penguins dive in beside the boat.
+      await quiet(tab);
+      await sailTo(tab, 8, 40);
+      await tab.evaluate(() => window.__boatify.setTimeScale(4));
+      await tab.waitForFunction(() => window.__boatify.penguins().swimming >= 3, null, { timeout: 120000 });
+      await tab.evaluate(() => window.__boatify.setTimeScale(1));
+      await tab.waitForTimeout(2600);
+    },
+  ],
   [
     '8-voyages',
     async (tab) => {

@@ -127,7 +127,7 @@ everyone.
    emails.
 3. **Create new release**, accept Play App Signing (let Google manage the app
    signing key), upload the `.aab`, and paste the release notes from
-   `changelogs/<versionCode>.txt` (1700 for v0.17.0).
+   `changelogs/<versionCode>.txt` (1800 for v0.18.0).
 4. Send the release for review. Once it's approved, copy the opt-in link from
    the track and send it to your testers. Each one opens it, joins, and
    installs from Play.

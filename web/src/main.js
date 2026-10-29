@@ -723,6 +723,9 @@ function frame(now) {
     layout: getLayout(),
     controls: input.state.controls,
   });
+  if (mode === 'playing' && renderer.life.colonies && renderer.life.colonies.near) {
+    firstSight('penguins', 'Penguins! Sail close and they dive in for a swim.');
+  }
   audio.update(game, dt, mode === 'playing' || mode === 'finishing' || mode === 'film');
   requestAnimationFrame(frame);
 }
@@ -848,6 +851,13 @@ window.__boatify = {
     const into = game.wind.angle + Math.PI;
     Object.assign(game.boat, { x: c.x + Math.cos(into) * 10, y: c.y + Math.sin(into) * 10, vx: 0, vy: 0, heading: into, yawRate: 0 });
     return c.name;
+  },
+  // Penguins on the ice: how many, and how many have gone for a swim.
+  penguins() {
+    const c = renderer.life.colonies;
+    if (!c || c.level !== (game && game.level)) return null;
+    const all = c.huddles.flatMap((h) => h.penguins);
+    return { huddles: c.huddles.length, penguins: all.length, swimming: all.filter((p) => p.s !== 'stand').length };
   },
   state() {
     return {

@@ -12,8 +12,8 @@ export function hudLayout(w, h, insets = {}, settings = {}) {
   const pad = compact ? 10 : 16;
   const lefty = settings.leftHanded;
 
-  const panelW = clamp(w * 0.42, 300, 420);
-  const panelH = compact ? 84 : 98;
+  const panelW = clamp(w * 0.34, 280, 350);
+  const panelH = compact ? 70 : 82;
   const panel = { x: (w - panelW) / 2, y: h - b - panelH - pad * 0.6, w: panelW, h: panelH };
 
   const mapW = clamp(w * 0.19, 112, 200);

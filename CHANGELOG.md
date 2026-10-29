@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0] - 2026-10-29
+
+Steer with your thumb, a clearer screen, and penguins.
+
+- **Steer with your thumb.** The helm wheel is gone. Put your thumb down anywhere on the left and a ring appears right under it, with a dot that follows your thumb. Slide right to turn right and left to turn left, and let go to sail straight. Where your thumb lands doesn't turn the boat, only how far you slide. Until you first steer, a pulsing ring shows where to touch.
+- **A clearer instrument panel.** The bottom panel is smaller and shows just what you need: a compass that turns with your boat, with the wind arrow and the no-go wedge on it, then the wind, your speed and your heading in big numbers. The little boat in the middle of the compass turns amber and then red as you heel towards a capsize. The trim bar, heel meter, Beaufort scale and VMG are gone.
+- **Penguins on the ice.** Huddles of penguins stand at the water's edge on every ice shelf and berg, and a few ride the big drifting floes. They turn to watch you sail by. Sail close and fast and they belly-slide into the sea, porpoise about and hop back out. Gulls circle over some huddles and stand among others, facing into the wind.
+
 ## [0.17.0] - 2026-10-29
 
 Ready for Google Play.

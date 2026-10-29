@@ -21,6 +21,7 @@ import {
   drawLightning,
 } from './effects.js';
 import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
+import { updateColonies, drawColonies, drawColonyGulls } from './penguins.js';
 import { drawPirates, drawCannonballs } from './pirates.js';
 import { drawCastaways, shirtOf, skinOf } from './castaways.js';
 import { createLighting, drawLighting } from './lighting.js';
@@ -87,6 +88,7 @@ export function renderFrame(r, game, dt, time, ui) {
   updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 9000));
   updateParticles(r.fx, dt);
   updateLifeFx(r.life, game, dt);
+  updateColonies(r.life, game, dt);
   updateFleetFx(r.fleet, game);
 
   ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
@@ -111,6 +113,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
   drawFloes(ctx, game, cam, time);
+  drawColonies(ctx, r.life, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
   drawCastaways(ctx, game, cam, time);
@@ -128,6 +131,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawFleet(ctx, game, time);
   drawBoat(ctx, game.boat, time, boatState);
   drawSkyLife(ctx, r.life, game, cam, time);
+  drawColonyGulls(ctx, r.life, cam, time);
   drawCannonballs(ctx, game);
   drawParticles(ctx, r.fx, cam);
   drawStormClouds(ctx, game, time);

@@ -1,8 +1,9 @@
 // Keyboard, touch and mouse controls turned into one steering/trim input.
 //
-// Touch: drag anywhere on the helm side to steer (a joystick that appears
-// under your thumb), tap the gust button to uncork a gust jar, and when
-// trimming by hand drag on the other side to sheet in and out.
+// Touch: put a thumb down anywhere and slide it sideways to steer (a ring
+// appears under the thumb, so where it lands never turns the boat), tap the
+// gust button to uncork a gust jar, and when trimming by hand steer on the
+// helm side and drag on the other side to sheet in and out.
 
 import { clamp, approach } from '../core/math.js';
 import { inCircle, inRect } from '../render/layout.js';
@@ -26,7 +27,7 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     boostQueued: false,
     controls: {
       touch: coarse,
-      helm: { active: false, ax: 0, ay: 0, x: 0, y: 0 },
+      helm: { active: false, used: false, ax: 0, ay: 0, x: 0, y: 0 },
       sheet: { active: false },
       steer: 0,
       manual: false,
@@ -94,15 +95,10 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     if (role === 'helm') {
       const h = state.controls.helm;
       h.active = true;
-      // Touches near the drawn wheel use it as the centre; elsewhere the
-      // joystick appears under the thumb.
-      if (inCircle(x, y, L.helm, 20)) {
-        h.ax = L.helm.x;
-        h.ay = L.helm.y;
-      } else {
-        h.ax = x;
-        h.ay = y;
-      }
+      h.used = true;
+      // The ring is centred where the thumb lands: only sliding steers.
+      h.ax = x;
+      h.ay = y;
       h.x = x;
       h.y = y;
     } else if (role === 'sheet') {
