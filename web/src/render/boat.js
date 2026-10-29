@@ -1,11 +1,13 @@
 // The boat seen from above: hull, deck, mast, boom and a sail that bellies
 // with the wind, flutters when luffing and leans out as the boat heels.
 // Also the wake it leaves behind and the masthead pennant. Sail designs and
-// hull paints from the Sail Locker come in as a `look`.
+// hull paints from the Sail Locker come in as a `look`; the skipper on deck
+// comes in as `skipper` (see skipper.js).
 
 import { C } from './palette.js';
 import { clamp } from '../core/math.js';
 import { boatSpeed } from '../physics/boat.js';
+import { drawSkipper } from './skipper.js';
 
 export const VISUAL = 1.7; // draw larger than the collision hull, so the boat reads clearly on a phone
 
@@ -340,6 +342,18 @@ export function drawBoat(ctx, boat, time, state = {}) {
     ctx.arc(-L * 0.12, -B * 0.42, 0.7, 0, Math.PI * 2);
     ctx.fill();
   }
+  if (!type.twin && state.skipper) {
+    // The tiller, swinging opposite the rudder blade.
+    const a = boat.rudder * 0.6;
+    ctx.strokeStyle = '#4a3220';
+    ctx.lineWidth = 0.8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-L * 0.5, 0);
+    ctx.lineTo(-L * 0.5 + Math.cos(a) * L * 0.22, Math.sin(a) * L * 0.22);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
   // Castaways hauled aboard sit in the cockpit, or out on a proa's net.
   (state.crew || []).forEach((sailor, i) => {
     const cx = type.twin ? -L * 0.18 + i * L * 0.12 : -L * 0.31 + i * L * 0.08;
@@ -353,6 +367,12 @@ export function drawBoat(ctx, boat, time, state = {}) {
     ctx.arc(cx + 0.5, cy, 1.5, 0, Math.PI * 2);
     ctx.fill();
   });
+  const g = { L, B, twin: !!type.twin };
+  if (state.skipper && !state.capsized) {
+    ctx.save();
+    drawSkipper(ctx, state.skipper, g, boat, time);
+    ctx.restore();
+  }
   ctx.restore();
 
   // Rudder (one per hull).
@@ -376,6 +396,10 @@ export function drawBoat(ctx, boat, time, state = {}) {
     ctx.lineTo(L * 0.3, side * L * 0.8);
     ctx.closePath();
     ctx.fill();
+    if (state.skipper) {
+      ctx.globalAlpha /= 0.75;
+      drawSkipper(ctx, state.skipper, g, boat, time, true);
+    }
     ctx.restore();
     return;
   }

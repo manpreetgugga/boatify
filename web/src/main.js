@@ -852,6 +852,11 @@ window.__boatify = {
     Object.assign(game.boat, { x: c.x + Math.cos(into) * 10, y: c.y + Math.sin(into) * 10, vx: 0, vy: 0, heading: into, yawRate: 0 });
     return c.name;
   },
+  // What the skipper is up to on deck.
+  skipper() {
+    const s = renderer.skipper;
+    return { doing: s.doing, goal: s.goal, walking: s.path.length > 0, cheer: s.cheer > 0, fish: s.fish > 0 };
+  },
   // Penguins on the ice: how many, and how many have gone for a swim.
   penguins() {
     const c = renderer.life.colonies;

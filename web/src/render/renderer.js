@@ -22,6 +22,7 @@ import {
 } from './effects.js';
 import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
 import { updateColonies, drawColonies, drawColonyGulls } from './penguins.js';
+import { createSkipper, updateSkipper } from './skipper.js';
 import { drawPirates, drawCannonballs } from './pirates.js';
 import { drawCastaways, shirtOf, skinOf } from './castaways.js';
 import { createLighting, drawLighting } from './lighting.js';
@@ -41,6 +42,7 @@ export function createRenderer(canvas) {
     wake: createWake(),
     fx: createEffects(),
     life: createLifeFx(),
+    skipper: createSkipper(),
     fleet: createFleetFx(),
     light: createLighting(),
     hud: createHud(),
@@ -68,6 +70,7 @@ export function resetView(r, game) {
   r.wake = createWake();
   r.fx = createEffects();
   r.life = createLifeFx();
+  r.skipper = createSkipper();
   r.fleet = createFleetFx();
   r.hud.minimap = null;
   snapCamera(r.cam, game, r.w, r.h);
@@ -89,6 +92,7 @@ export function renderFrame(r, game, dt, time, ui) {
   updateParticles(r.fx, dt);
   updateLifeFx(r.life, game, dt);
   updateColonies(r.life, game, dt);
+  updateSkipper(r.skipper, game, dt);
   updateFleetFx(r.fleet, game);
 
   ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
@@ -126,6 +130,7 @@ export function renderFrame(r, game, dt, time, ui) {
     sinking: game.status === 'sinking' ? 1 - Math.max(0, game.statusTimer) / 2.4 : game.result && game.result.reason === 'sunk' ? 1 : 0,
     pennant: [game.windHere.wx - game.boat.vx, game.windHere.wy - game.boat.vy],
     look: ui && ui.look,
+    skipper: r.skipper,
     crew: (ui && ui.crew) || game.castaways.filter((c) => c.state === 'aboard').map((c) => ({ shirt: shirtOf(c), skin: skinOf(c) })),
   };
   drawFleet(ctx, game, time);

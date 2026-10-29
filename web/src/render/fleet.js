@@ -2,7 +2,10 @@
 // downwind, and the boat itself in its racing colors.
 
 import { createWake, updateWake, drawWake, drawBoat } from './boat.js';
+import { helmsman } from './skipper.js';
 import { DIRTY_REACH, shadowWidth } from '../world/regatta.js';
+
+const RIVAL_JACKETS = ['#d9473a', '#3f8f5a', '#4a6fb5'];
 
 export function createFleetFx() {
   return { wakes: [] };
@@ -51,11 +54,13 @@ export function drawDirtyAir(ctx, game, time) {
 
 export function drawFleet(ctx, game, time) {
   if (!game.race) return;
-  for (const r of game.race.rivals) {
+  game.race.rivals.forEach((r, i) => {
     drawBoat(ctx, r.boat, time + r.name.length, {
       capsized: r.capsized > 0,
       pennant: [r.wind.wx - r.boat.vx, r.wind.wy - r.boat.vy],
       look: r.look,
+      // Each rival's helmsman in his club's colours, up to windward.
+      skipper: helmsman(r.boat.type, r.boat.boom > 0 ? -1 : 1, RIVAL_JACKETS[i % RIVAL_JACKETS.length]),
     });
-  }
+  });
 }

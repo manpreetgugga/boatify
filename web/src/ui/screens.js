@@ -9,6 +9,7 @@ import { SEA_BLURB, PEARL_TIME } from '../world/opensea.js';
 import { REGATTA_BLURB, FLEETS, RIVALS, fleetFor, ordinal } from '../world/regatta.js';
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
+import { helmsman } from '../render/skipper.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
@@ -108,7 +109,7 @@ function paintBoat(canvas, type, look) {
   ctx.translate(w * 0.5, h * 0.36);
   ctx.scale(scale / VISUAL, scale / VISUAL);
   const boat = { type, x: 0, y: 0, vx: 0, vy: 0, heading: -0.3, heel: 0.42, boom: 0.7, drive: 4, luffing: false, rudder: 0, boostTime: 0 };
-  drawBoat(ctx, boat, 0, { look });
+  drawBoat(ctx, boat, 0, { look, skipper: helmsman(type, -1) });
 }
 
 // A sail hanging on the locker wall.
