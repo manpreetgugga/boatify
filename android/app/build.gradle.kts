@@ -84,10 +84,11 @@ android {
         create("release") {
             val storePath = System.getenv("BOATIFY_KEYSTORE_FILE")
             if (!storePath.isNullOrBlank()) {
+                // Secrets pasted into GitHub often pick up a trailing line break.
                 storeFile = file(storePath)
-                storePassword = System.getenv("BOATIFY_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("BOATIFY_KEY_ALIAS")
-                keyPassword = System.getenv("BOATIFY_KEY_PASSWORD")
+                storePassword = System.getenv("BOATIFY_KEYSTORE_PASSWORD")?.trimEnd('\r', '\n')
+                keyAlias = System.getenv("BOATIFY_KEY_ALIAS")?.trim()
+                keyPassword = System.getenv("BOATIFY_KEY_PASSWORD")?.trimEnd('\r', '\n')
             } else {
                 // Public development key, see keystore/README.md.
                 storeFile = rootProject.file("keystore/boatify-dev.keystore")
