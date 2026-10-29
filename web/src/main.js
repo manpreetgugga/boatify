@@ -28,7 +28,7 @@ import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
-import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/commerce.js';
+import { ads, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/ads.js';
 
 // Things that thud rather than crack when you hit them.
 const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice', 'jungle', 'mangrove', 'fern', 'hippo', 'ghost', 'sandcastle', 'ball', 'rubber', 'cloud', 'puff', 'balloon']);
@@ -53,8 +53,8 @@ const canvas = document.getElementById('game');
 const probe = document.getElementById('inset-probe');
 
 const save = loadSave();
-// The store, if the app has one.
-installCommerce();
+// The ads, if the app has them.
+installAds();
 // Medals added in an update go straight to players who already earned them.
 if (awardMedals(save, LEVELS).length) writeSave(save);
 const renderer = createRenderer(canvas);
@@ -357,7 +357,7 @@ function finishVoyage(result) {
 }
 
 function windOnOffer() {
-  return canAfford(save, { blackPearls: SECOND_WIND }) || (commerce().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0);
+  return canAfford(save, { blackPearls: SECOND_WIND }) || (ads().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0);
 }
 
 // Record the voyage, award medals and pay out. Returns what the results show.
@@ -409,7 +409,7 @@ function voyagesHome() {
 function moveOn(go) {
   if (mode !== 'results') return go();
   if (onBreak) return;
-  if (!breakDue(save, voyagesHome()) || !commerce().breakReady()) return go();
+  if (!breakDue(save, voyagesHome()) || !ads().breakReady()) return go();
   onBreak = true;
   takeBreak(save).then((r) => {
     onBreak = false;
@@ -1144,10 +1144,6 @@ try {
 } catch {
   // Older WebViews: the setting is read again next launch.
 }
-// Anything paid for but not yet in the wallet (say the app closed mid-purchase).
-restoreOrders(save, () => writeSave(save)).then((n) => {
-  if (n) ui.toast(`+${n} black pearls from your purchase. Thank you!`, 'good', 4200);
-});
 // A first launch opens on the prologue; after that, on the title.
 if (!save.seenFilm && !save.stats.voyages) playFilm();
 else showTitle();

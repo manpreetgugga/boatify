@@ -16,7 +16,7 @@ import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
-import { commerce, PACKS, NO_ADS, REWARDS, buyPack, watchVideo, videosLeft } from '../platform/commerce.js';
+import { ads, REWARDS, watchVideo, videosLeft } from '../platform/ads.js';
 import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
 import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
@@ -1356,36 +1356,18 @@ export function createUI(root, levels, handlers) {
       show('logbook', node, { push: true });
     },
 
-    // Black pearls (one day for money or a video), no ads, supplies for coins,
-    // boats for black pearls. Buying and videos say "Coming soon" until the store
-    // is in.
+    // A black pearl for a video, supplies for coins, boats for black pearls.
+    // Nothing is sold for money. The video says "Coming soon" until ads are in.
     shop(save, restore = false) {
-      const store = commerce();
       const today = dateKey();
-      const selling = store.storeReady();
-      const ads = store.adsReady();
+      const videos = ads().adsReady();
       const item = (art, name, sub, button) =>
         `<div class="shop-item"><span class="shop-art">${art}</span><span class="shop-text"><b>${name}</b><small>${sub}</small></span>${button}</div>`;
-      const packs = PACKS.map((p) =>
-        item(
-          icon('blackPearl', 28),
-          esc(p.name),
-          `${p.blackPearls + p.bonus} black pearls${p.bonus ? ` <span class="badge">+${p.bonus} FREE</span>` : ''}`,
-          `<button class="btn small" data-pack="${p.id}" ${selling ? '' : 'disabled'}>${selling ? 'Buy' : 'Coming soon'}</button>`,
-        ),
-      ).join('');
       const video = item(
         icon('play', 28),
         'Watch a video',
         `One black pearl · <span data-left>${videosLeft(save, REWARDS.blackPearl, today)}</span> left today`,
-        `<button class="btn small" data-video ${ads ? '' : 'disabled'}>${ads ? 'Watch' : 'Coming soon'}</button>`,
-      );
-      const adFree = save.wallet.noAds;
-      const noAds = item(
-        icon('shield', 28),
-        NO_ADS.name,
-        adFree ? 'No ads between voyages. Thank you!' : 'One payment and the ads between voyages stop for good. Buying any black pearls stops them too.',
-        `<button class="btn small" data-pack="${NO_ADS.id}" ${selling && !adFree ? '' : 'disabled'}>${adFree ? 'Ads off' : selling ? 'Buy' : 'Coming soon'}</button>`,
+        `<button class="btn small" data-video ${videos ? '' : 'disabled'}>${videos ? 'Watch' : 'Coming soon'}</button>`,
       );
       const boats = BOAT_ORDER.filter((id) => BOAT_PRICES[id] && !isBoatUnlocked(save, id));
       const node = el(`<section class="screen dim" aria-label="Shop">
@@ -1394,7 +1376,7 @@ export function createUI(root, levels, handlers) {
           <div class="sheet-body">
             <h3 class="setting-group">Black pearls</h3>
             <p class="sheet-note">Black pearls are rare, far rarer than the white ones. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.</p>
-            <div class="shop-grid">${packs}${video}${noAds}</div>
+            <div class="shop-grid">${video}</div>
             <h3 class="setting-group">Supplies</h3>
             <div class="shop-grid">
               ${item(icon('wind', 28), 'Gust jar', `Goes aboard on your next voyage. In the hold: <b data-jars>${save.wallet.jars}</b> / ${JAR_HOLD}`, `<button class="btn small" data-buy="jar">${priceTag({ coins: JAR_PRICE })}</button>`)}
@@ -1450,17 +1432,6 @@ export function createUI(root, levels, handlers) {
         });
       });
       click(node, '[data-boat]', (e, b) => unlockBoat(save, b.dataset.boat, () => ui.shop(save, true)));
-      click(node, '[data-pack]', async (e, b) => {
-        b.disabled = true;
-        const r = await buyPack(save, b.dataset.pack, () => handlers.onWallet());
-        b.disabled = false;
-        if (current !== 'shop') return;
-        if (r.ok && r.blackPearls) ui.toast(`+${r.blackPearls} black pearls. Thank you!`, 'good');
-        else if (r.ok && b.dataset.pack === NO_ADS.id) ui.toast('No more ads between voyages. Thank you!', 'good');
-        else if (r.reason && r.reason !== 'cancelled') ui.toast("The store couldn't finish that. You haven't been charged.", 'warn');
-        if (r.ok && !adFree) ui.shop(save, true);
-        else redraw();
-      });
       click(node, '[data-video]', async (e, b) => {
         if (!videosLeft(save, REWARDS.blackPearl, today)) {
           ui.toast('That is all the videos for today. More tomorrow!');
@@ -1482,14 +1453,6 @@ export function createUI(root, levels, handlers) {
         const type = BOAT_TYPES[c.dataset.type];
         paintBoat(c, type, boatLook(type, fittedGear(save)));
       });
-      // Prices are in the player's own currency, so they come from the store.
-      if (selling) {
-        store.prices().then((prices) => {
-          node.querySelectorAll('[data-pack]').forEach((b) => {
-            if (prices[b.dataset.pack] && !(b.dataset.pack === NO_ADS.id && adFree)) b.textContent = prices[b.dataset.pack];
-          });
-        });
-      }
       if (!save.sightings.shop) {
         save.sightings.shop = true;
         handlers.onSeen();
@@ -1531,8 +1494,7 @@ export function createUI(root, levels, handlers) {
     secondWind(result, save, { onTake, onVideo, onEnd }) {
       tipQueue = [];
       const price = { blackPearls: SECOND_WIND };
-      const store = commerce();
-      const video = store.adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0;
+      const video = ads().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0;
       const node = el(`<section class="screen dim" aria-label="Second wind">
         <div class="sheet narrow results-sheet">
           <div class="sheet-head"><span class="eyebrow">Open Sea · ${formatDistance(result.distance)} east</span><h2>${result.reason === 'sunk' ? 'The hull gave out' : 'Out of time'}</h2>${wallet(save)}</div>

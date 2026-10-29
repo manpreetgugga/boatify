@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0] - 2026-10-29
+
+Ads only: nothing in the game will ever be sold for money.
+
+- **No purchases.** The black pearl packs and the No ads purchase are gone from the Shop. Black pearls come from the sea, and later from a video, a few a day.
+- **Ads, when they come,** are the video for a black pearl, the video for an Open Sea second wind, and the short ad between voyages, with the same gentle rules as before. All of it stays switched off until the ads SDK is in the Android app.
+- The bridge to the app is now `BoatifyAds`, for ads alone; [docs/MONETIZATION.md](docs/MONETIZATION.md) has the details.
+
 ## [0.25.0] - 2026-10-29
 
 Ready for ads between voyages, done gently, and a way to turn them off. Like the rest of the store, it's all switched off until the ads and billing SDKs are in the Android app, so nothing changes for players yet.

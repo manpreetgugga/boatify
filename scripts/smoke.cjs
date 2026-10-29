@@ -266,13 +266,13 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.locator('section[aria-label="Sail Locker"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Shipyard"].open');
 
-  step('shop: black pearls and no ads coming soon, a gust jar, a trade and a boat');
+  step('shop: videos coming soon, a gust jar, a trade and a boat');
   await tab.locator('section[aria-label="Shipyard"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Title"].open');
   await tab.getByRole('button', { name: 'Shop' }).click();
   await tab.waitForSelector('section[aria-label="Shop"].open');
   const soon = await tab.locator('section[aria-label="Shop"] button[disabled]', { hasText: 'Coming soon' }).count();
-  if (soon !== 5) throw new Error(`shop shows ${soon} coming-soon buttons`);
+  if (soon !== 1) throw new Error(`shop shows ${soon} coming-soon buttons`);
   await tab.locator('[data-buy=jar]').click();
   await tab.locator('[data-buy=trade]').click();
   await tab.locator('.confirm').getByRole('button', { name: /Trade/ }).click();

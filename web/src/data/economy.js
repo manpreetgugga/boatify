@@ -2,8 +2,8 @@
 // star won, pearl picked up and castaway brought home pays a little, and
 // medals pay more. Black pearls are rare: on some voyages one lies where the
 // danger is (in a whirlpool's pull, over a kraken's lair, off a pirate's
-// cove), and once it is brought home it is gone for good. Later they can be
-// bought or earned by watching a video too (see platform/commerce.js).
+// cove), and once it is brought home it is gone for good. Later one can be
+// earned by watching a video too (see platform/ads.js). Nothing is for sale.
 //
 // Coins buy gust jars and paints; black pearls unlock boats before the stars do
 // and buy a second wind on the Open Sea.
@@ -49,11 +49,9 @@ export function blankWallet() {
     found: {}, // voyage id -> 1 once its black pearl is home
     jars: 0, // gust jars in the hold
     owned: [], // boats and paints bought: 'boat:proa', 'gear:royal'
-    orders: [], // store order ids already credited, so none is paid twice
     // Rewarded videos watched today, by placement; voyages finished since the
     // last ad between voyages; and when the last ad of any kind played.
     ads: { day: null, seen: {}, since: 0, last: 0 },
-    noAds: false, // no ads between voyages: bought, or anything bought
   };
 }
 
@@ -72,9 +70,7 @@ export function cleanWallet(w) {
     found: isObj(w.found) ? w.found : {},
     jars: Math.min(JAR_HOLD, count(w.jars)),
     owned: Array.isArray(w.owned) ? w.owned.filter((s) => typeof s === 'string') : [],
-    orders: Array.isArray(w.orders) ? w.orders.filter((s) => typeof s === 'string').slice(-200) : [],
     ads: isObj(w.ads) && isObj(w.ads.seen) ? { day: w.ads.day || null, seen: w.ads.seen, since: count(w.ads.since), last: count(w.ads.last) } : base.ads,
-    noAds: w.noAds === true,
   };
 }
 

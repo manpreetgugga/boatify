@@ -1,7 +1,9 @@
-# Coins, black pearls, and switching on the store
+# Coins, black pearls, and switching on ads
 
-The game has two currencies. Neither one needs a network connection or a
-store yet.
+The game earns from ads only. Nothing is sold for money: there are no
+in-app purchases, and none are planned.
+
+The game has two currencies. Neither one needs a network connection.
 
 - **Coins** come only from sailing: voyages, stars, pearls, rescues,
   medals, the daily voyage and its streak, Open Sea distance and gates, and
@@ -11,42 +13,22 @@ store yet.
   not currency). A voyage with a whirlpool, a kraken or a pirate brig
   hides one near the danger (`web/src/world/blackpearls.js`). It counts only once
   the voyage is finished, and only once per voyage. On the Open Sea a whirlpool
-  sometimes guards one, at most one per run. Black pearls unlock boats before the
-  stars do, buy an Open Sea *second wind* (30 more seconds and a patched hull),
-  or trade for 150 coins.
+  sometimes guards one, at most one per run. Once ads are on, a rewarded
+  video in the Shop gives one too, a few times a day. Black pearls unlock
+  boats before the stars do, buy an Open Sea *second wind* (30 more seconds
+  and a patched hull), or trade for 150 coins.
 
-Buying black pearls, watching rewarded videos for them, the short ad between
-voyages and the one-time **No ads** purchase are built but switched off. With no store in the app the game uses the `none` provider in
-`web/src/platform/commerce.js`, and the Shop says **Coming soon**. To switch
-them on, add Google Play Billing and a rewarded-video SDK to the Android
-shell, then expose them to the page through the bridge below. Nothing in the
-web code needs to change.
+The ads are built but switched off. With no ads SDK in the app the game uses
+the `none` provider in `web/src/platform/ads.js`: the Shop's video says
+**Coming soon** and no ad ever plays. To switch them on, add an ads SDK
+(AdMob) to the Android shell and expose it to the page through the bridge
+below. Nothing in the web code needs to change.
 
-## What is for sale
+## The ads
 
-| Product id        | Black pearls | Suggested price |
-| ----------------- | ------------ | --------------- |
-| `black_pearls_10` | 10           | lowest tier     |
-| `black_pearls_35` | 30 + 5       | middle tier     |
-| `black_pearls_90` | 70 + 20      | top tier        |
+### Rewarded videos
 
-These are **consumable** in-app products. Create them in Play Console under
-*Monetize → In-app products* with exactly these ids. The Shop shows the price
-the store returns, in the player's own currency, so prices are only set in
-Play Console.
-
-One more product is bought once and kept:
-
-| Product id | What it does                                  | Suggested price      |
-| ---------- | --------------------------------------------- | -------------------- |
-| `no_ads`   | ends the ads between voyages for good          | about the middle tier |
-
-`no_ads` is a **non-consumable** in-app product (`NO_ADS` in `commerce.js`).
-Videos for black pearls stay: they only ever play when the player asks for
-one. Any purchase at all, a black pearl pack included, also ends the ads
-between voyages, since someone who has paid shouldn't sit through them.
-
-Rewarded video placements (`REWARDS` in `commerce.js`):
+Only ever played when the player asks for one (`REWARDS` in `ads.js`):
 
 | Placement id         | Reward                                   | Per day |
 | -------------------- | ---------------------------------------- | ------- |
@@ -55,7 +37,7 @@ Rewarded video placements (`REWARDS` in `commerce.js`):
 
 ### The ad between voyages
 
-An interstitial (`BREAK` in `commerce.js`, placement id `break_voyage`). The
+An interstitial (`BREAK` in `ads.js`, placement id `break_voyage`). The
 rules are there to keep players coming back, not to wear them out:
 
 - It never interrupts sailing. It plays only as the player moves on from a
@@ -69,66 +51,38 @@ rules are there to keep players coming back, not to wear them out:
   included.
 - If none is loaded the game simply moves on, and tries again after the next
   voyage.
-- Never for anyone who has bought No ads or anything else.
 
 ## The bridge
 
-The shell adds a JavaScript interface named `BoatifyStore` to the WebView.
+The shell adds a JavaScript interface named `BoatifyAds` to the WebView.
 
 ```kotlin
-webView.addJavascriptInterface(StoreBridge(this, webView), "BoatifyStore")
+webView.addJavascriptInterface(AdsBridge(this, webView), "BoatifyAds")
 ```
 
-It has four methods, all annotated `@JavascriptInterface`:
+It has three methods, all annotated `@JavascriptInterface`:
 
-| Method                                         | Returns  | Meaning                                                                |
-| ---------------------------------------------- | -------- | ---------------------------------------------------------------------- |
-| `storeReady()`                                 | boolean  | Billing is connected and the products were found.                      |
-| `adsReady()`                                   | boolean  | A rewarded video is loaded and can be shown now.                       |
-| `breakReady()`                                 | boolean  | An interstitial is loaded and can be shown now.                        |
-| `request(id: Int, method: String, arg: String)` | nothing  | Start a call. Reply later with `BoatifyStoreReply(id, json)`.          |
+| Method                                          | Returns | Meaning                                                       |
+| ----------------------------------------------- | ------- | ------------------------------------------------------------- |
+| `adsReady()`                                    | boolean | A rewarded video is loaded and can be shown now.              |
+| `breakReady()`                                  | boolean | An interstitial is loaded and can be shown now.               |
+| `request(id: Int, method: String, arg: String)` | nothing | Start a call. Reply later with `BoatifyAdsReply(id, json)`.   |
 
 Reply from the UI thread:
 
 ```kotlin
-webView.evaluateJavascript("window.BoatifyStoreReply($id, ${JSONObject.quote(json)})", null)
+webView.evaluateJavascript("window.BoatifyAdsReply($id, ${JSONObject.quote(json)})", null)
 ```
 
 Each reply is a JSON object with `ok` (true or false). When `ok` is false,
 add a `reason`: `cancelled` (the player backed out; the game says nothing),
-`unavailable`, or anything else (the game shows a gentle error). The game
+`unavailable`, or anything else (the game shows a gentle message). The game
 gives up on a call after two minutes.
 
-| `method`   | `arg`                                   | Reply when it works                                               |
-| ---------- | --------------------------------------- | ----------------------------------------------------------------- |
-| `prices`   | product ids, comma separated            | `{ "ok": true, "prices": { "black_pearls_10": "$0.99", … } }`         |
-| `purchase` | a product id                            | `{ "ok": true, "order": { "id": "<purchase token>", "product": "black_pearls_10" } }` |
-| `pending`  | empty                                   | `{ "ok": true, "orders": [ { "id": "…", "product": "…" } ] }`     |
-| `finish`   | an order id                             | `{ "ok": true }`                                                  |
-| `rewarded` | a placement id                          | `{ "ok": true }`, only once the video was watched to the end       |
-| `interstitial` | a placement id                      | `{ "ok": true }` once the ad has closed                            |
-
-### Purchases: credit first, then consume
-
-1. `purchase` runs the Play Billing flow. Reply once the purchase is
-   `PURCHASED` (not `PENDING`). Use the purchase token as the order id.
-2. The game credits the black pearls, writes the save, then calls `finish`
-   with that order id.
-3. On `finish`, **consume** a black pearl pack (`consumeAsync`) so it can be
-   bought again and Play doesn't refund it after three days. For `no_ads`,
-   **acknowledge** it instead (`acknowledgePurchase`, once) and never consume
-   it.
-4. At every launch the game calls `pending`. Reply with every purchase that
-   is `PURCHASED` but not yet consumed (from `queryPurchasesAsync`), and with
-   `no_ads` for as long as it is owned, so a reinstall gets it back. The game
-   credits each one it hasn't seen before and calls `finish` again.
-
-The wallet remembers the order ids it has credited, so an order is never
-paid twice even if `finish` fails and the order comes back from `pending`.
-
-For a larger audience, verify purchase tokens on a server before replying
-(Play Developer API, `purchases.products.get`). The game has no server
-today, so this is the step that would add one.
+| `method`       | `arg`          | Reply when it works                                          |
+| -------------- | -------------- | ------------------------------------------------------------ |
+| `rewarded`     | a placement id | `{ "ok": true }`, only once the video was watched to the end |
+| `interstitial` | a placement id | `{ "ok": true }` once the ad has closed                      |
 
 ### Rewarded videos
 
@@ -151,9 +105,9 @@ AdMob no tighter than the game's own rules above.
 ## Before release
 
 - **Privacy policy.** `PRIVACY.md` says the game has no ads and makes no
-  network connections. With Billing it talks to Google Play, and with an ads
-  SDK it talks to the ad network, which collects a device ad identifier.
-  Rewrite the policy to say so and name the ad network.
+  network connections. With an ads SDK it talks to the ad network, which
+  collects a device ad identifier. Rewrite the policy to say so and name the
+  ad network.
 - **Data safety form** in Play Console: declare what the ads SDK collects
   (device or other IDs, app interactions, diagnostics) and that it is shared
   with the ad network for advertising.
@@ -166,16 +120,14 @@ AdMob no tighter than the game's own rules above.
 - **Families policy.** If the target audience includes children, use only
   Families-certified ad SDKs. The current listing targets 13 and over.
 - **Store listing.** The full description ends with "No ads, no in-app
-  purchases". Remove that line, and Play will show "Contains ads · In-app
-  purchases" itself.
-- **Manifest.** Billing adds `com.android.vending.BILLING` on its own (through
-  the library). Ads need `android.permission.INTERNET` and, on Android 13 and
-  newer, `com.google.android.gms.permission.AD_ID`.
+  purchases". Change it to "No in-app purchases", and Play will show
+  "Contains ads" itself.
+- **Manifest.** Ads need `android.permission.INTERNET` and, on Android 13
+  and newer, `com.google.android.gms.permission.AD_ID`.
 
-## Testing without the store
+## Testing without ads
 
-`setCommerceProvider()` takes any object with the same methods as the `none`
+`setAdsProvider()` takes any object with the same methods as the `none`
 provider. `tests/economy.test.mjs` uses fake providers and a fake bridge to
-check that orders are credited once, saved before `finish`, that videos pay
-only when watched and only a few times a day, that the ad between voyages
-keeps to its rules, and that `no_ads` is restored after a reinstall.
+check that videos pay only when watched and only a few times a day, and that
+the ad between voyages keeps to its rules.

@@ -27,24 +27,7 @@ import {
   TRADE_COINS,
   BOAT_PRICES,
 } from '../web/src/data/economy.js';
-import {
-  commerce,
-  setCommerceProvider,
-  nativeProvider,
-  installCommerce,
-  creditOrder,
-  buyPack,
-  restoreOrders,
-  watchVideo,
-  videosLeft,
-  countVoyage,
-  breakDue,
-  takeBreak,
-  PACKS,
-  NO_ADS,
-  REWARDS,
-  BREAK,
-} from '../web/src/platform/commerce.js';
+import { ads, setAdsProvider, nativeAds, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS, BREAK } from '../web/src/platform/ads.js';
 import { createGame, stepGame, drainEvents } from '../web/src/world/game.js';
 import { isClear } from '../web/src/world/collision.js';
 import { holdsBlackPearl } from '../web/src/world/blackpearls.js';
@@ -61,20 +44,18 @@ const rich = (coins = 0, blackPearls = 0) => {
 
 test('a new save starts with an empty purse, and a broken one is mended', () => {
   assert.deepEqual(loadSave().wallet, blankWallet());
-  const w = cleanWallet({ coins: '120', blackPearls: -4, jars: 9, owned: ['boat:proa', 7], orders: 'x', ads: null, found: [] });
+  const w = cleanWallet({ coins: '120', blackPearls: -4, jars: 9, owned: ['boat:proa', 7], orders: ['GPA.1'], noAds: true, ads: null, found: [] });
   assert.equal(w.coins, 120);
   assert.equal(w.blackPearls, 0);
   assert.equal(w.jars, JAR_HOLD);
   assert.deepEqual(w.owned, ['boat:proa']);
-  assert.deepEqual(w.orders, []);
   assert.deepEqual(w.found, {});
   assert.deepEqual(w.ads, { day: null, seen: {}, since: 0, last: 0 });
-  assert.equal(w.noAds, false);
+  // Nothing was ever sold, so there are no orders or ad-free flags to keep.
+  assert.deepEqual(Object.keys(w).sort(), Object.keys(blankWallet()).sort());
   assert.deepEqual(cleanWallet(null), blankWallet());
-  const kept = cleanWallet({ ads: { day: '2026-10-29', seen: { black_pearl: 2 }, since: 2, last: 1700 }, noAds: true });
+  const kept = cleanWallet({ ads: { day: '2026-10-29', seen: { black_pearl: 2 }, since: 2, last: 1700 } });
   assert.deepEqual(kept.ads, { day: '2026-10-29', seen: { black_pearl: 2 }, since: 2, last: 1700 });
-  assert.equal(kept.noAds, true);
-  assert.equal(cleanWallet({ noAds: 'yes' }).noAds, false);
 });
 
 test('diamonds saved before 0.22 come back as black pearls', () => {
@@ -200,48 +181,20 @@ test('sails and paints for sale are bought with coins', () => {
   assert.equal(save.wallet.coins, 0);
 });
 
-test('with no store in the app, nothing is for sale', async () => {
-  setCommerceProvider(null);
-  assert.equal(installCommerce({}).id, 'none');
-  assert.ok(!commerce().storeReady());
-  assert.ok(!commerce().adsReady());
-  assert.ok(!commerce().breakReady());
+test('with no ads in the app, no video or ad ever plays', async () => {
+  setAdsProvider(null);
+  assert.equal(installAds({}).id, 'none');
+  assert.ok(!ads().adsReady());
+  assert.ok(!ads().breakReady());
   const save = rich();
-  assert.equal((await buyPack(save, PACKS[0].id)).ok, false);
-  assert.equal((await buyPack(save, NO_ADS.id)).ok, false);
   assert.equal((await takeBreak(save)).reason, 'unavailable');
-  assert.equal(save.wallet.noAds, false);
   assert.equal((await watchVideo(save, REWARDS.blackPearl, '2026-10-29')).ok, false);
   assert.equal(save.wallet.blackPearls, 0);
 });
 
-test('a paid order is credited once, saved before the store hears it is done', async () => {
-  const log = [];
-  setCommerceProvider({
-    storeReady: () => true,
-    purchase: async (id) => ({ ok: true, order: { id: 'GPA.1', product: id } }),
-    finish: async (id) => log.push(`finish ${id}`),
-    pending: async () => [
-      { id: 'GPA.1', product: 'black_pearls_35' },
-      { id: 'GPA.2', product: 'black_pearls_90' },
-      { id: 'GPA.3', product: 'nonsense' },
-    ],
-  });
-  const save = rich();
-  const r = await buyPack(save, 'black_pearls_35', () => log.push('saved'));
-  assert.deepEqual(r, { ok: true, blackPearls: 35 });
-  assert.deepEqual(log, ['saved', 'finish GPA.1']);
-  assert.deepEqual(creditOrder(save, { id: 'GPA.1', product: 'black_pearls_35' }), { ok: true, blackPearls: 0, repeat: true });
-  // On the next launch: the pack already credited isn't paid again.
-  assert.equal(await restoreOrders(save, () => {}), 90);
-  assert.equal(save.wallet.blackPearls, 125);
-  assert.equal(creditOrder(save, { product: 'black_pearls_10' }).ok, false);
-  setCommerceProvider(null);
-});
-
 test('a rewarded video pays only when watched, a few times a day', async () => {
   let watched = true;
-  setCommerceProvider({ adsReady: () => true, rewarded: async () => (watched ? { ok: true } : { ok: false, reason: 'cancelled' }) });
+  setAdsProvider({ adsReady: () => true, rewarded: async () => (watched ? { ok: true } : { ok: false, reason: 'cancelled' }) });
   const save = rich();
   const day = '2026-10-29';
   for (let i = 0; i < REWARDS.blackPearl.perDay; i++) assert.ok((await watchVideo(save, REWARDS.blackPearl, day)).ok);
@@ -253,33 +206,41 @@ test('a rewarded video pays only when watched, a few times a day', async () => {
   watched = false;
   assert.equal((await watchVideo(save, REWARDS.blackPearl, '2026-10-30')).ok, false);
   assert.equal(videosLeft(save, REWARDS.blackPearl, '2026-10-30'), REWARDS.blackPearl.perDay);
-  setCommerceProvider(null);
+  setAdsProvider(null);
 });
 
 test("the native bridge's replies come back to the right call", async () => {
   const host = {};
   const calls = [];
+  let ready = false;
   const bridge = {
-    storeReady: () => true,
     adsReady: () => {
       throw new Error('no ads sdk');
     },
+    breakReady: () => ready,
     request(id, method, arg) {
       calls.push([method, arg]);
-      const reply = method === 'prices' ? { ok: true, prices: { black_pearls_10: '$0.99' } } : method === 'purchase' ? { ok: true, order: { id: 'GPA.9', product: arg } } : { ok: true };
-      setTimeout(() => host.BoatifyStoreReply(String(id), JSON.stringify(reply)), 1);
+      setTimeout(() => host.BoatifyAdsReply(String(id), JSON.stringify(method === 'rewarded' ? { ok: false, reason: 'cancelled' } : { ok: true })), 1);
     },
   };
-  const store = setCommerceProvider(nativeProvider(bridge, host));
-  assert.ok(store.storeReady());
-  assert.ok(!store.adsReady());
-  assert.deepEqual(await store.prices(), { black_pearls_10: '$0.99' });
+  assert.equal(installAds({ BoatifyAds: bridge }).id, 'native');
+  setAdsProvider(nativeAds(bridge, host));
+  assert.ok(!ads().adsReady());
   const save = rich();
-  assert.deepEqual(await buyPack(save, 'black_pearls_10'), { ok: true, blackPearls: 10 });
-  assert.deepEqual(calls.map((c) => c[0]), ['prices', 'purchase', 'finish']);
-  assert.equal(calls[0][1], [...PACKS, NO_ADS].map((p) => p.id).join(','));
-  host.BoatifyStoreReply('77', '{}'); // a stray reply is ignored
-  setCommerceProvider(null);
+  save.wallet.ads.since = BREAK.every;
+  // Not loaded: the game doesn't ask for it.
+  assert.equal((await takeBreak(save, 1)).ok, false);
+  assert.deepEqual(calls, []);
+  ready = true;
+  assert.ok(ads().breakReady());
+  assert.deepEqual(await takeBreak(save, 1), { ok: true });
+  assert.deepEqual(await ads().rewarded(REWARDS.secondWind.id), { ok: false, reason: 'cancelled' });
+  assert.deepEqual(calls, [
+    ['interstitial', BREAK.id],
+    ['rewarded', REWARDS.secondWind.id],
+  ]);
+  host.BoatifyAdsReply('77', '{}'); // a stray reply is ignored
+  setAdsProvider(null);
 });
 
 test('the ad between voyages waits until the player is hooked, then comes every few voyages', () => {
@@ -306,14 +267,12 @@ test('the ad between voyages waits until the player is hooked, then comes every 
   // ...though a clock set back doesn't hold it off for good.
   save.wallet.ads.last = t + 60 * 60 * 1000;
   assert.equal(breakDue(save, BREAK.hooked + 1, t), true);
-  save.wallet.noAds = true;
-  assert.equal(breakDue(save, BREAK.hooked + 1, t), false);
 });
 
 test('a played ad starts the count again; one that never showed is tried next time', async () => {
   let shows = false;
   const asked = [];
-  setCommerceProvider({
+  setAdsProvider({
     breakReady: () => true,
     interstitial: async (id) => {
       asked.push(id);
@@ -330,71 +289,20 @@ test('a played ad starts the count again; one that never showed is tried next ti
   assert.deepEqual(asked, [BREAK.id, BREAK.id]);
   assert.equal(save.wallet.ads.since, 0);
   assert.equal(save.wallet.ads.last, 5000);
-  setCommerceProvider({ breakReady: () => false, interstitial: async () => assert.fail('asked while not ready') });
+  setAdsProvider({ breakReady: () => false, interstitial: async () => assert.fail('asked while not ready') });
   assert.equal((await takeBreak(save)).reason, 'unavailable');
-  setCommerceProvider(null);
+  setAdsProvider(null);
 });
 
 test('a rewarded video counts as an ad for the gap between ads', async () => {
-  setCommerceProvider({ adsReady: () => true, rewarded: async () => ({ ok: true }) });
+  setAdsProvider({ adsReady: () => true, rewarded: async () => ({ ok: true }) });
   const save = rich();
   save.wallet.ads.since = BREAK.every;
   await watchVideo(save, REWARDS.blackPearl, '2026-10-29', 90_000);
   assert.equal(save.wallet.ads.last, 90_000);
   assert.equal(breakDue(save, BREAK.hooked + 1, 90_000 + 60_000), false);
   assert.equal(breakDue(save, BREAK.hooked + 1, 90_000 + BREAK.gap), true);
-  setCommerceProvider(null);
-});
-
-test('no ads is bought once and kept; any purchase ends the ads between voyages', async () => {
-  const log = [];
-  let owned = [];
-  setCommerceProvider({
-    storeReady: () => true,
-    purchase: async (id) => ({ ok: true, order: { id: `GPA.${id}`, product: id } }),
-    finish: async (id) => log.push(id),
-    pending: async () => owned,
-  });
-  const save = rich();
-  assert.deepEqual(await buyPack(save, NO_ADS.id), { ok: true, blackPearls: 0 });
-  assert.equal(save.wallet.noAds, true);
-  assert.equal(save.wallet.blackPearls, 0);
-  assert.deepEqual(log, ['GPA.no_ads']);
-  // A reinstall starts a fresh save; the store still lists what is owned.
-  const fresh = rich();
-  owned = [{ id: 'GPA.no_ads', product: NO_ADS.id }];
-  assert.equal(await restoreOrders(fresh), 0);
-  assert.equal(fresh.wallet.noAds, true);
-  assert.equal(await restoreOrders(fresh), 0);
-  assert.deepEqual(fresh.wallet.orders, ['GPA.no_ads']);
-  // Someone who bought black pearls has paid too.
-  const buyer = rich();
-  assert.equal((await buyPack(buyer, PACKS[0].id)).ok, true);
-  assert.equal(buyer.wallet.noAds, true);
-  setCommerceProvider(null);
-});
-
-test("the native bridge plays the ad between voyages when it says it is ready", async () => {
-  const host = {};
-  const calls = [];
-  let ready = false;
-  const bridge = {
-    breakReady: () => ready,
-    request(id, method, arg) {
-      calls.push([method, arg]);
-      setTimeout(() => host.BoatifyStoreReply(String(id), JSON.stringify({ ok: true })), 1);
-    },
-  };
-  setCommerceProvider(nativeProvider(bridge, host));
-  const save = rich();
-  save.wallet.ads.since = BREAK.every;
-  assert.equal((await takeBreak(save, 1)).ok, false);
-  assert.deepEqual(calls, []);
-  ready = true;
-  assert.ok(commerce().breakReady());
-  assert.deepEqual(await takeBreak(save, 1), { ok: true });
-  assert.deepEqual(calls, [['interstitial', BREAK.id]]);
-  setCommerceProvider(null);
+  setAdsProvider(null);
 });
 
 test('every voyage with a whirlpool, kraken or pirate hides a black pearl in clear water near it', () => {
