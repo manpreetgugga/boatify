@@ -1,6 +1,6 @@
 // DOM menus layered over the canvas: title, voyage select, briefing, pause,
-// results, settings, how-to-sail, the Shipyard and Sail Locker, medals and the
-// logbook of bottle notes. Plus toasts.
+// results, settings, how-to-sail, the Shipyard and Sail Locker, the Shop,
+// medals and the logbook of bottle notes. Plus toasts and the confirm box.
 
 import { formatTime, compassPoint, DEG } from '../core/math.js';
 import { beaufort, toKnots, formatDistance } from '../physics/sailing.js';
@@ -15,9 +15,43 @@ import { dateKey, dailyId } from '../data/daily.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
+import { formatCoins, canAfford, shortOf, buyJar, tradeDiamond, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
+import { commerce, PACKS, REWARDS, buyPack, watchVideo, videosLeft } from '../platform/commerce.js';
+import { holdsDiamond } from '../world/diamonds.js';
 import { icon } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// The purse: coins and diamonds, as shown in a sheet's head or on the title.
+function wallet(save) {
+  const w = save.wallet;
+  return `<span class="wallet" aria-label="${formatCoins(w.coins)} coins, ${w.diamonds} diamonds"><span class="coins">${icon('coin', 17)}<b>${formatCoins(w.coins)}</b></span><span class="gems">${icon('diamond', 17)}<b>${w.diamonds}</b></span></span>`;
+}
+
+// Show the purse again after a purchase.
+function refreshWallet(node, save) {
+  node.querySelectorAll('.wallet').forEach((w) => {
+    w.outerHTML = wallet(save);
+  });
+}
+
+const priceTag = (price) => (price.diamonds ? `${icon('diamond', 16)}${price.diamonds}` : `${icon('coin', 16)}${formatCoins(price.coins)}`);
+
+function needMore(save, price) {
+  const short = shortOf(save, price);
+  if (short.diamonds) return `You need ${short.diamonds} more ${short.diamonds === 1 ? 'diamond' : 'diamonds'}. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.`;
+  return `You need ${formatCoins(short.coins)} more coins. Every voyage you sail pays some.`;
+}
+
+// What a voyage paid, under its results.
+function rewardStrip(pay) {
+  if (!pay || (!pay.coins && !pay.diamonds)) return '';
+  const lines = pay.lines.map((l) => `${esc(l.label)} <b>${formatCoins(l.coins)}</b>`).join(' · ');
+  return `<div class="reward">
+      <div class="reward-sum"><span class="coins">${icon('coin', 20)}+${formatCoins(pay.coins)}</span>${pay.diamonds ? `<span class="gems">${icon('diamond', 20)}+${pay.diamonds}</span>` : ''}</div>
+      <small>${lines}${pay.diamonds ? ` · Diamond <b>${pay.diamonds}</b>` : ''}</small>
+    </div>`;
+}
 
 function el(html) {
   const t = document.createElement('template');
@@ -379,6 +413,28 @@ export function createUI(root, levels, handlers) {
     });
   }
 
+  // Unlock a boat with diamonds, after asking. `after` redraws the screen.
+  function unlockBoat(save, id, after) {
+    const t = BOAT_TYPES[id];
+    const price = { diamonds: BOAT_PRICES[id] };
+    if (!canAfford(save, price)) {
+      ui.toast(needMore(save, price));
+      return;
+    }
+    ui.confirm({
+      title: `Unlock the ${t.name}?`,
+      text: `She is yours for good, without waiting for the ${t.unlock} stars.`,
+      ok: `Unlock ${priceTag(price)}`,
+      onOk: () => {
+        if (!buyBoat(save, id)) return;
+        handlers.onBoat(id);
+        handlers.onWallet();
+        ui.toast(`The ${t.name} is yours. She's waiting at the quay.`, 'good');
+        after();
+      },
+    });
+  }
+
   // Tips wait their turn so they never pile up over the course.
   let tipQueue = [];
 
@@ -488,12 +544,13 @@ export function createUI(root, levels, handlers) {
             ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">Open Sea</button>` : ''}
             ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">Regatta</button>` : ''}
             <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
+            <button class="btn small ${save.wallet.diamonds && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">Shop</button>
             <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">Prologue</button>
             <button class="btn small" data-act="settings">Settings</button>
           </div>
-          <div class="title-meta"><span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
+          <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
         </div>
       </section>`);
       click(node, '[data-act=play]', () => ui.begin(save));
@@ -503,6 +560,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=regatta]', () => ui.regattaBriefing(save));
       click(node, '[data-act=howto]', () => ui.howto(save));
       click(node, '[data-act=shipyard]', () => ui.shipyard(save));
+      click(node, '[data-act=shop]', () => ui.shop(save));
       click(node, '[data-act=medals]', () => ui.medals(save));
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
@@ -560,7 +618,7 @@ export function createUI(root, levels, handlers) {
             <span class="num">${String(i + 1).padStart(2, '0')}</span>
             <span class="name">${esc(l.name)}</span>
             <span class="stars">${stars(rec ? rec.stars : 0)}</span>
-            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ◆ ${rec.pearls}/${rec.pearlsTotal ?? '?'}` : `<em class="teaser">${esc(l.teaser)}</em>`}</span>
+            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ${icon('pearl', 13)}${rec.pearls}/${rec.pearlsTotal ?? '?'}${save.wallet.found[l.id] ? ` · ${icon('diamond', 13)}` : ''}` : `<em class="teaser">${esc(l.teaser)}</em>`}</span>
           </button>`;
         })
         .join('');
@@ -651,6 +709,8 @@ export function createUI(root, levels, handlers) {
                 <dt>Wind</dt><dd>${windSentence(def)}</dd>
                 <dt>Goal</dt><dd>Reach the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'} at <b style="color:var(--signal)">B</b></dd>
                 <dt>Pearls</dt><dd>${pearls}</dd>
+                ${holdsDiamond(def) ? `<dt>Diamond</dt><dd>${save.wallet.found[def.id] ? '<span style="color:var(--gem)">brought home ✓</span>' : 'One lies near the danger'}</dd>` : ''}
+                ${save.wallet.jars ? `<dt>Gust jars</dt><dd>${save.wallet.jars} from the hold</dd>` : ''}
                 ${(def.castaways || []).map((c) => `<dt>Castaway</dt><dd>${esc(c.name)} ${rec && rec.rescued ? '<span style="color:var(--ok)">rescued ✓</span>' : 'is adrift. Stop alongside'}</dd>`).join('')}
                 <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
               </dl>
@@ -827,6 +887,7 @@ export function createUI(root, levels, handlers) {
               ${(improved.newBoats || []).map((name) => `<span class="k">Shipyard</span><span class="v">${esc(name)}<span class="badge">NEW BOAT</span></span>`).join('')}
               ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
+            ${rewardStrip(improved.pay)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
@@ -874,6 +935,7 @@ export function createUI(root, levels, handlers) {
               <span class="k">Time at sea</span><span class="v">${formatTime(result.time)}</span>
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
             </div>
+            ${rewardStrip(improved.pay)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
@@ -918,6 +980,7 @@ export function createUI(root, levels, handlers) {
               <span class="k">Wins</span><span class="v">${rec.wins} of ${rec.races}</span>
               ${stepUp ? `<span class="k">Next race</span><span class="v">${esc(FLEETS[fleetFor(rec.wins)].name)} fleet<span class="badge">STEP UP</span></span>` : ''}
             </div>
+            ${rewardStrip(improved.pay)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
@@ -959,7 +1022,7 @@ export function createUI(root, levels, handlers) {
           ? '<button class="btn small" disabled>Sailing</button>'
           : open
             ? `<button class="btn small primary" data-boat="${id}">Choose</button>`
-            : `<button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button>`;
+            : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} diamonds">${priceTag({ diamonds: BOAT_PRICES[id] })} Now</button></div>`;
         return `<div class="boat-card ${open ? '' : 'locked'} ${picked ? 'picked' : ''}">
             <canvas class="boat-art" data-type="${id}" aria-hidden="true"></canvas>
             <div class="boat-head"><h3>${esc(t.name)}</h3><span class="tag">${esc(t.tag)}</span></div>
@@ -971,7 +1034,7 @@ export function createUI(root, levels, handlers) {
       const node = el(`<section class="screen dim" aria-label="Shipyard">
         <div class="sheet wide">
           <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="locker">Sail Locker</button><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
+          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats, or unlock one now with diamonds. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-boat]', (e, b) => {
         const t = BOAT_TYPES[b.dataset.boat];
@@ -982,6 +1045,7 @@ export function createUI(root, levels, handlers) {
         handlers.onBoat(t.id);
         ui.back();
       });
+      click(node, '[data-buy]', (e, b) => unlockBoat(save, b.dataset.buy, () => ui.shipyard(save, true)));
       click(node, '[data-act=locker]', () => ui.locker(save));
       click(node, '[data-act=back]', () => ui.back());
       show('shipyard', node, restore ? { keep: true } : { push: true });
@@ -997,16 +1061,17 @@ export function createUI(root, levels, handlers) {
         const open = isGearUnlocked(save, g);
         const medal = medalFor(g);
         const name = medal && isSealed(medal, save, levels) ? 'A secret medal' : medal && esc(medal.name);
-        const sub = !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
-        return `<button class="gear ${open ? '' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${open ? '' : ', locked'}">
+        const sub = g.price ? (open ? 'From the Shop' : priceTag({ coins: g.price })) : !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
+        const state = open ? '' : g.price ? `, ${formatCoins(g.price)} coins` : ', locked';
+        return `<button class="gear ${open ? '' : g.price ? 'for-sale' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${state}">
             <canvas class="gear-art" aria-hidden="true"></canvas><b>${esc(g.name)}</b><small>${sub}</small></button>`;
       };
       const node = el(`<section class="screen dim" aria-label="Sail Locker">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Sail Locker</h2><span class="eyebrow">${gearCount(save)} / ${GEAR_TOTAL}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>Sail Locker</h2><span class="eyebrow">${gearCount(save)} / ${GEAR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
           <div class="sheet-body">
             <div class="locker-top"><canvas class="locker-preview" aria-hidden="true"></canvas>
-              <div><b class="locker-fit"></b><p class="locker-blurb">Every medal puts a new sail or hull paint in the locker. They change how your boat looks, never how it sails.</p></div></div>
+              <div><b class="locker-fit"></b><p class="locker-blurb">Every medal puts a new sail or hull paint in the locker, and a few more are for sale. They change how your boat looks, never how it sails.</p></div></div>
             <h3 class="setting-group">Sails</h3>
             <div class="gear-grid">${SAILS.map((g) => card('sail', g)).join('')}</div>
             <h3 class="setting-group">Hull paint</h3>
@@ -1032,6 +1097,30 @@ export function createUI(root, levels, handlers) {
       click(node, '.gear', (e, b) => {
         const { kind, id } = b.dataset;
         const g = (kind === 'sail' ? SAILS : HULLS).find((x) => x.id === id);
+        if (!isGearUnlocked(save, g) && g.price) {
+          const price = { coins: g.price };
+          const what = `${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}`;
+          if (!canAfford(save, price)) {
+            ui.toast(needMore(save, price));
+            return;
+          }
+          ui.confirm({
+            title: `Buy the ${what}?`,
+            text: 'Every boat in the Shipyard can wear it. It changes how she looks, never how she sails.',
+            ok: `Buy ${priceTag(price)}`,
+            onOk: () => {
+              if (!buyGear(save, g)) return;
+              handlers.onWallet();
+              handlers.onGear(kind, id);
+              b.classList.remove('for-sale');
+              b.setAttribute('aria-label', g.name);
+              b.querySelector('small').textContent = 'From the Shop';
+              refreshWallet(node, save);
+              paint();
+            },
+          });
+          return;
+        }
         if (!isGearUnlocked(save, g)) {
           const medal = medalFor(g);
           const what = `the ${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}`;
@@ -1225,6 +1314,198 @@ export function createUI(root, levels, handlers) {
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       show('logbook', node, { push: true });
+    },
+
+    // Diamonds (one day for money or a video), supplies for coins, boats for
+    // diamonds. Buying and videos say "Coming soon" until the store is in.
+    shop(save, restore = false) {
+      const store = commerce();
+      const today = dateKey();
+      const selling = store.storeReady();
+      const ads = store.adsReady();
+      const item = (art, name, sub, button) =>
+        `<div class="shop-item"><span class="shop-art">${art}</span><span class="shop-text"><b>${name}</b><small>${sub}</small></span>${button}</div>`;
+      const packs = PACKS.map((p) =>
+        item(
+          icon('diamond', 28),
+          esc(p.name),
+          `${p.diamonds + p.bonus} diamonds${p.bonus ? ` <span class="badge">+${p.bonus} FREE</span>` : ''}`,
+          `<button class="btn small" data-pack="${p.id}" ${selling ? '' : 'disabled'}>${selling ? 'Buy' : 'Coming soon'}</button>`,
+        ),
+      ).join('');
+      const video = item(
+        icon('play', 28),
+        'Watch a video',
+        `One diamond · <span data-left>${videosLeft(save, REWARDS.diamond, today)}</span> left today`,
+        `<button class="btn small" data-video ${ads ? '' : 'disabled'}>${ads ? 'Watch' : 'Coming soon'}</button>`,
+      );
+      const boats = BOAT_ORDER.filter((id) => BOAT_PRICES[id] && !isBoatUnlocked(save, id));
+      const node = el(`<section class="screen dim" aria-label="Shop">
+        <div class="sheet wide">
+          <div class="sheet-head"><h2>Shop</h2>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">
+            <h3 class="setting-group">Diamonds</h3>
+            <p class="sheet-note">Diamonds are rare. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.</p>
+            <div class="shop-grid">${packs}${video}</div>
+            <h3 class="setting-group">Supplies</h3>
+            <div class="shop-grid">
+              ${item(icon('wind', 28), 'Gust jar', `Goes aboard on your next voyage. In the hold: <b data-jars>${save.wallet.jars}</b> / ${JAR_HOLD}`, `<button class="btn small" data-buy="jar">${priceTag({ coins: JAR_PRICE })}</button>`)}
+              ${item(icon('coin', 28), 'Trade a diamond', `${formatCoins(TRADE_COINS)} coins for one diamond`, `<button class="btn small" data-buy="trade">${priceTag({ diamonds: 1 })}</button>`)}
+            </div>
+            <h3 class="setting-group">Boats</h3>
+            <div class="shop-grid">${
+              boats.length
+                ? boats
+                    .map((id) => {
+                      const t = BOAT_TYPES[id];
+                      return item(`<canvas class="shop-boat" data-type="${id}" aria-hidden="true"></canvas>`, esc(t.name), `${esc(t.tag)} · or ★ ${t.unlock}`, `<button class="btn small gem-btn" data-boat="${id}" aria-label="Unlock the ${esc(t.name)} for ${BOAT_PRICES[id]} diamonds">${priceTag({ diamonds: BOAT_PRICES[id] })}</button>`);
+                    })
+                    .join('')
+                : '<p class="sheet-note">Every boat in the Shipyard is yours.</p>'
+            }</div>
+            <h3 class="setting-group">Sails and paints</h3>
+            <div class="shop-grid">${item(icon('crown', 28), 'Sail Locker', 'Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.', '<button class="btn small" data-act="locker">Open</button>')}</div>
+          </div>
+        </div></section>`);
+      const redraw = () => {
+        refreshWallet(node, save);
+        node.querySelector('[data-jars]').textContent = save.wallet.jars;
+        node.querySelector('[data-left]').textContent = videosLeft(save, REWARDS.diamond, today);
+      };
+      click(node, '[data-buy=jar]', () => {
+        if (save.wallet.jars >= JAR_HOLD) {
+          ui.toast(`The hold is full: ${JAR_HOLD} jars is all a voyage carries.`);
+          return;
+        }
+        if (!buyJar(save)) {
+          ui.toast(needMore(save, { coins: JAR_PRICE }));
+          return;
+        }
+        handlers.onWallet();
+        ui.toast('A gust jar is stowed for your next voyage.', 'good', 2400);
+        redraw();
+      });
+      click(node, '[data-buy=trade]', () => {
+        if (!canAfford(save, { diamonds: 1 })) {
+          ui.toast(needMore(save, { diamonds: 1 }));
+          return;
+        }
+        ui.confirm({
+          title: 'Trade a diamond?',
+          text: `One diamond for ${formatCoins(TRADE_COINS)} coins.`,
+          ok: `Trade ${priceTag({ diamonds: 1 })}`,
+          onOk: () => {
+            if (!tradeDiamond(save)) return;
+            handlers.onWallet();
+            redraw();
+          },
+        });
+      });
+      click(node, '[data-boat]', (e, b) => unlockBoat(save, b.dataset.boat, () => ui.shop(save, true)));
+      click(node, '[data-pack]', async (e, b) => {
+        b.disabled = true;
+        const r = await buyPack(save, b.dataset.pack, () => handlers.onWallet());
+        b.disabled = false;
+        if (current !== 'shop') return;
+        if (r.ok && r.diamonds) ui.toast(`+${r.diamonds} diamonds. Thank you!`, 'good');
+        else if (r.reason && r.reason !== 'cancelled') ui.toast("The store couldn't finish that. You haven't been charged.", 'warn');
+        redraw();
+      });
+      click(node, '[data-video]', async (e, b) => {
+        if (!videosLeft(save, REWARDS.diamond, today)) {
+          ui.toast('That is all the videos for today. More tomorrow!');
+          return;
+        }
+        b.disabled = true;
+        const r = await watchVideo(save, REWARDS.diamond, today);
+        b.disabled = false;
+        if (r.ok) handlers.onWallet();
+        if (current !== 'shop') return;
+        if (r.ok) ui.toast('+1 diamond. Thanks for watching!', 'good');
+        else if (r.reason !== 'cancelled') ui.toast('No video right now. Try again later.');
+        redraw();
+      });
+      click(node, '[data-act=locker]', () => ui.locker(save));
+      click(node, '[data-act=back]', () => ui.back());
+      show('shop', node, restore ? { keep: true } : { push: true });
+      node.querySelectorAll('canvas.shop-boat').forEach((c) => {
+        const type = BOAT_TYPES[c.dataset.type];
+        paintBoat(c, type, boatLook(type, fittedGear(save)));
+      });
+      // Prices are in the player's own currency, so they come from the store.
+      if (selling) {
+        store.prices().then((prices) => {
+          node.querySelectorAll('[data-pack]').forEach((b) => {
+            if (prices[b.dataset.pack]) b.textContent = prices[b.dataset.pack];
+          });
+        });
+      }
+      if (!save.sightings.shop) {
+        save.sightings.shop = true;
+        handlers.onSeen();
+      }
+    },
+
+    // Ask before spending. `ok` is the confirm button's label (may hold an icon).
+    confirm({ title, text, ok = 'OK', onOk }) {
+      ui.closeConfirm();
+      const node = el(`<div class="confirm" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="confirm-box">
+          <h3>${esc(title)}</h3>
+          <p>${esc(text)}</p>
+          <div class="confirm-foot"><button class="btn small" data-act="no">Not now</button><button class="btn small primary" data-act="yes">${ok}</button></div>
+        </div></div>`);
+      click(node, '[data-act=no]', () => ui.closeConfirm());
+      click(node, '[data-act=yes]', () => {
+        ui.closeConfirm();
+        onOk();
+      });
+      node.addEventListener('click', (e) => {
+        if (e.target === node) ui.closeConfirm();
+      });
+      root.appendChild(node);
+      void node.offsetWidth;
+      node.classList.add('open');
+      if (!matchMedia('(pointer: coarse)').matches) node.querySelector('[data-act=yes]').focus({ preventScroll: true });
+    },
+
+    // Returns true if a confirm box was open.
+    closeConfirm() {
+      const box = root.querySelector('.confirm');
+      if (!box) return false;
+      box.remove();
+      return true;
+    },
+
+    // An Open Sea run has ended: offer a second wind for diamonds (or a video).
+    secondWind(result, save, { onTake, onVideo, onEnd }) {
+      tipQueue = [];
+      const price = { diamonds: SECOND_WIND };
+      const store = commerce();
+      const video = store.adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0;
+      const node = el(`<section class="screen dim" aria-label="Second wind">
+        <div class="sheet narrow results-sheet">
+          <div class="sheet-head"><span class="eyebrow">Open Sea · ${formatDistance(result.distance)} east</span><h2>${result.reason === 'sunk' ? 'The hull gave out' : 'Out of time'}</h2>${wallet(save)}</div>
+          <div class="sheet-body">
+            <p class="second-wind">${icon('wind', 30)}<span>Take a <b>second wind</b>: ${SECOND_WIND_TIME} more seconds on the clock and the hull patched up, right where you are.</span></p>
+          </div>
+          <div class="sheet-foot">
+            <button class="btn small" data-act="end">End run</button>
+            ${video ? `<button class="btn small" data-act="video">${icon('play', 16)} Watch a video</button>` : ''}
+            <button class="btn primary" data-act="take" data-autofocus ${canAfford(save, price) ? '' : 'disabled'}>Sail on ${priceTag(price)}</button>
+          </div>
+        </div></section>`);
+      click(node, '[data-act=end]', () => onEnd());
+      click(node, '[data-act=take]', () => onTake());
+      click(node, '[data-act=video]', async (e, b) => {
+        b.disabled = true;
+        const ok = await onVideo();
+        if (!ok && current === 'secondwind') {
+          b.disabled = false;
+          ui.toast('No video right now.');
+        }
+      });
+      show('secondwind', node);
     },
 
     // Go back one screen. Returns false when there is nowhere to go.

@@ -162,6 +162,11 @@ export function createAudio() {
       } else if (kind === 'gust') {
         hiss({ freq: 400, q: 3, peak: 0.25, attack: 0.05, decay: 0.5, sweep: 6 });
         tone(midi(72), { type: 'triangle', peak: 0.1, decay: 0.3, at: 0.15 });
+      } else if (kind === 'diamond') {
+        // A bright, glassy arpeggio with a shimmer on top.
+        [84, 88, 91, 96].forEach((n, i) => tone(midi(n), { type: 'sine', peak: 0.13, decay: 0.7, at: i * 0.06 }));
+        [103, 108].forEach((n, i) => tone(midi(n), { type: 'sine', peak: 0.05, decay: 0.9, at: 0.25 + i * 0.05 }));
+        hiss({ type: 'highpass', freq: 6000, peak: 0.08, attack: 0.05, decay: 0.6, at: 0.1 });
       } else if (kind === 'repair') {
         [0, 0.14, 0.28].forEach((at) => {
           tone(260, { type: 'square', peak: 0.12, decay: 0.06, at });
@@ -293,6 +298,13 @@ export function createAudio() {
         hiss({ type: 'bandpass', freq: 1000, q: 0.6, peak: 0.28, attack: 0.01, decay: 0.55, sweep: 0.45 });
         tone(170, { type: 'sine', peak: 0.08, attack: 0.005, decay: 0.18, glide: 0.4 });
       }
+    },
+    coins() {
+      // Coins dropping into a purse.
+      [0, 0.07, 0.15].forEach((at, i) => {
+        tone(midi(88 + i * 3), { type: 'square', peak: 0.04, decay: 0.12, at });
+        tone(midi(100 + i * 3), { type: 'sine', peak: 0.06, decay: 0.25, at });
+      });
     },
     medal() {
       // A rising fanfare that ends on a ringing bell.

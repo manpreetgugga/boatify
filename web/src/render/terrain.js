@@ -292,15 +292,74 @@ export function drawPickups(ctx, game, cam, time) {
     const bob = Math.sin(time * 2.2 + p.bob);
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.fillStyle = 'rgba(232, 244, 242, 0.13)';
+    ctx.fillStyle = p.kind === 'diamond' ? `rgba(150, 236, 255, ${0.2 + 0.08 * bob})` : 'rgba(232, 244, 242, 0.13)';
     ctx.beginPath();
-    ctx.arc(0, 0, 13 + bob * 1.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, (p.kind === 'diamond' ? 17 : 13) + bob * 1.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.scale(1 + bob * 0.06, 1 + bob * 0.06);
     if (p.kind === 'pearl') drawPearl(ctx, time + p.bob);
+    else if (p.kind === 'diamond') drawDiamond(ctx, time + p.bob);
     else if (p.kind === 'gust') drawJar(ctx, time + p.bob);
     else if (p.kind === 'repair') drawCrate(ctx, bob);
     else drawBottle(ctx, bob);
+    ctx.restore();
+  }
+}
+
+// A cut gem seen from above the water, glinting.
+function drawDiamond(ctx, t) {
+  const s = 10;
+  ctx.fillStyle = 'rgba(6, 30, 40, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(1.5, 2.5, s * 0.95, s * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Crown and pavilion.
+  const top = -s * 0.75;
+  const girdle = -s * 0.2;
+  const facets = [
+    ['#e8fbff', [[-s * 0.55, top], [s * 0.55, top], [s * 0.3, girdle], [-s * 0.3, girdle]]],
+    ['#9fe9fb', [[-s * 0.55, top], [-s * 0.3, girdle], [-s, girdle]]],
+    ['#c8f4ff', [[s * 0.55, top], [s, girdle], [s * 0.3, girdle]]],
+    ['#5fcbe8', [[-s, girdle], [-s * 0.3, girdle], [0, s * 0.85]]],
+    ['#86dcf2', [[-s * 0.3, girdle], [s * 0.3, girdle], [0, s * 0.85]]],
+    ['#3fb2d6', [[s * 0.3, girdle], [s, girdle], [0, s * 0.85]]],
+  ];
+  for (const [color, pts] of facets) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(-s, girdle);
+  ctx.lineTo(-s * 0.55, top);
+  ctx.lineTo(s * 0.55, top);
+  ctx.lineTo(s, girdle);
+  ctx.lineTo(0, s * 0.85);
+  ctx.closePath();
+  ctx.stroke();
+  // A four-pointed glint that comes and goes.
+  const g = Math.max(0, Math.sin(t * 2.6));
+  if (g > 0.05) {
+    ctx.save();
+    ctx.translate(-s * 0.35, -s * 0.55);
+    ctx.rotate(t * 0.8);
+    ctx.fillStyle = `rgba(255, 255, 255, ${g})`;
+    const r = 2 + 5 * g;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(0.9, -0.9);
+    ctx.lineTo(r, 0);
+    ctx.lineTo(0.9, 0.9);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-0.9, 0.9);
+    ctx.lineTo(-r, 0);
+    ctx.lineTo(-0.9, -0.9);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 }

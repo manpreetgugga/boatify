@@ -4,7 +4,7 @@
 import { LEVELS } from './data/levels.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
-import { openSeaDef } from './world/opensea.js';
+import { openSeaDef, reviveRun } from './world/opensea.js';
 import { regattaDef, fleetFor, ordinal } from './world/regatta.js';
 import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
@@ -23,20 +23,24 @@ import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
-import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, zoomName } from './platform/save.js';
+import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
+import { voyagePay, seaPay, racePay, payOut, diamondWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
+import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, REWARDS } from './platform/commerce.js';
 
 const root = document.getElementById('boatify');
 const canvas = document.getElementById('game');
 const probe = document.getElementById('inset-probe');
 
 const save = loadSave();
+// The store, if the app has one.
+installCommerce();
 // Medals added in an update go straight to players who already earned them.
 if (awardMedals(save, LEVELS).length) writeSave(save);
 const renderer = createRenderer(canvas);
 const audio = createAudio();
 
-let mode = 'title'; // title | film | countdown | playing | paused | finishing | results
+let mode = 'title'; // title | film | countdown | playing | paused | finishing | offer | results
 let game = null;
 let levelIndex = 0; // campaign index, 'daily', 'sea' or 'regatta'
 let autopilot = null;
@@ -50,6 +54,8 @@ let demoTimer = 0;
 let demoIndex = 0;
 let finishTimer = 0;
 let pending = null;
+let carried = 0; // gust jars brought from the hold this voyage
+let windTaken = false; // a second wind already used this Open Sea run
 let guideTold = {}; // which dolphin hints this voyage has explained
 let cancelCountdown = null;
 let timeScale = 1;
@@ -187,12 +193,17 @@ const ui = createUI(root, LEVELS, {
     save.settings[kind] = id;
     writeSave(save);
   },
+  onWallet: () => {
+    writeSave(save);
+    audio.sfx.coins();
+  },
   onBackToTitle: () => showTitle(),
   onFilm: () => playFilm(),
   onFilmDone: (helm) => finishFilm(helm),
   onBackTo: (name) => {
     if (name === 'voyages') ui.voyages(save);
     else if (name === 'shipyard') ui.shipyard(save, true);
+    else if (name === 'shop') ui.shop(save, true);
     else if (name === 'briefing') ui.briefing(ui.lastBriefing, save, 'restore');
     else showTitle();
   },
@@ -224,6 +235,7 @@ function startDemo() {
 function showTitle(withMenu = true) {
   if (cancelCountdown) cancelCountdown();
   cancelCountdown = null;
+  settleJars();
   film = null;
   mode = 'title';
   input.setEnabled(false);
@@ -241,9 +253,16 @@ function startLevel(ref) {
   const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'daily' ? dailyDef() : LEVELS[ref];
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
+  settleJars();
   film = null;
   levelIndex = ref;
-  game = createGame(def, { boat: selectedBoat(save), guide: guideOn() });
+  // Jars from the hold go aboard (not in a regatta: the fleet has none), and
+  // the voyage's diamond is out if it hasn't been brought home yet.
+  carried = def.race ? 0 : jarsAboard(save);
+  windTaken = false;
+  pending = null;
+  const diamond = !def.race && (def.endless || diamondWaiting(save, def.id));
+  game = createGame(def, { boat: selectedBoat(save), guide: guideOn(), startJars: carried, diamond });
   autopilot = botDriving ? createAutopilot(game) : null;
   guideTold = {};
   // No ghost on the open sea or in a regatta: no two runs share a course.
@@ -264,6 +283,15 @@ function startLevel(ref) {
     mode = 'playing';
     input.setEnabled(true);
   });
+  if (carried) setTimeout(() => mode === 'playing' || mode === 'countdown' ? ui.toast(`${carried} gust ${carried === 1 ? 'jar' : 'jars'} from the hold aboard. Tap the wind button for a burst.`, 'good', 3200) : null, 2700);
+}
+
+// The hold's jars that went aboard and were used are gone; the rest stay.
+function settleJars(left = game ? game.gustJars : 0) {
+  if (!carried) return;
+  useJars(save, carried, left);
+  carried = 0;
+  writeSave(save);
 }
 
 function pause() {
@@ -285,33 +313,97 @@ function finishVoyage(result) {
   mode = 'finishing';
   finishTimer = 1.8;
   input.setEnabled(false);
+  // An Open Sea run can go on for a few diamonds (or a video), once.
+  if (game.sea && !windTaken && !botDriving && windOnOffer()) {
+    pending = { offer: true, result };
+    return;
+  }
+  pending = settleVoyage(result);
+}
+
+function windOnOffer() {
+  return canAfford(save, { diamonds: SECOND_WIND }) || (commerce().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0);
+}
+
+// Record the voyage, award medals and pay out. Returns what the results show.
+function settleVoyage(result) {
+  settleJars(result.jarsLeft || 0);
+  let improved;
   if (game.sea) {
-    const improved = recordSeaRun(save, result);
+    improved = recordSeaRun(save, result);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
-    if (improved.medals.length) writeSave(save);
-    pending = { improved, result };
-    return;
-  }
-  if (game.race) {
-    const improved = recordRace(save, result);
+    improved.pay = payOut(save, seaPay(result, improved), { diamonds: result.diamonds });
+  } else if (game.race) {
+    improved = recordRace(save, result);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
-    if (improved.medals.length) writeSave(save);
-    pending = { improved, result };
-    return;
+    improved.pay = payOut(save, racePay(result, improved));
+  } else {
+    const hadGhost = !!ghost;
+    const daily = game.def.daily;
+    if (daily) markDaily(save, daily);
+    const boatsBefore = unlockedBoats(save).length;
+    improved = recordResult(save, game.def.id, result, game.notes, daily ? 'daily' : 'levels');
+    improved.newBoats = unlockedBoats(save).slice(boatsBefore).map((id) => BOAT_TYPES[id].name);
+    improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
+    const streak = daily ? currentStreak(save, daily) : 0;
+    improved.pay = payOut(save, voyagePay(game.def, result, improved, streak), { diamonds: result.diamonds, voyage: game.def.id });
+    // Keep the fastest run as the ghost (or the first one we see for a voyage).
+    if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
+      storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
+    }
   }
-  const hadGhost = !!ghost;
-  const daily = game.def.daily;
-  if (daily) markDaily(save, daily);
-  const boatsBefore = unlockedBoats(save).length;
-  const improved = recordResult(save, game.def.id, result, game.notes, daily ? 'daily' : 'levels');
-  improved.newBoats = unlockedBoats(save).slice(boatsBefore).map((id) => BOAT_TYPES[id].name);
-  improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
-  if (improved.medals.length) writeSave(save);
-  // Keep the fastest run as the ghost (or the first one we see for a voyage).
-  if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
-    storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
-  }
-  pending = { improved, result };
+  writeSave(save);
+  return { improved, result };
+}
+
+function showResults() {
+  mode = 'results';
+  if (game.sea) ui.seaResults(pending.result, pending.improved, save);
+  else if (game.race) ui.raceResults(pending.result, pending.improved, save);
+  else ui.results(levelIndex, pending.result, pending.improved, save);
+  if (pending.improved.pay.coins || pending.improved.pay.diamonds) setTimeout(() => mode === 'results' && audio.sfx.coins(), 900);
+}
+
+// The run ended: sail on for diamonds or a video, or call it a day.
+function offerSecondWind() {
+  mode = 'offer';
+  const { result } = pending;
+  const takeWind = () => {
+    if (mode !== 'offer') return;
+    windTaken = true;
+    pending = null;
+    reviveRun(game, SECOND_WIND_TIME);
+    ui.hide();
+    input.reset(game.boat.trim);
+    mode = 'countdown';
+    cancelCountdown = ui.countdown(() => {
+      cancelCountdown = null;
+      mode = 'playing';
+      input.setEnabled(true);
+    });
+  };
+  ui.secondWind(result, save, {
+    onTake: () => {
+      if (!spend(save, { diamonds: SECOND_WIND })) return;
+      writeSave(save);
+      audio.sfx.coins();
+      takeWind();
+    },
+    onVideo: async () => {
+      const r = await watchVideo(save, REWARDS.secondWind, dateKey());
+      if (!r.ok) return false;
+      writeSave(save);
+      takeWind();
+      return true;
+    },
+    onEnd: () => endOffer(),
+  });
+}
+
+function endOffer() {
+  if (mode !== 'offer') return;
+  pending = settleVoyage(pending.result);
+  showResults();
 }
 
 // --- The prologue ----------------------------------------------------------
@@ -415,15 +507,21 @@ function handleEvents(events, live) {
         if (live) ui.toast(e.text, 'tip', 5200);
         break;
       case 'pickup': {
-        const colors = { pearl: '#fbf6ee', gust: '#bff3ff', repair: C.ok, bottle: '#c9e8b8' };
+        const colors = { pearl: '#fbf6ee', gust: '#bff3ff', repair: C.ok, bottle: '#c9e8b8', diamond: '#9fe9fb' };
         burst(fx, e.x, e.y, { count: 16, speed: 30, color: colors[e.kind] || C.foam, size: 2.2 });
         ring(fx, e.x, e.y, colors[e.kind] || C.foam, 22, 0.6);
         if (!live) break;
         audio.sfx.pickup(e.kind);
         buzz(18);
-        if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, game.sea ? `◆ +${e.bonus} s` : `◆ ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
+        if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, game.sea ? `PEARL +${e.bonus} s` : `PEARL ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
         else if (e.kind === 'gust') floatText(fx, e.x, e.y - 10, 'GUST JAR', '#bff3ff');
         else if (e.kind === 'repair') floatText(fx, e.x, e.y - 10, 'HULL +35', C.ok);
+        else if (e.kind === 'diamond') {
+          floatText(fx, e.x, e.y - 12, 'DIAMOND!', '#9fe9fb');
+          ring(fx, e.x, e.y, '#ffffff', 40, 1);
+          buzz(60);
+          firstSight('diamond', 'A diamond! They are rare. Bring it home: finish the voyage to keep it.');
+        }
         else if (e.kind === 'bottle') {
           audio.sfx.note();
           ui.toast(`“${e.note}”`, 'note', 7000);
@@ -645,6 +743,14 @@ function handleEvents(events, live) {
         }
         break;
       }
+      case 'revive':
+        ring(fx, e.x, e.y, '#bff3ff', 60, 1);
+        burst(fx, e.x, e.y, { count: 24, speed: 40, color: '#bff3ff', size: 2.4 });
+        if (!live) break;
+        audio.sfx.boost();
+        buzz(50);
+        ui.toast(`Second wind! ${SECOND_WIND_TIME} more seconds. Sail on!`, 'good', 2600);
+        break;
       case 'finish':
         if (game.sea) {
           // The run is over: out of time, or sunk.
@@ -708,11 +814,12 @@ function frame(now) {
     drainEvents(game);
     finishTimer -= dt;
     if (finishTimer <= 0) {
-      mode = 'results';
-      if (game.sea) ui.seaResults(pending.result, pending.improved, save);
-      else if (game.race) ui.raceResults(pending.result, pending.improved, save);
-      else ui.results(levelIndex, pending.result, pending.improved, save);
+      if (pending.offer) offerSecondWind();
+      else showResults();
     }
+  } else if (mode === 'offer') {
+    stepGame(game, { steer: 0, trimTarget: 1, autoTrim: true, boost: false }, dt);
+    drainEvents(game);
   }
 
   const showHud = !hudOff && (mode === 'playing' || mode === 'countdown' || mode === 'paused');
@@ -756,8 +863,13 @@ function onBack() {
     pause();
     return true;
   }
+  if (ui.closeConfirm()) return true;
   if (mode === 'paused') {
     resume();
+    return true;
+  }
+  if (mode === 'offer') {
+    endOffer();
     return true;
   }
   if (mode === 'countdown') {
@@ -846,6 +958,12 @@ window.__boatify = {
     if (!game) return null;
     return { x: c.w / 2 + c.ox + (game.boat.x - c.x) * c.scale, y: c.h / 2 + c.oy + (game.boat.y - c.y) * c.scale, scale: c.scale };
   },
+  // Fill the purse for a test.
+  give({ coins = 0, diamonds = 0 } = {}) {
+    save.wallet.coins += coins;
+    save.wallet.diamonds += diamonds;
+    writeSave(save);
+  },
   // Wind the Open Sea clock down to see a run end.
   setSeaClock(s) {
     if (game && game.sea) game.sea.clock = s;
@@ -925,6 +1043,8 @@ window.__boatify = {
       sea: game && game.sea && { clock: game.sea.clock, gates: game.sea.gates, missed: game.sea.missed, best: game.sea.best },
       race: game && game.race && { place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
       result: game && game.result,
+      wallet: { ...save.wallet },
+      diamonds: game && game.diamonds,
       film: film && { t: film.t, shot: film.shot.id, oar: film.oar.state, route: !!film.route },
       frames,
     };
@@ -943,6 +1063,10 @@ try {
 } catch {
   // Older WebViews: the setting is read again next launch.
 }
+// Anything paid for but not yet in the wallet (say the app closed mid-purchase).
+restoreOrders(save, () => writeSave(save)).then((n) => {
+  if (n) ui.toast(`+${n} diamonds from your purchase. Thank you!`, 'good', 4200);
+});
 // A first launch opens on the prologue; after that, on the title.
 if (!save.seenFilm && !save.stats.voyages) playFilm();
 else showTitle();

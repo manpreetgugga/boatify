@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.21.0] - 2026-10-29
+
+Coins for sailing, rare diamonds, and a Shop.
+
+- **Coins.** Every voyage now pays: coins for finishing, for each star (more for a star you hadn't won before), for pearls and rescued castaways, for the first time you finish a voyage, for each medal, and for the daily voyage and your streak. The Open Sea pays for distance and for each buoy gate, and a regatta pays for your place. The results screen lists what you earned, and your purse shows on the title screen, the Shop and the Sail Locker.
+- **Diamonds.** They're rare, and they lie where the danger is. Every voyage with a whirlpool, a kraken or a pirate brig hides one diamond near it: just outside a whirlpool's eye, over the kraken's lair, or off the pirates' cove. Pick it up and finish the voyage to keep it, once per voyage. The briefing says whether a voyage has one and whether you've brought it home, and the voyage list marks the ones you have. On the Open Sea a whirlpool sometimes guards one too.
+- **The Shop.** A new button on the title screen. Buy gust jars, trade a diamond for 150 coins, unlock boats early with diamonds, and find the new sails and paints. Buying diamonds and watching a video for one aren't switched on yet, and say "Coming soon".
+- **Second wind.** When an Open Sea run ends, spend two diamonds for 30 more seconds and a patched hull, and sail on from where you were. Once per run.
+- **Gust jars from the hold.** Jars you buy go in the hold, and up to three come aboard each voyage. You only lose the ones you use.
+- **Sails and paints for coins.** A Royal Purple sail, a sunset sail and a diamond-dust sail, and Ocean, Cherry and Ebony hull paints, in the Sail Locker.
+- **Boats for diamonds.** Locked boats in the Shipyard can be unlocked with diamonds instead of waiting for the stars: the Reed Skiff for 5, the Twin Proa for 10, the Lantern Junk for 15 and the Grand Galleon for 25.
+- **Ready for the store.** The game can speak to Google Play Billing and a rewarded-video SDK once the Android app adds them. Nothing is sold and there are no ads in this version. docs/MONETIZATION.md describes how to switch them on.
+- **Big purchases ask first.** Anything that costs diamonds, and every sail or paint, shows its price and asks you to confirm. A gust jar is a single tap.
+
 ## [0.20.0] - 2026-10-29
 
 A ship as big as the pirates', and a closer look.

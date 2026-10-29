@@ -4,6 +4,7 @@
 
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { dateKey } from '../data/daily.js';
+import { blankWallet, cleanWallet } from '../data/economy.js';
 
 const KEY = 'boatify.save.v1';
 const GHOST_KEY = 'boatify.ghosts.v1';
@@ -69,6 +70,7 @@ function blank() {
     gearSeen: 0, // how many Sail Locker items the locker last showed
     sailed: [], // boats that have finished a voyage
     sightings: {}, // sea life the player has had the first-meeting tip for
+    wallet: blankWallet(), // coins, diamonds and what they bought
     seenIntro: false,
     seenFilm: false, // the prologue has played through or been skipped
   };
@@ -103,6 +105,7 @@ export function loadSave() {
     gearSeen: Number(data.gearSeen) || 0,
     sailed: Array.isArray(data.sailed) ? data.sailed : [],
     sightings: isObj(data.sightings) ? data.sightings : {},
+    wallet: cleanWallet(data.wallet),
   };
 }
 
@@ -127,6 +130,7 @@ export function recordResult(save, levelId, result, notes = [], bucket = 'levels
     pearls: result.pearls > prev.pearls,
     first: prev.best === null,
     prevBest: prev.best,
+    prevStars: prev.stars,
     // Someone not met before, now safe ashore.
     crew: rescued.filter((c) => !save.crew.some((k) => k.name === c.name)).map((c) => c.name),
   };
@@ -234,10 +238,10 @@ export function currentStreak(save, today) {
   return s.last === today || s.last === dayBefore(today) ? s.count : 0;
 }
 
-// Boats in the Shipyard unlock with campaign stars.
+// Boats in the Shipyard unlock with campaign stars, or early with diamonds.
 export function isBoatUnlocked(save, id) {
   const type = BOAT_TYPES[id];
-  return !!type && totalStars(save) >= type.unlock;
+  return !!type && (totalStars(save) >= type.unlock || !!(save.wallet && save.wallet.owned.includes(`boat:${id}`)));
 }
 
 export function unlockedBoats(save) {
@@ -254,10 +258,12 @@ export function totalStars(save) {
   return Object.values(save.levels).reduce((a, l) => a + (l.stars || 0), 0);
 }
 
+// The wallet stays: what was bought (and the diamonds already found) isn't
+// progress to start over.
 export function resetProgress(save) {
-  const settings = save.settings;
+  const { settings, wallet } = save;
   const fresh = blank();
-  Object.assign(save, fresh, { settings });
+  Object.assign(save, fresh, { settings, wallet });
   writeSave(save);
   clearGhosts();
 }

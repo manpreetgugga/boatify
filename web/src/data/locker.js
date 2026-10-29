@@ -1,6 +1,7 @@
 // The Sail Locker: sail designs and hull paints. They change how a boat
 // looks, never how it sails. Every medal unlocks one, so the goals beyond the
-// stars have something to show for them out on the water.
+// stars have something to show for them out on the water, and a few more are
+// bought with coins (`price`).
 //
 // A sail's `marks` are drawn over the cloth in sail coordinates: `u` runs
 // along the foot from the mast (0) to the clew (1) and `h` up the luff from
@@ -141,6 +142,44 @@ export const SAILS = [
       { band: [0.5, 0.58], color: '#f2b33d' },
     ],
   },
+  // Bought with coins in the locker.
+  {
+    id: 'royal',
+    name: 'Royal Purple',
+    price: 400,
+    cloth: '#5b2a86',
+    shade: '#47206a',
+    marks: [
+      { band: [0.06, 0.12], color: '#e2b44d' },
+      { band: [0.15, 0.17], color: '#e2b44d' },
+      { star: [0.27, 0.44, 0.13], color: '#e2b44d' },
+    ],
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset',
+    price: 600,
+    cloth: '#f6c46a',
+    shade: '#dca650',
+    marks: [
+      { band: [-0.1, 0.2], color: '#7a3a8c' },
+      { band: [0.2, 0.36], color: '#c8435a' },
+      { band: [0.36, 0.52], color: '#ef7a3c' },
+      { disc: [0.3, 0.7, 0.12], color: '#fff3c4' },
+    ],
+  },
+  {
+    id: 'diamond-dust',
+    name: 'Diamond Dust',
+    price: 1000,
+    cloth: '#e3f6fc',
+    shade: '#c2e2ee',
+    marks: [
+      { band: [-0.1, 0.08], color: '#7fd8f0' },
+      { dots: [[0.16, 0.3], [0.38, 0.24], [0.24, 0.5], [0.1, 0.66], [0.52, 0.14], [0.3, 0.72]], r: 0.045, color: '#ffffff' },
+      { dots: [[0.28, 0.36], [0.14, 0.48], [0.44, 0.34]], r: 0.03, color: '#7fd8f0' },
+    ],
+  },
 ];
 
 export const HULLS = [
@@ -156,6 +195,10 @@ export const HULLS = [
   { id: 'seafoam', name: 'Seafoam', medal: 'week-at-sea', hull: '#7fc8b8', hullDark: '#3f8a7b', trim: '#f5f0e4' },
   { id: 'copper', name: 'Copper Bottom', medal: 'long-haul', hull: '#b06a3b', hullDark: '#6e3c1c', trim: '#58b39a' },
   { id: 'rescue', name: 'Rescue Orange', medal: 'no-one-left-behind', hull: '#f26a21', hullDark: '#a8430f', trim: '#f5f0e4' },
+  // Bought with coins in the locker.
+  { id: 'ocean', name: 'Ocean Blue', price: 300, hull: '#2f6fb0', hullDark: '#1c4370', trim: '#f5f0e4' },
+  { id: 'cherry', name: 'Cherry Red', price: 300, hull: '#b8282f', hullDark: '#6e161b', trim: '#f2d27a' },
+  { id: 'ebony', name: 'Ebony and Gold', price: 800, hull: '#24222a', hullDark: '#0c0b0f', deck: '#6a5642', trim: '#e2b44d' },
 ];
 
 const LISTS = { sail: SAILS, hull: HULLS };
@@ -170,6 +213,7 @@ export function medalFor(item) {
 }
 
 export function isGearUnlocked(save, item) {
+  if (item.price) return !!(save.wallet && save.wallet.owned.includes(`gear:${item.id}`));
   return !item.medal || isEarned(save, item.medal);
 }
 
@@ -187,7 +231,8 @@ export function gearCount(save) {
   return [...SAILS, ...HULLS].filter((g) => g.medal && isGearUnlocked(save, g)).length;
 }
 
-export const GEAR_TOTAL = SAILS.length + HULLS.length - 2;
+// Medal rewards only: the bought paints don't count toward the set.
+export const GEAR_TOTAL = [...SAILS, ...HULLS].filter((g) => g.medal).length;
 
 // What a medal puts in the locker, for the medals screen and results card.
 export function rewardFor(medalId) {

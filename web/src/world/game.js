@@ -15,13 +15,17 @@ import { preparePirates, updatePirates } from './pirates.js';
 import { prepareOpenSea, updateOpenSea, reachGate, endRun, PEARL_TIME } from './opensea.js';
 import { prepareRace, updateRace, shadeWind, finishRace } from './regatta.js';
 import { prepareCastaways, updateCastaways, castawaysAboard } from './castaways.js';
+import { placeDiamond } from './diamonds.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
 const DAMAGE = { sand: 0.9, rock: 2.6, coral: 1.8, ice: 2.2 };
 
+// options: { boat, seed, guide, startJars, diamond } where `diamond` puts
+// this voyage's diamond out (the open sea may then chart some of its own).
 export function createGame(def, options = {}) {
   const level = buildLevel(def);
+  if (options.diamond && !def.endless && !def.race) placeDiamond(def, level, hashString(def.id));
   // A course charted from a seed (a regatta) gets its own gusts and shifts too.
   const seed = hashString(def.windSeed || def.id) ^ (options.seed || 0);
   const wind = createWind(def.wind, seed, level.islands, { calms: level.calms, storms: level.storms });
@@ -40,6 +44,8 @@ export function createGame(def, options = {}) {
     hull: 100,
     pearls: 0,
     pearlsTotal: pearlCount(level),
+    diamonds: 0, // found this run
+    diamondsOut: !!options.diamond,
     notes: [],
     gustJars: options.startJars || 0,
     penalties: 0,
@@ -290,6 +296,7 @@ function checkPickups(game) {
     } else if (p.kind === 'gust') game.gustJars = Math.min(3, game.gustJars + 1);
     else if (p.kind === 'repair') game.hull = Math.min(100, game.hull + 35);
     else if (p.kind === 'bottle') game.notes.push(p.note);
+    else if (p.kind === 'diamond') game.diamonds += 1;
     emit(game, 'pickup', { kind: p.kind, x: p.x, y: p.y, note: p.note, bonus });
   }
 }
@@ -381,6 +388,8 @@ function finish(game) {
     collisions: game.collisions,
     hits: { ...game.hits },
     jars: game.jarsUsed,
+    jarsLeft: game.gustJars,
+    diamonds: game.diamonds,
     boat: game.boat.type.id,
     distance: game.distanceSailed,
     escort: game.escortTime,

@@ -12,6 +12,7 @@ import { shadowSources } from './wind.js';
 import { isClear } from './collision.js';
 import { addSeaLife } from './wildlife.js';
 import { effectiveSpeed } from './autopilot.js';
+import { whirlpoolDiamond } from './diamonds.js';
 
 export const OPEN_SEA = 'open-sea';
 export const SEA_HEIGHT = 1300;
@@ -103,6 +104,9 @@ export function prepareOpenSea(game) {
     gateY: SEA_HEIGHT / 2,
     pruned: 0,
     serial: 0, // ids for islands and pickups charted on the way
+    gems: createRng(hashString(`open-sea:gems:${def.seed}`)), // its own draws, so the sea charts the same either way
+    diamondsLeft: game.diamondsOut ? 1 : 0, // a run turns up one at most
+    revived: 0, // second winds taken
     wind: game.wind.eventIndex,
     warned: Infinity,
   };
@@ -189,6 +193,7 @@ function chartStretch(game, k) {
     if (s) {
       circles.push(s);
       level.whirlpools.push(...prepareWhirlpools([{ x: Math.round(s.x), y: Math.round(s.y), r: 105, strength: 6, spin: rng.chance(0.5) ? 1 : -1 }]));
+      if (sea.diamondsLeft && sea.gems.chance(0.4) && whirlpoolDiamond(level, level.whirlpools[level.whirlpools.length - 1], sea.gems, 'sea-diamond')) sea.diamondsLeft -= 1;
     }
   }
 
@@ -305,6 +310,24 @@ export function reachGate(game, gate) {
   return bonus;
 }
 
+// A second wind: the run picks up where it ended, with time back on the
+// clock and, if she went down, the hull patched and the boat righted.
+export function reviveRun(game, seconds) {
+  const sea = game.sea;
+  const { boat } = game;
+  game.status = 'sailing';
+  game.result = null;
+  game.statusTimer = 0;
+  sea.clock = Math.max(0, sea.clock) + seconds;
+  sea.warned = Infinity;
+  sea.revived += 1;
+  game.hull = Math.max(game.hull, 60);
+  boat.heel = 0;
+  boat.yawRate = 0;
+  boat.boostTime = 0;
+  game.events.push({ type: 'revive', x: boat.x, y: boat.y });
+}
+
 export function endRun(game, reason) {
   const sea = game.sea;
   game.status = 'finished';
@@ -323,6 +346,8 @@ export function endRun(game, reason) {
     collisions: game.collisions,
     hits: { ...game.hits },
     jars: game.jarsUsed,
+    jarsLeft: game.gustJars,
+    diamonds: game.diamonds,
     boat: game.boat.type.id,
     sailed: game.distanceSailed,
     escort: game.escortTime,
