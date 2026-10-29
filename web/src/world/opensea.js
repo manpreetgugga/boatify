@@ -12,7 +12,7 @@ import { shadowSources } from './wind.js';
 import { isClear } from './collision.js';
 import { addSeaLife } from './wildlife.js';
 import { effectiveSpeed } from './autopilot.js';
-import { whirlpoolDiamond } from './diamonds.js';
+import { whirlpoolBlackPearl } from './blackpearls.js';
 
 export const OPEN_SEA = 'open-sea';
 export const SEA_HEIGHT = 1300;
@@ -105,7 +105,7 @@ export function prepareOpenSea(game) {
     pruned: 0,
     serial: 0, // ids for islands and pickups charted on the way
     gems: createRng(hashString(`open-sea:gems:${def.seed}`)), // its own draws, so the sea charts the same either way
-    diamondsLeft: game.diamondsOut ? 1 : 0, // a run turns up one at most
+    blackPearlsLeft: game.blackPearlsOut ? 1 : 0, // a run turns up one at most
     revived: 0, // second winds taken
     wind: game.wind.eventIndex,
     warned: Infinity,
@@ -193,7 +193,7 @@ function chartStretch(game, k) {
     if (s) {
       circles.push(s);
       level.whirlpools.push(...prepareWhirlpools([{ x: Math.round(s.x), y: Math.round(s.y), r: 105, strength: 6, spin: rng.chance(0.5) ? 1 : -1 }]));
-      if (sea.diamondsLeft && sea.gems.chance(0.4) && whirlpoolDiamond(level, level.whirlpools[level.whirlpools.length - 1], sea.gems, 'sea-diamond')) sea.diamondsLeft -= 1;
+      if (sea.blackPearlsLeft && sea.gems.chance(0.4) && whirlpoolBlackPearl(level, level.whirlpools[level.whirlpools.length - 1], sea.gems, 'sea-black-pearl')) sea.blackPearlsLeft -= 1;
     }
   }
 
@@ -347,7 +347,7 @@ export function endRun(game, reason) {
     hits: { ...game.hits },
     jars: game.jarsUsed,
     jarsLeft: game.gustJars,
-    diamonds: game.diamonds,
+    blackPearls: game.blackPearls,
     boat: game.boat.type.id,
     sailed: game.distanceSailed,
     escort: game.escortTime,

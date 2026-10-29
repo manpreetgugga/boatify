@@ -15,17 +15,35 @@ import { preparePirates, updatePirates } from './pirates.js';
 import { prepareOpenSea, updateOpenSea, reachGate, endRun, PEARL_TIME } from './opensea.js';
 import { prepareRace, updateRace, shadeWind, finishRace } from './regatta.js';
 import { prepareCastaways, updateCastaways, castawaysAboard } from './castaways.js';
-import { placeDiamond } from './diamonds.js';
+import { placeBlackPearl } from './blackpearls.js';
 
 export const STEP = 1 / 120;
 const MAX_STEPS = 12;
-const DAMAGE = { sand: 0.9, rock: 2.6, coral: 1.8, ice: 2.2 };
+// How hard each material hits, per unit of impact speed over the limit.
+const DAMAGE = {
+  sand: 0.9,
+  rock: 2.6,
+  coral: 1.8,
+  ice: 2.2,
+  cone: 2.6,
+  basalt: 2.6,
+  pumice: 1.5,
+  quay: 2.4,
+  piling: 2,
+  container: 2.2,
+  steel: 2.4,
+  crystal: 2.2,
+  shard: 2.2,
+  spore: 1.2,
+  pod: 1.2,
+  jelly: 1.4,
+};
 
-// options: { boat, seed, guide, startJars, diamond } where `diamond` puts
-// this voyage's diamond out (the open sea may then chart some of its own).
+// options: { boat, seed, guide, startJars, blackPearl } where `blackPearl` puts
+// this voyage's black pearl out (the open sea may then chart some of its own).
 export function createGame(def, options = {}) {
   const level = buildLevel(def);
-  if (options.diamond && !def.endless && !def.race) placeDiamond(def, level, hashString(def.id));
+  if (options.blackPearl && !def.endless && !def.race) placeBlackPearl(def, level, hashString(def.id));
   // A course charted from a seed (a regatta) gets its own gusts and shifts too.
   const seed = hashString(def.windSeed || def.id) ^ (options.seed || 0);
   const wind = createWind(def.wind, seed, level.islands, { calms: level.calms, storms: level.storms });
@@ -44,8 +62,8 @@ export function createGame(def, options = {}) {
     hull: 100,
     pearls: 0,
     pearlsTotal: pearlCount(level),
-    diamonds: 0, // found this run
-    diamondsOut: !!options.diamond,
+    blackPearls: 0, // found this run
+    blackPearlsOut: !!options.blackPearl,
     notes: [],
     gustJars: options.startJars || 0,
     penalties: 0,
@@ -296,7 +314,7 @@ function checkPickups(game) {
     } else if (p.kind === 'gust') game.gustJars = Math.min(3, game.gustJars + 1);
     else if (p.kind === 'repair') game.hull = Math.min(100, game.hull + 35);
     else if (p.kind === 'bottle') game.notes.push(p.note);
-    else if (p.kind === 'diamond') game.diamonds += 1;
+    else if (p.kind === 'blackPearl') game.blackPearls += 1;
     emit(game, 'pickup', { kind: p.kind, x: p.x, y: p.y, note: p.note, bonus });
   }
 }
@@ -340,20 +358,20 @@ function updateKrakens(game) {
     k.phaseTime = k.phase === 'strike' ? cycle - strikeAt : k.phase === 'warning' ? cycle - warnAt : cycle;
     if (k.phase !== prev) {
       k.hit = false;
-      if (k.phase !== 'idle' && dist(boat.x, boat.y, k.x, k.y) < 450) emit(game, 'kraken', { phase: k.phase, x: k.x, y: k.y });
+      if (k.phase !== 'idle' && dist(boat.x, boat.y, k.x, k.y) < 450) emit(game, 'kraken', { phase: k.phase, x: k.x, y: k.y, look: k.look });
     }
     if (k.phase === 'strike' && !k.hit && game.status === 'sailing') {
       const d = dist(boat.x, boat.y, k.x, k.y);
       if (d < k.r) {
         k.hit = true;
-        damage(game, 24, 'kraken');
-        game.hits.kraken = (game.hits.kraken || 0) + 1;
+        damage(game, 24, k.look);
+        game.hits[k.look] = (game.hits[k.look] || 0) + 1;
         const nx = (boat.x - k.x) / (d || 1);
         const ny = (boat.y - k.y) / (d || 1);
         boat.vx += nx * 14;
         boat.vy += ny * 14;
         boat.yawRate += 2.5;
-        emit(game, 'collide', { impact: 12, material: 'kraken', x: boat.x, y: boat.y });
+        emit(game, 'collide', { impact: 12, material: k.look, x: boat.x, y: boat.y });
       }
     }
   }
@@ -389,7 +407,7 @@ function finish(game) {
     hits: { ...game.hits },
     jars: game.jarsUsed,
     jarsLeft: game.gustJars,
-    diamonds: game.diamonds,
+    blackPearls: game.blackPearls,
     boat: game.boat.type.id,
     distance: game.distanceSailed,
     escort: game.escortTime,

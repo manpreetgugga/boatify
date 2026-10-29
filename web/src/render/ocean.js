@@ -6,7 +6,7 @@ import { createRng } from '../core/rng.js';
 import { clamp } from '../core/math.js';
 import { sampleWind } from '../world/wind.js';
 import { screenToWorld, viewBounds } from './camera.js';
-import { C } from './palette.js';
+import { themeOf } from './themes.js';
 
 const TILE_PX = 384;
 const TILE_WORLD = 192;
@@ -63,11 +63,12 @@ function setPatternOffset(pattern, ox, oy) {
 export function drawWater(ctx, ocean, game, cam, time) {
   const v = viewBounds(cam, 40);
   const { level, wind } = game;
-  ctx.fillStyle = C.sea;
+  const theme = themeOf(level);
+  ctx.fillStyle = theme.sea;
   ctx.fillRect(v.minX, v.minY, v.maxX - v.minX, v.maxY - v.minY);
 
   // Beyond the chart edge the water turns deep and dark.
-  ctx.fillStyle = 'rgba(4, 16, 26, 0.55)';
+  ctx.fillStyle = theme.edge;
   if (v.minX < 0) ctx.fillRect(v.minX, v.minY, -v.minX, v.maxY - v.minY);
   if (v.maxX > level.width) ctx.fillRect(level.width, v.minY, v.maxX - level.width, v.maxY - v.minY);
   if (v.minY < 0) ctx.fillRect(Math.max(0, v.minX), v.minY, Math.min(level.width, v.maxX) - Math.max(0, v.minX), -v.minY);
@@ -150,6 +151,7 @@ export function drawWindMap(ctx, ocean, game, cam) {
 // Currents and whirlpools, world units.
 export function drawFlows(ctx, game, cam, time) {
   const v = viewBounds(cam, 200);
+  const theme = themeOf(game.level);
   for (const c of game.level.currents) {
     const reach = Math.max(c.halfL, c.halfW);
     if (c.x + reach < v.minX || c.x - reach > v.maxX || c.y + reach < v.minY || c.y - reach > v.maxY) continue;
@@ -160,9 +162,9 @@ export function drawFlows(ctx, game, cam, time) {
     ctx.rect(-c.halfL, -c.halfW, c.halfL * 2, c.halfW * 2);
     ctx.clip();
     const grad = ctx.createLinearGradient(0, -c.halfW, 0, c.halfW);
-    grad.addColorStop(0, 'rgba(90, 200, 215, 0)');
-    grad.addColorStop(0.5, 'rgba(90, 200, 215, 0.09)');
-    grad.addColorStop(1, 'rgba(90, 200, 215, 0)');
+    grad.addColorStop(0, `rgba(${theme.flow}, 0)`);
+    grad.addColorStop(0.5, `rgba(${theme.flow}, 0.09)`);
+    grad.addColorStop(1, `rgba(${theme.flow}, 0)`);
     ctx.fillStyle = grad;
     ctx.fillRect(-c.halfL, -c.halfW, c.halfL * 2, c.halfW * 2);
     const gap = 54;
@@ -173,7 +175,7 @@ export function drawFlows(ctx, game, cam, time) {
       const edge = 1 - Math.abs(y) / c.halfW;
       for (let x = -c.halfL - gap + shift + (y % 2 ? 20 : 0); x < c.halfL; x += gap) {
         const endFade = 1 - Math.abs(x) / c.halfL;
-        ctx.strokeStyle = `rgba(200, 240, 245, ${(0.32 * edge * endFade).toFixed(3)})`;
+        ctx.strokeStyle = `rgba(${theme.flowLine}, ${(0.32 * edge * endFade).toFixed(3)})`;
         ctx.beginPath();
         ctx.moveTo(x - 7, y - 7);
         ctx.lineTo(x, y);
@@ -189,9 +191,9 @@ export function drawFlows(ctx, game, cam, time) {
     ctx.save();
     ctx.translate(w.x, w.y);
     const grad = ctx.createRadialGradient(0, 0, w.core * 0.5, 0, 0, w.r);
-    grad.addColorStop(0, 'rgba(1, 8, 14, 0.85)');
-    grad.addColorStop(0.25, 'rgba(3, 20, 32, 0.45)');
-    grad.addColorStop(1, 'rgba(3, 20, 32, 0)');
+    grad.addColorStop(0, `rgba(${theme.whirlCore}, 0.85)`);
+    grad.addColorStop(0.25, `rgba(${theme.whirl}, 0.45)`);
+    grad.addColorStop(1, `rgba(${theme.whirl}, 0)`);
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, w.r, 0, Math.PI * 2);

@@ -27,6 +27,13 @@ export function nextZoom(zoom, dir = 0) {
   return ZOOMS[(i + 1) % ZOOMS.length][0];
 }
 
+// The step closest to a pinched zoom, judged by ratio.
+export function nearestZoom(zoom) {
+  let best = ZOOMS[0][0];
+  for (const [z] of ZOOMS) if (Math.abs(Math.log(z / zoom)) < Math.abs(Math.log(best / zoom))) best = z;
+  return best;
+}
+
 export function zoomName(zoom) {
   const z = ZOOMS.find(([v]) => v === zoom);
   return z ? z[1] : 'Normal';
@@ -70,7 +77,7 @@ function blank() {
     gearSeen: 0, // how many Sail Locker items the locker last showed
     sailed: [], // boats that have finished a voyage
     sightings: {}, // sea life the player has had the first-meeting tip for
-    wallet: blankWallet(), // coins, diamonds and what they bought
+    wallet: blankWallet(), // coins, black pearls and what they bought
     seenIntro: false,
     seenFilm: false, // the prologue has played through or been skipped
   };
@@ -238,7 +245,7 @@ export function currentStreak(save, today) {
   return s.last === today || s.last === dayBefore(today) ? s.count : 0;
 }
 
-// Boats in the Shipyard unlock with campaign stars, or early with diamonds.
+// Boats in the Shipyard unlock with campaign stars, or early with black pearls.
 export function isBoatUnlocked(save, id) {
   const type = BOAT_TYPES[id];
   return !!type && (totalStars(save) >= type.unlock || !!(save.wallet && save.wallet.owned.includes(`boat:${id}`)));
@@ -258,7 +265,7 @@ export function totalStars(save) {
   return Object.values(save.levels).reduce((a, l) => a + (l.stars || 0), 0);
 }
 
-// The wallet stays: what was bought (and the diamonds already found) isn't
+// The wallet stays: what was bought (and the black pearls already found) isn't
 // progress to start over.
 export function resetProgress(save) {
   const { settings, wallet } = save;
@@ -284,6 +291,9 @@ function readGhosts() {
   return ghosts;
 }
 
+// About 12 KB each; this many is plenty and keeps clear of the storage limit.
+const GHOST_CAP = 40;
+
 export function loadGhost(levelId) {
   return readGhosts()[levelId] || null;
 }
@@ -292,13 +302,23 @@ export function storeGhost(levelId, ghost) {
   const all = readGhosts();
   // Only today's daily ghost is worth keeping.
   if (levelId.startsWith('daily-')) for (const k of Object.keys(all)) if (k.startsWith('daily-')) delete all[k];
+  // The newest go last, and the oldest make room once there are many.
+  delete all[levelId];
   all[levelId] = ghost;
-  try {
-    window.localStorage.setItem(GHOST_KEY, JSON.stringify(all));
-    return true;
-  } catch {
-    return false;
+  const keys = Object.keys(all);
+  for (const k of keys.slice(0, Math.max(0, keys.length - GHOST_CAP))) delete all[k];
+  for (let tries = 0; tries < 3; tries++) {
+    try {
+      window.localStorage.setItem(GHOST_KEY, JSON.stringify(all));
+      return true;
+    } catch {
+      // Storage is full: drop the older half and try again.
+      const rest = Object.keys(all).filter((k) => k !== levelId);
+      if (!rest.length) return false;
+      for (const k of rest.slice(0, Math.ceil(rest.length / 2))) delete all[k];
+    }
   }
+  return false;
 }
 
 export function clearGhosts() {

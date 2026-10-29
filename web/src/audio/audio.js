@@ -162,9 +162,9 @@ export function createAudio() {
       } else if (kind === 'gust') {
         hiss({ freq: 400, q: 3, peak: 0.25, attack: 0.05, decay: 0.5, sweep: 6 });
         tone(midi(72), { type: 'triangle', peak: 0.1, decay: 0.3, at: 0.15 });
-      } else if (kind === 'diamond') {
-        // A bright, glassy arpeggio with a shimmer on top.
-        [84, 88, 91, 96].forEach((n, i) => tone(midi(n), { type: 'sine', peak: 0.13, decay: 0.7, at: i * 0.06 }));
+      } else if (kind === 'blackPearl') {
+        // A low, rich arpeggio rising into a shimmer: rarer than a pearl.
+        [72, 79, 84, 88, 91, 96].forEach((n, i) => tone(midi(n), { type: 'sine', peak: 0.12, decay: 0.7, at: i * 0.055 }));
         [103, 108].forEach((n, i) => tone(midi(n), { type: 'sine', peak: 0.05, decay: 0.9, at: 0.25 + i * 0.05 }));
         hiss({ type: 'highpass', freq: 6000, peak: 0.08, attack: 0.05, decay: 0.6, at: 0.1 });
       } else if (kind === 'repair') {

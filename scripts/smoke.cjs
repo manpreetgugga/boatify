@@ -101,6 +101,39 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await snap('05-sailing');
   await tab.mouse.up();
 
+  step('pinch to zoom: fingers spread to come closer, close to pull back');
+  const pinch = (from, to) =>
+    tab.evaluate(
+      ([from, to, w, h]) => {
+        const c = document.getElementById('game');
+        const send = (type, id, x) =>
+          c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 21, clientX: x, clientY: h / 2, bubbles: true, cancelable: true }));
+        send('pointerdown', 21, w / 2 - from);
+        send('pointerdown', 22, w / 2 + from);
+        let live = null;
+        for (let k = 1; k <= 8; k++) {
+          const d = from + ((to - from) * k) / 8;
+          send('pointermove', 21, w / 2 - d);
+          send('pointermove', 22, w / 2 + d);
+          if (k === 5) live = window.__boatify.state().pinch;
+        }
+        send('pointerup', 21, w / 2 - to);
+        send('pointerup', 22, w / 2 + to);
+        return [live, window.__boatify.state().zoom, window.__boatify.state().pinch];
+      },
+      [from, to, vw, vh],
+    );
+  const spread = await pinch(40, 110);
+  if (!(spread[0] > 1) || spread[1] !== 1.55 || spread[2] !== null) throw new Error(`pinch out ${JSON.stringify(spread)}`);
+  await tab.waitForTimeout(700);
+  await snap('05a-pinched-close');
+  const closed = await pinch(110, 45);
+  if (!(closed[0] < 1.55) || closed[1] !== 0.8 || closed[2] !== null) throw new Error(`pinch in ${JSON.stringify(closed)}`);
+  step(`pinched to ${spread[1]}x, then back out to ${closed[1]}x`);
+  await tab.evaluate(() => {
+    window.__boatify.save.settings.zoom = 1;
+  });
+
   step('in irons: dolphins show the way');
   await tab.evaluate(() => window.__boatify.inIrons());
   await tab.waitForFunction(() => window.__boatify.guidePod(), null, { timeout: 8000 });
@@ -174,11 +207,11 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   step(`${race[2]} in ${race[1].time.toFixed(1)} s, ${race[1].bumps} bumps`);
   await snap('09e-race-results');
 
-  step('open sea second wind: two diamonds buy thirty more seconds, once a run');
+  step('open sea second wind: two black pearls buy thirty more seconds, once a run');
   await tab.evaluate(() => {
     window.__boatify.setAutopilot(false);
     window.__boatify.setTimeScale(1);
-    window.__boatify.give({ diamonds: 3 });
+    window.__boatify.give({ blackPearls: 3 });
     window.__boatify.startLevel('sea');
   });
   await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
@@ -189,7 +222,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await snap('09f-second-wind');
   await tab.getByRole('button', { name: /Sail on/ }).click();
   await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
-  const revived = await tab.evaluate(() => [window.__boatify.state().sea.clock, window.__boatify.save.wallet.diamonds, window.__boatify.save.openSea.runs]);
+  const revived = await tab.evaluate(() => [window.__boatify.state().sea.clock, window.__boatify.save.wallet.blackPearls, window.__boatify.save.openSea.runs]);
   if (!(revived[0] > 25) || revived[1] !== 1 || revived[2] !== 1) throw new Error(`second wind ${JSON.stringify(revived)}`);
   await tab.evaluate(() => window.__boatify.setSeaClock(0.5));
   await tab.waitForFunction(() => window.__boatify.state().mode === 'results', null, { timeout: 15000 });
@@ -211,7 +244,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.getByRole('button', { name: 'Sail Locker' }).click();
   await tab.waitForSelector('section[aria-label="Sail Locker"].open');
   const gear = await tab.locator('.gear').count();
-  if (gear !== 33) throw new Error(`sail locker shows ${gear} items`);
+  if (gear !== 36) throw new Error(`sail locker shows ${gear} items`);
   await tab.getByRole('button', { name: 'Jolly Roger, locked' }).click();
   await tab.waitForFunction(() => /secret medal unlocks the Jolly Roger sail\. “.+”/.test(document.querySelector('#toasts').textContent));
   await tab.getByRole('button', { name: 'Harbor Stripe' }).click();
@@ -233,7 +266,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.locator('section[aria-label="Sail Locker"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Shipyard"].open');
 
-  step('shop: diamonds coming soon, a gust jar, a trade and a boat');
+  step('shop: black pearls coming soon, a gust jar, a trade and a boat');
   await tab.locator('section[aria-label="Shipyard"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Title"].open');
   await tab.getByRole('button', { name: 'Shop' }).click();
@@ -243,12 +276,12 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.locator('[data-buy=jar]').click();
   await tab.locator('[data-buy=trade]').click();
   await tab.locator('.confirm').getByRole('button', { name: /Trade/ }).click();
-  await tab.evaluate(() => window.__boatify.give({ diamonds: 5 }));
-  await tab.getByRole('button', { name: 'Unlock the Reed Skiff for 5 diamonds' }).click();
+  await tab.evaluate(() => window.__boatify.give({ blackPearls: 5 }));
+  await tab.getByRole('button', { name: 'Unlock the Reed Skiff for 5 black pearls' }).click();
   await tab.locator('.confirm').getByRole('button', { name: /Unlock/ }).click();
   await tab.waitForSelector('section[aria-label="Shop"].open');
   const shop = await tab.evaluate(() => ({ ...window.__boatify.save.wallet, boat: window.__boatify.save.settings.boat }));
-  if (shop.jars !== 1 || shop.diamonds !== 0 || !shop.owned.includes('boat:skiff') || shop.boat !== 'skiff') throw new Error(`shop ${JSON.stringify(shop)}`);
+  if (shop.jars !== 1 || shop.blackPearls !== 0 || !shop.owned.includes('boat:skiff') || shop.boat !== 'skiff') throw new Error(`shop ${JSON.stringify(shop)}`);
   step(`${shop.coins} coins left, a jar in the hold, the skiff unlocked`);
   await tab.waitForTimeout(300);
   await snap('11c-shop');

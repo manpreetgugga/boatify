@@ -22,7 +22,7 @@ const PATHS = {
   whale: '<path d="M2.5 13c0-3.5 3-5.5 7-5.5 4.5 0 7 2.5 8.5 4.5l3.5-3.5-.5 4 1 3-3.5-.5c-2 2.5-5.5 4-9 4-4.5 0-7-2.5-7-6z"/><path d="M3 15c3 1 6 1 8.5-.5"/><path d="M9.5 7.5V4.5M9.5 4.5C8.5 3 7 3 6 3.5M9.5 4.5c1-1.5 2.5-1.5 3.5-1"/>',
   skull: '<path d="M12 3c-4 0-7 2.6-7 6.2 0 2 .9 3.6 2.5 4.6V16h9v-2.2c1.6-1 2.5-2.6 2.5-4.6C19 5.6 16 3 12 3z"/><circle cx="9.3" cy="9.6" r="1.4"/><circle cx="14.7" cy="9.6" r="1.4"/><path d="M10.6 16v-1.7M13.4 16v-1.7M4.5 18l15 3.5M19.5 18l-15 3.5"/>',
   coin: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><path d="M12 9v6M10.5 10.5h3"/>',
-  diamond: '<path d="M7 4h10l4 5-9 11L3 9z"/><path d="M3 9h18M9.5 4L8 9l4 11 4-11-1.5-5"/>',
+  blackPearl: '<circle cx="11" cy="13" r="7.5" fill="currentColor" fill-opacity="0.4"/><path d="M7.4 11.6a4 4 0 0 1 3.2-2.9"/><path d="M19.5 2.5v4.5M17.25 4.75h4.5"/>',
   play: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.2v5.6l4.8-2.8z"/>',
   chest: '<path d="M3.5 10a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4v9.5h-17z"/><path d="M3.5 12h17M10.5 12v3h3v-3"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',

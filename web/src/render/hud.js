@@ -10,6 +10,7 @@ import { chasingShip } from '../world/pirates.js';
 import { ordinal } from '../world/regatta.js';
 import { worldToScreen } from './camera.js';
 import { C, font, FONT, rgba } from './palette.js';
+import { themeOf, MAP_ISLAND, MAP_ROCK, MAP_FLOE } from './themes.js';
 
 function panel(ctx, x, y, w, h, r = 12) {
   ctx.fillStyle = C.panel;
@@ -279,7 +280,7 @@ function buildMinimap(game, L, view) {
   const m = c.getContext('2d');
   m.scale(dpr * k, dpr * k);
   m.translate(-view.x0, 0);
-  m.fillStyle = 'rgba(15, 76, 92, 0.9)';
+  m.fillStyle = themeOf(level).mapSea;
   m.fillRect(view.x0, 0, view.width, level.height);
   for (const cz of level.calms) {
     m.fillStyle = 'rgba(170, 222, 226, 0.25)';
@@ -331,14 +332,14 @@ function buildMinimap(game, L, view) {
     m.setLineDash([]);
   }
   for (const isl of level.islands) {
-    m.fillStyle = isl.kind === 'rock' ? '#8d867c' : isl.kind === 'ice' ? C.ice : C.sand;
+    m.fillStyle = MAP_ISLAND[isl.kind] || C.sand;
     m.beginPath();
     isl.pts.forEach(([x, y], i) => (i ? m.lineTo(x, y) : m.moveTo(x, y)));
     m.closePath();
     m.fill();
   }
   for (const r of level.rocks) {
-    m.fillStyle = r.material === 'coral' ? C.coral : '#cfc7bb';
+    m.fillStyle = MAP_ROCK[r.material] || MAP_ROCK.rock;
     m.beginPath();
     m.arc(r.x, r.y, Math.max(r.r, 1.2 / k), 0, Math.PI * 2);
     m.fill();
@@ -376,8 +377,8 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
   ctx.lineWidth = 1;
   ctx.strokeRect(x + (cam.x - vw / 2) * k, y + (cam.y - vh / 2) * k, vw * k, vh * k);
   // Floes move, so they're drawn live.
-  ctx.fillStyle = C.ice;
   for (const fl of level.floes) {
+    ctx.fillStyle = MAP_FLOE[fl.look] || C.ice;
     ctx.beginPath();
     fl.pts.forEach(([px, py], i) => (i ? ctx.lineTo(x + (px + fl.ox) * k, y + (py + fl.oy) * k) : ctx.moveTo(x + (px + fl.ox) * k, y + (py + fl.oy) * k)));
     ctx.closePath();
@@ -524,7 +525,7 @@ function drawPointers(ctx, game, cam, L, time) {
   const y1 = Math.max(y0 + 40, L.panel.y - 18);
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
-  let first = null;
+  const placed = [];
   for (const t of targets) {
     const [sx, sy] = worldToScreen(cam, t.x, t.y);
     if (sx > x0 && sx < x1 && sy > y0 && sy < y1) continue;
@@ -535,17 +536,17 @@ function drawPointers(ctx, game, cam, L, time) {
     const mm = L.minimap;
     const underMap = (qx, qy) => qx > mm.x - 24 && qy < mm.y + mm.h + (game.castaways.length ? 76 : 44);
     if (underMap(px, py)) px = mm.x - 24;
-    // Two targets in the same direction: slide the second pointer along the
-    // edge so it doesn't sit on top of the first one and its label.
-    if (first && Math.hypot(px - first.x, py - first.y) < 46) {
-      const nx = -Math.sin(a);
-      const ny = Math.cos(a);
-      const side = (px - first.x) * nx + (py - first.y) * ny >= 0 ? 1 : -1;
-      const slide = (k) => [clamp(first.x + nx * k * 48, x0, x1), clamp(first.y + ny * k * 48, y0, y1)];
-      const fits = ([qx, qy]) => Math.hypot(qx - first.x, qy - first.y) >= 40 && !underMap(qx, qy);
-      [px, py] = [slide(side), slide(-side)].find(fits) || slide(side);
+    // Targets in the same direction: slide the later pointer along the edge
+    // it rides so it doesn't sit on top of another one and its label.
+    const clear = (qx, qy) => placed.every((q) => Math.hypot(qx - q.x, qy - q.y) >= 46);
+    if (!clear(px, py)) {
+      const onBand = py <= y0 + 1 || py >= y1 - 1;
+      const [tx, ty] = onBand ? [1, 0] : [0, 1];
+      const slide = (k) => [clamp(px + tx * k * 48, x0, x1), clamp(py + ty * k * 48, y0, y1)];
+      const spot = [-1, 1, -2, 2, -3, 3].map(slide).find(([qx, qy]) => clear(qx, qy) && !underMap(qx, qy));
+      if (spot) [px, py] = spot;
     }
-    if (!first) first = { x: px, y: py };
+    placed.push({ x: px, y: py });
     // A soft dark halo keeps the pointer and its label readable over ice.
     ctx.save();
     ctx.shadowColor = 'rgba(6, 20, 29, 0.9)';

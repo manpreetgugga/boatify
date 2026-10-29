@@ -18,8 +18,10 @@ import {
   drawStormClouds,
   drawRain,
   drawSnow,
+  drawAsh,
   drawLightning,
 } from './effects.js';
+import { themeOf } from './themes.js';
 import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
 import { updateColonies, drawColonies, drawColonyGulls } from './penguins.js';
 import { createSkipper, updateSkipper } from './skipper.js';
@@ -89,6 +91,7 @@ export function renderFrame(r, game, dt, time, ui) {
   if (film) updateFilmCamera(cam, film, dt, r.w, r.h);
   else {
     cam.zoom = (ui && ui.zoom) || 1;
+    cam.quick = !!(ui && ui.pinching);
     updateCamera(cam, game, dt, r.w, r.h);
   }
   updateWake(r.wake, game.boat, game.clock, game.status === 'sailing' || game.status === 'finished');
@@ -150,8 +153,14 @@ export function renderFrame(r, game, dt, time, ui) {
   ctx.restore();
 
   ctx.save();
+  const tint = themeOf(game.level).tint;
+  if (tint) {
+    ctx.fillStyle = tint;
+    ctx.fillRect(0, 0, r.w, r.h);
+  }
   drawRain(ctx, r.fx, game, r.w, r.h, dt);
   drawSnow(ctx, r.fx, game, r.w, r.h, dt, time);
+  drawAsh(ctx, r.fx, game, r.w, r.h, dt, time);
   drawLighting(ctx, r.light, game, cam, time, r.w, r.h);
   drawLightning(ctx, r.fx, game, r.w, r.h);
   if (film) drawFilmLight(ctx, film, r.w, r.h);

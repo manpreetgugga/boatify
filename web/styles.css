@@ -42,7 +42,7 @@
   --brass: #d9a441;
   --chart: #d63ea9;
   --ok: #3ddc97;
-  --gem: #7fd8f0;
+  --gem: #cdb8ff;
   --warn: #ffc857;
   --danger: #ff4d4d;
   --ink: #06141d;
@@ -355,6 +355,65 @@ button:focus-visible {
 }
 
 /* Voyages */
+
+.world-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 0 12px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.world-tab {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 14px 7px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--foam-faint);
+  background: rgba(232, 244, 242, 0.06);
+  box-shadow: inset 4px 0 0 var(--accent, var(--foam-faint));
+  text-align: left;
+}
+
+.world-tab b {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(17px * var(--text, 1));
+  white-space: nowrap;
+}
+
+.world-tab small {
+  font-size: calc(12px * var(--text, 1));
+  color: var(--foam-dim);
+  white-space: nowrap;
+}
+
+.world-tab[aria-selected='true'] {
+  background: var(--foam);
+  color: var(--ink);
+}
+
+.world-tab[aria-selected='true'] small {
+  color: rgba(6, 20, 29, 0.7);
+}
+
+.world-tab.locked:not([aria-selected='true']) {
+  opacity: 0.6;
+}
+
+.world-blurb {
+  margin: 0 0 12px;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent, var(--foam-faint));
+  font-family: var(--display);
+  font-style: italic;
+  font-size: calc(16px * var(--text, 1));
+  color: var(--foam-dim);
+}
 
 .voyage-grid {
   display: grid;
@@ -1048,7 +1107,7 @@ button:focus-visible {
   vertical-align: 2px;
 }
 
-/* Coins and diamonds */
+/* Coins and black pearls */
 
 .wallet {
   display: inline-flex;
@@ -1435,13 +1494,12 @@ button:focus-visible {
 
 /* Toasts */
 
-/* Tips sit in the top band between the timer and the minimap, clear of the boat. */
+/* Tips sit in the top band between the zoom button and the minimap, clear of the boat. */
 #toasts {
   position: absolute;
-  left: 50%;
+  left: var(--band-left, 280px);
+  right: var(--band-right, 210px);
   top: calc(var(--inset-top) + 10px);
-  transform: translateX(-50%);
-  width: min(480px, calc(100vw - 470px - var(--inset-left) - var(--inset-right)));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1450,6 +1508,7 @@ button:focus-visible {
 }
 
 .toast {
+  max-width: 480px;
   padding: 8px 14px;
   border-radius: 12px;
   background: var(--panel);
@@ -1733,7 +1792,8 @@ button:focus-visible {
 @media (max-width: 760px) {
   #toasts {
     top: calc(var(--inset-top) + 76px);
-    width: min(440px, 64vw);
+    left: 18vw;
+    right: 18vw;
   }
 }
 

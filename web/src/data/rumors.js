@@ -5,6 +5,8 @@
 import { BOAT_ORDER, BOAT_TYPES } from '../physics/boat.js';
 import { isUnlocked, isDailyUnlocked, isBoatUnlocked, totalStars } from '../platform/save.js';
 import { MEDALS, isSealed } from './medals.js';
+import { LEVELS } from './levels.js';
+import { getWorld } from './worlds.js';
 
 export const SAYINGS = [
   'The wind never blows the same way twice.',
@@ -16,7 +18,18 @@ export const SAYINGS = [
 
 export function rumors(save, levels) {
   const out = [];
+  // Word of a far world's voyages waits until you reach it; until then the
+  // talk is of the world itself.
+  const firstOf = new Map();
+  levels.forEach((l, i) => firstOf.has(l.world) || firstOf.set(l.world, i));
+  const reached = (l) => !l.world || l.world === 'home' || isUnlocked(save, levels, firstOf.get(l.world));
+  const next = levels.find((l) => !reached(l));
+  if (next) {
+    const w = getWorld(next.world);
+    if (w) out.push(`Sailors talk of ${w.name}, past the last lighthouse. ${w.blurb}`);
+  }
   levels.forEach((l, i) => {
+    if (!reached(l)) return;
     const sailed = save.levels[l.id] && save.levels[l.id].best !== null;
     if (!sailed) out.push(`${l.name}: ${l.teaser}`);
     // Someone is still out there, once you know the waters.
@@ -26,7 +39,7 @@ export function rumors(save, levels) {
       }
     }
   });
-  for (const m of MEDALS) if (isSealed(m, save, levels)) out.push(`A secret medal: “${m.riddle}”`);
+  for (const m of MEDALS) if (isSealed(m, save, LEVELS)) out.push(`A secret medal: “${m.riddle}”`);
   const stars = totalStars(save);
   for (const id of BOAT_ORDER) {
     const t = BOAT_TYPES[id];

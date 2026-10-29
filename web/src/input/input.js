@@ -4,10 +4,22 @@
 // appears under the thumb, so where it lands never turns the boat), tap the
 // gust button to uncork a gust jar, and when trimming by hand steer on the
 // helm side and drag on the other side to sheet in and out. The zoom button
-// (or + / - and the mouse wheel) brings the view closer or pulls it back.
+// (or + / - and the mouse wheel) brings the view closer or pulls it back, and
+// so does a pinch: two fingers close together that spread or close. (Two
+// thumbs far apart, or on opposite sides when trimming by hand, are steering
+// and sheeting, never a pinch.)
 
 import { clamp, approach } from '../core/math.js';
 import { inCircle, inRect } from '../render/layout.js';
+import { ZOOMS } from '../platform/save.js';
+
+const ZOOM_MIN = ZOOMS[0][0];
+const ZOOM_MAX = ZOOMS[ZOOMS.length - 1][0];
+// A pinch starts once the fingers' gap changes by this much (px, and share).
+const PINCH_PX = 36;
+const PINCH_SHARE = 0.22;
+// Fingers further apart than this share of the screen width are two thumbs.
+const PINCH_SPAN = 0.45;
 
 const KEYS = {
   left: ['ArrowLeft', 'KeyA'],
@@ -16,9 +28,11 @@ const KEYS = {
   sheetOut: ['ArrowDown', 'KeyS'],
 };
 
-export function createInput(target, { getLayout, getSettings, onPause, onRestart, onMute, onToggleTrim, onZoom }) {
+export function createInput(target, { getLayout, getSettings, onPause, onRestart, onMute, onToggleTrim, onZoom, onPinchEnd }) {
   const keys = new Set();
   const pointers = new Map();
+  // Two fingers that might become a pinch: their gap when the second landed.
+  let pair = null;
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   const state = {
     enabled: false,
@@ -26,6 +40,7 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     keySteer: 0,
     trimTarget: 0.5,
     boostQueued: false,
+    pinchZoom: null, // the live zoom while pinching
     controls: {
       touch: coarse,
       helm: { active: false, used: false, ax: 0, ay: 0, x: 0, y: 0 },
@@ -99,8 +114,9 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
       if (onHelmSide || !manual || !state.controls.touch) role = 'helm';
       else role = 'sheetFree';
     }
-    const p = { id: e.pointerId, role, sx: x, sy: y, x, y, trim0: state.trimTarget };
+    const p = { id: e.pointerId, role, sx: x, sy: y, x, y, trim0: state.trimTarget, touch: e.pointerType === 'touch' };
     pointers.set(e.pointerId, p);
+    watchPair(L, manual);
     if (role === 'helm') {
       const h = state.controls.helm;
       h.active = true;
@@ -124,6 +140,44 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     e.preventDefault();
   }
 
+  // A second finger has landed: note the pair if it could be a pinch.
+  function watchPair(L, manual) {
+    if (state.pinchZoom !== null) return;
+    pair = null;
+    const fingers = [...pointers.values()].filter((q) => q.touch && q.role !== 'gust' && q.role !== 'sheet' && q.role !== 'pinch');
+    if (fingers.length !== 2) return;
+    const [a, b] = fingers;
+    const d0 = Math.hypot(a.x - b.x, a.y - b.y);
+    if (d0 > L.w * PINCH_SPAN) return;
+    if (manual && a.x < L.w * 0.5 !== b.x < L.w * 0.5) return;
+    pair = { a: a.id, b: b.id, d0: Math.max(d0, 1), trim0: state.trimTarget, z0: 1 };
+  }
+
+  function startPinch(a, b) {
+    a.role = 'pinch';
+    b.role = 'pinch';
+    const rest = [...pointers.values()];
+    if (!rest.some((q) => q.role === 'helm')) state.controls.helm.active = false;
+    if (!rest.some((q) => q.role.startsWith('sheet'))) state.controls.sheet.active = false;
+    // Undo any sheeting the fingers did before they turned out to be a pinch.
+    state.trimTarget = pair.trim0;
+    pair.z0 = settings().zoom || 1;
+    state.pinchZoom = pair.z0;
+  }
+
+  function followPair() {
+    if (!pair) return;
+    const a = pointers.get(pair.a);
+    const b = pointers.get(pair.b);
+    if (!a || !b) return;
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (state.pinchZoom === null) {
+      if (Math.abs(d - pair.d0) < Math.max(PINCH_PX, pair.d0 * PINCH_SHARE)) return;
+      startPinch(a, b);
+    }
+    state.pinchZoom = clamp((pair.z0 * d) / pair.d0, ZOOM_MIN, ZOOM_MAX);
+  }
+
   function setSheetFromY(L, y) {
     const s = L.sheet;
     state.trimTarget = clamp((y - s.y - 8) / (s.h - 16), 0, 1);
@@ -144,6 +198,7 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     } else if (p.role === 'sheetFree') {
       state.trimTarget = clamp(p.trim0 + (y - p.sy) / 160, 0, 1);
     }
+    followPair();
     e.preventDefault();
   }
 
@@ -151,6 +206,12 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     const p = pointers.get(e.pointerId);
     if (!p) return;
     pointers.delete(e.pointerId);
+    if (pair && (pair.a === p.id || pair.b === p.id)) {
+      // A finger lifted: the pinch (if it was one) settles on a zoom step.
+      if (state.pinchZoom !== null) onPinchEnd(state.pinchZoom);
+      state.pinchZoom = null;
+      pair = null;
+    }
     if (p.role === 'helm' && ![...pointers.values()].some((q) => q.role === 'helm')) state.controls.helm.active = false;
     if ((p.role === 'sheet' || p.role === 'sheetFree') && ![...pointers.values()].some((q) => q.role.startsWith('sheet'))) {
       state.controls.sheet.active = false;
@@ -188,6 +249,8 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
       if (!on) {
         keys.clear();
         pointers.clear();
+        pair = null;
+        state.pinchZoom = null;
         state.controls.helm.active = false;
         state.controls.sheet.active = false;
         state.boostQueued = false;

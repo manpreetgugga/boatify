@@ -5,6 +5,7 @@ import { clamp } from '../core/math.js';
 import { sampleWind } from '../world/wind.js';
 import { viewBounds } from './camera.js';
 import { C, font, rgba } from './palette.js';
+import { drawLair } from './worldart.js';
 
 export function createEffects() {
   return {
@@ -179,7 +180,9 @@ export function drawKrakens(ctx, game, time) {
   for (const k of game.level.krakens) {
     ctx.save();
     ctx.translate(k.x, k.y);
-    if (k.phase === 'idle') {
+    if (drawLair(ctx, k, time)) {
+      // Drawn by its own world.
+    } else if (k.phase === 'idle') {
       ctx.fillStyle = 'rgba(232, 244, 242, 0.25)';
       for (let i = 0; i < 5; i++) {
         const a = i * 1.7 + Math.floor(time * 0.8 + i) * 2.3;
@@ -340,6 +343,46 @@ export function drawSnow(ctx, fx, game, w, h, dt, time) {
     ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
   }
   ctx.fill();
+}
+
+// Volcanic ash: grey flakes drifting down with the wind, and now and then a
+// glowing ember.
+export function drawAsh(ctx, fx, game, w, h, dt, time) {
+  const amount = game.level.weather.ash || 0;
+  const count = Math.floor(amount * (fx.calm ? 50 : 130));
+  fx.ash = fx.ash || [];
+  while (fx.ash.length < count) fx.ash.push({ x: Math.random() * w, y: Math.random() * h, z: 0.4 + Math.random() * 0.6, p: Math.random() * 6, ember: Math.random() < 0.12 });
+  fx.ash.length = count;
+  if (!count) return;
+  const wx = game.windHere.wx;
+  const wy = game.windHere.wy;
+  for (const f of fx.ash) {
+    f.x += (wx * 2.6 + Math.sin(time * 0.9 + f.p) * 12) * f.z * dt;
+    f.y += (18 + wy * 2.6 + (f.ember ? -10 : 0)) * f.z * dt;
+    if (f.y > h + 4) {
+      f.y = -4;
+      f.x = Math.random() * w;
+    } else if (f.y < -6) f.y = h + 2;
+    if (f.x < -6) f.x += w + 12;
+    if (f.x > w + 6) f.x -= w + 12;
+  }
+  ctx.fillStyle = 'rgba(150, 146, 140, 0.6)';
+  ctx.beginPath();
+  for (const f of fx.ash) {
+    if (f.ember) continue;
+    const r = 0.7 + f.z * 1.3;
+    ctx.moveTo(f.x + r, f.y);
+    ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  for (const f of fx.ash) {
+    if (!f.ember) continue;
+    const glow = 0.5 + 0.5 * Math.sin(time * 6 + f.p * 3);
+    ctx.fillStyle = `rgba(255, ${140 + Math.round(80 * glow)}, 60, ${(0.5 + 0.4 * glow).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 0.8 + f.z, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 export function drawLightning(ctx, fx, game, w, h) {

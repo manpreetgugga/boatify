@@ -1,11 +1,11 @@
-// Coins and diamonds. Coins are earned by sailing: every voyage finished,
+// Coins and black pearls. Coins are earned by sailing: every voyage finished,
 // star won, pearl picked up and castaway brought home pays a little, and
-// medals pay more. Diamonds are rare: on some voyages one lies where the
+// medals pay more. Black pearls are rare: on some voyages one lies where the
 // danger is (in a whirlpool's pull, over a kraken's lair, off a pirate's
 // cove), and once it is brought home it is gone for good. Later they can be
 // bought or earned by watching a video too (see platform/commerce.js).
 //
-// Coins buy gust jars and paints; diamonds unlock boats before the stars do
+// Coins buy gust jars and paints; black pearls unlock boats before the stars do
 // and buy a second wind on the Open Sea.
 //
 // Everything here works on the save's `wallet` and leaves writing the save
@@ -31,22 +31,22 @@ export const PAY = {
 export const JAR_PRICE = 60;
 export const JAR_HOLD = 3; // the most the hold takes, and the most a voyage carries
 
-// A diamond traded for coins at the Shop.
+// A black pearl traded for coins at the Shop.
 export const TRADE_COINS = 150;
 
-// Diamonds to unlock a boat before the stars do.
+// Black pearls to unlock a boat before the stars do.
 export const BOAT_PRICES = { skiff: 5, proa: 10, junk: 15, galleon: 25 };
 
-// Diamonds for a second wind when an Open Sea run ends.
+// Black pearls for a second wind when an Open Sea run ends.
 export const SECOND_WIND = 2;
 export const SECOND_WIND_TIME = 30; // seconds back on the clock
 
 export function blankWallet() {
   return {
     coins: 0,
-    diamonds: 0,
+    blackPearls: 0,
     earned: 0, // coins earned over all time
-    found: {}, // voyage id -> 1 once its diamond is home
+    found: {}, // voyage id -> 1 once its black pearl is home
     jars: 0, // gust jars in the hold
     owned: [], // boats and paints bought: 'boat:proa', 'gear:royal'
     orders: [], // store order ids already credited, so none is paid twice
@@ -63,7 +63,8 @@ export function cleanWallet(w) {
   if (!isObj(w)) return base;
   return {
     coins: count(w.coins),
-    diamonds: count(w.diamonds),
+    // Black pearls were called diamonds until 0.22.
+    blackPearls: count(w.blackPearls ?? w.diamonds),
     earned: count(w.earned),
     found: isObj(w.found) ? w.found : {},
     jars: Math.min(JAR_HOLD, count(w.jars)),
@@ -112,47 +113,47 @@ function withMedals(lines, medals = []) {
   return lines.filter((l) => l.coins > 0);
 }
 
-// Put a voyage's pay in the wallet. Diamonds found count only once per
+// Put a voyage's pay in the wallet. Black pearls found count only once per
 // voyage (the daily voyage is its own voyage each day).
-export function payOut(save, lines, { diamonds = 0, voyage = null } = {}) {
+export function payOut(save, lines, { blackPearls = 0, voyage = null } = {}) {
   const w = save.wallet;
   const coins = lines.reduce((a, l) => a + l.coins, 0);
   w.coins += coins;
   w.earned += coins;
   let gems = 0;
-  if (diamonds > 0 && !(voyage && w.found[voyage])) {
-    gems = diamonds;
-    w.diamonds += gems;
+  if (blackPearls > 0 && !(voyage && w.found[voyage])) {
+    gems = blackPearls;
+    w.blackPearls += gems;
     if (voyage) w.found[voyage] = 1;
   }
-  return { coins, diamonds: gems, lines };
+  return { coins, blackPearls: gems, lines };
 }
 
-// Is this voyage's diamond still out there?
-export function diamondWaiting(save, voyageId) {
+// Is this voyage's black pearl still out there?
+export function blackPearlWaiting(save, voyageId) {
   return !save.wallet.found[voyageId];
 }
 
 // --- Spending ---------------------------------------------------------------
 
-// Take a price ({ coins } or { diamonds }) from the wallet if it covers it.
+// Take a price ({ coins } or { black pearls }) from the wallet if it covers it.
 export function spend(save, price) {
   const w = save.wallet;
   const coins = price.coins || 0;
-  const diamonds = price.diamonds || 0;
-  if (w.coins < coins || w.diamonds < diamonds) return false;
+  const blackPearls = price.blackPearls || 0;
+  if (w.coins < coins || w.blackPearls < blackPearls) return false;
   w.coins -= coins;
-  w.diamonds -= diamonds;
+  w.blackPearls -= blackPearls;
   return true;
 }
 
 export function canAfford(save, price) {
-  return save.wallet.coins >= (price.coins || 0) && save.wallet.diamonds >= (price.diamonds || 0);
+  return save.wallet.coins >= (price.coins || 0) && save.wallet.blackPearls >= (price.blackPearls || 0);
 }
 
 // How much more of what a price needs, for "You need 40 more coins".
 export function shortOf(save, price) {
-  if (price.diamonds) return { diamonds: Math.max(0, price.diamonds - save.wallet.diamonds) };
+  if (price.blackPearls) return { blackPearls: Math.max(0, price.blackPearls - save.wallet.blackPearls) };
   return { coins: Math.max(0, (price.coins || 0) - save.wallet.coins) };
 }
 
@@ -180,15 +181,15 @@ export function useJars(save, carried, left) {
   return used;
 }
 
-export function tradeDiamond(save) {
-  if (!spend(save, { diamonds: 1 })) return false;
+export function tradeBlackPearl(save) {
+  if (!spend(save, { blackPearls: 1 })) return false;
   save.wallet.coins += TRADE_COINS;
   return true;
 }
 
 export function buyBoat(save, id) {
   const price = BOAT_PRICES[id];
-  if (!price || owns(save, `boat:${id}`) || !spend(save, { diamonds: price })) return false;
+  if (!price || owns(save, `boat:${id}`) || !spend(save, { blackPearls: price })) return false;
   save.wallet.owned.push(`boat:${id}`);
   return true;
 }

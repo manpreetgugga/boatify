@@ -35,7 +35,8 @@ export function updateCamera(cam, game, dt, w, h) {
   const ship = game.status === 'sailing' ? chasingShip(game) : null;
   const near = ship ? clamp(1 - (Math.hypot(ship.x - boat.x, ship.y - boat.y) - 180) / 300, 0, 1) : 0;
   const targetScale = baseScale(w, h) * cam.zoom * (1 - 0.12 * clamp(speed / 18, 0, 1)) * (1 - 0.14 * near);
-  cam.scale = approach(cam.scale, targetScale, 1.2, dt);
+  // A pinch follows the fingers; anything else eases in.
+  cam.scale = approach(cam.scale, targetScale, cam.quick ? 14 : 1.2, dt);
   // Keep the chart edge from filling more than a sliver of the screen.
   const halfW = w / 2 / cam.scale;
   const halfH = h / 2 / cam.scale;

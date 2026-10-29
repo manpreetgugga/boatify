@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.22.0] - 2026-10-29
+
+Three new worlds with thirty new voyages, black pearls, and pinch to zoom.
+
+- **Worlds.** After Pirate Waters the campaign carries on into three new worlds of ten voyages each. Finishing the last voyage of a world opens the first voyage of the next. The Voyages screen has a tab for each world showing your stars there, and the briefing lists that world's hazards by name.
+- **Volcano Isles.** Black rock, warm water and falling ash. Volcano cones smoke, with lava running down their sides, and some isles are black basalt. Vents steam, then boil, then blow: when the water starts to boil, get out of the ring. Pumice rafts drift on the tide, and a lava flow walls off the sea with a single gap. Mount Ember is the last voyage.
+- **Harbor City.** Quays stacked with coloured containers, with bollards and dock workers who wave as you sail past. Gantry cranes swing containers out over the water and drop them inside a ring. City ferries carry passengers on deck, trail smoke from their funnels and cross your course on the tide. There are also breakwaters, a river current, fog, the docks at night and a smugglers' brig.
+- **Planet Zeta.** A violet sea with glowing crystal isles. On the fungus islands, eyes on stalks follow you as you sail past and sometimes blink. Giant pink jellies drift on the tide. There are gravity wells, patches of air too thin to fill a sail, and beasts that rise from below with glowing eyes and a mouth full of teeth. The Mother Beast sleeps under the last voyage.
+- **New castaways.** Pyra, Basil and Cole in the Volcano Isles; Dot, Marco and Ines in Harbor City; Zib, Captain Nova and Blorp on Planet Zeta.
+- **Three new medals.** Fire Walker, Harbor Master and Star Sailor are for finishing every voyage in a world. They unlock the Lava Flow sail, the Harbor Pilot hull paint and the Nebula sail.
+- **Black pearls.** Diamonds are now black pearls: rare dark pearls in an oyster shell, still found near whirlpools, krakens and pirates. Any diamonds you had are now black pearls. The Shop lists a handful, a pouch and a chest of black pearls; buying them is still switched off.
+- **Pinch to zoom.** While sailing, spread two fingers to zoom in and pinch them together to zoom out. When you let go, the view snaps to the nearest zoom step and remembers it. Steering with one thumb while trimming with the other doesn't zoom.
+- **Fixes.** Tips no longer cover the zoom button, and when two pointers point the same way they no longer sit on top of each other.
+- Harbor talk only mentions voyages in worlds you have reached.
+
 ## [0.21.0] - 2026-10-29
 
 Coins for sailing, rare diamonds, and a Shop.

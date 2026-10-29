@@ -3,8 +3,9 @@
 
 import { BOAT_ORDER } from '../physics/boat.js';
 import { toMeters } from '../physics/sailing.js';
-import { totalStars, unlockedBoats, isUnlocked, isDailyUnlocked } from '../platform/save.js';
+import { unlockedBoats, isUnlocked, isDailyUnlocked } from '../platform/save.js';
 import { dateKey } from './daily.js';
+import { WORLDS } from './worlds.js';
 
 const LONG_HAUL_KM = 25;
 const FAR_HORIZON_KM = 1.5;
@@ -91,7 +92,7 @@ export const MEDALS = [
     text: 'Get past the kraken without it laying a tentacle on you.',
     seal: 'kraken-fog',
     riddle: "Something with too many arms waits in the fog. Don't shake hands.",
-    run: ({ def, result }) => has(def.krakens) && !(result.hits || {}).kraken,
+    run: ({ def, result }) => (def.krakens || []).some((k) => !k.look || k.look === 'kraken') && !(result.hits || {}).kraken,
   },
   {
     id: 'ice-pilot',
@@ -100,7 +101,7 @@ export const MEDALS = [
     text: 'Cross the drift ice without touching it.',
     seal: 'drift-ice',
     riddle: 'Where the sea floor floats, never touch the floor.',
-    run: ({ def, result }) => has(def.floes) && !(result.hits || {}).ice,
+    run: ({ def, result }) => (def.floes || []).some((f) => !f.kind || f.kind === 'ice') && !(result.hits || {}).ice,
   },
   {
     id: 'bow-rider',
@@ -133,28 +134,28 @@ export const MEDALS = [
     id: 'navigator',
     name: 'Navigator',
     icon: 'map',
-    text: 'Finish every voyage.',
+    text: 'Finish every voyage in Home Waters.',
     progress: (save, levels) => [count(records(save, levels), finished), levels.length],
   },
   {
     id: 'treasure-hunter',
     name: 'Treasure Hunter',
     icon: 'gem',
-    text: 'Collect every pearl on every voyage.',
+    text: 'Collect every pearl on every voyage in Home Waters.',
     progress: (save, levels) => [count(records(save, levels), (r) => r && r.pearls >= (r.pearlsTotal || 0)), levels.length],
   },
   {
     id: 'admiral',
     name: 'Admiral',
     icon: 'crown',
-    text: 'Earn all three stars on every voyage.',
-    progress: (save, levels) => [totalStars(save), levels.length * 3],
+    text: 'Earn all three stars on every voyage in Home Waters.',
+    progress: (save, levels) => [records(save, levels).reduce((a, r) => a + ((r && r.stars) || 0), 0), levels.length * 3],
   },
   {
     id: 'beachcomber',
     name: 'Beachcomber',
     icon: 'bottle',
-    text: 'Find every message in a bottle.',
+    text: 'Find every message in a bottle in Home Waters.',
     progress: (save, levels) => {
       const notes = campaignNotes(levels);
       return [count(notes, (n) => save.notes.includes(n)), notes.length];
@@ -232,7 +233,7 @@ export const MEDALS = [
     id: 'no-one-left-behind',
     name: 'No One Left Behind',
     icon: 'hand',
-    text: 'Rescue the castaway on every voyage.',
+    text: 'Rescue the castaway on every voyage in Home Waters.',
     seal: 'beam-reach',
     riddle: 'Every sea hides one soul adrift. Bring them all home.',
     progress: (save, levels) => {
@@ -240,7 +241,20 @@ export const MEDALS = [
       return [count(adrift, (l) => save.levels[l.id] && save.levels[l.id].rescued >= l.castaways.length), adrift.length];
     },
   },
+  ...worldMedals(),
 ];
+
+// One medal for sailing every voyage of each far world.
+function worldMedals() {
+  const looks = { volcano: ['Fire Walker', 'flame'], harbor: ['Harbor Master', 'lifebuoy'], alien: ['Star Sailor', 'horizon'] };
+  return WORLDS.filter((w) => looks[w.id]).map((w) => ({
+    id: `world-${w.id}`,
+    name: looks[w.id][0],
+    icon: looks[w.id][1],
+    text: `Finish every voyage in ${w.name}.`,
+    progress: (save) => [count(w.voyages, (v) => finished(save.levels[v.id])), w.voyages.length],
+  }));
+}
 
 export function isEarned(save, id) {
   return !!save.medals[id];

@@ -1,4 +1,4 @@
-# Coins, diamonds, and switching on the store
+# Coins, black pearls, and switching on the store
 
 The game has two currencies. Neither one needs a network connection or a
 store yet.
@@ -7,14 +7,15 @@ store yet.
   medals, the daily voyage and its streak, Open Sea distance and gates, and
   regatta places (`PAY` in `web/src/data/economy.js`). They buy gust jars for
   the next voyage and sails and hull paints in the Sail Locker.
-- **Diamonds** are rare. A voyage with a whirlpool, a kraken or a pirate brig
-  hides one near the danger (`web/src/world/diamonds.js`). It counts only once
+- **Black pearls** are rare (the white pearls on every voyage are treasure,
+  not currency). A voyage with a whirlpool, a kraken or a pirate brig
+  hides one near the danger (`web/src/world/blackpearls.js`). It counts only once
   the voyage is finished, and only once per voyage. On the Open Sea a whirlpool
-  sometimes guards one, at most one per run. Diamonds unlock boats before the
+  sometimes guards one, at most one per run. Black pearls unlock boats before the
   stars do, buy an Open Sea *second wind* (30 more seconds and a patched hull),
   or trade for 150 coins.
 
-Buying diamonds and watching rewarded videos for them are built but switched
+Buying black pearls and watching rewarded videos for them are built but switched
 off. With no store in the app the game uses the `none` provider in
 `web/src/platform/commerce.js`, and the Shop says **Coming soon**. To switch
 them on, add Google Play Billing and a rewarded-video SDK to the Android
@@ -23,11 +24,11 @@ web code needs to change.
 
 ## What is for sale
 
-| Product id    | Diamonds | Suggested price |
-| ------------- | -------- | --------------- |
-| `diamonds_10` | 10       | lowest tier     |
-| `diamonds_35` | 30 + 5   | middle tier     |
-| `diamonds_90` | 70 + 20  | top tier        |
+| Product id        | Black pearls | Suggested price |
+| ----------------- | ------------ | --------------- |
+| `black_pearls_10` | 10           | lowest tier     |
+| `black_pearls_35` | 30 + 5       | middle tier     |
+| `black_pearls_90` | 70 + 20      | top tier        |
 
 These are **consumable** in-app products. Create them in Play Console under
 *Monetize → In-app products* with exactly these ids. The Shop shows the price
@@ -36,10 +37,10 @@ Play Console.
 
 Rewarded video placements (`REWARDS` in `commerce.js`):
 
-| Placement id         | Reward                              | Per day |
-| -------------------- | ----------------------------------- | ------- |
-| `reward_diamond`     | 1 diamond (Shop)                    | 3       |
-| `reward_second_wind` | an Open Sea second wind, no diamonds | 3       |
+| Placement id         | Reward                                   | Per day |
+| -------------------- | ---------------------------------------- | ------- |
+| `reward_black_pearl` | 1 black pearl (Shop)                     | 3       |
+| `reward_second_wind` | an Open Sea second wind, no black pearls | 3       |
 
 ## The bridge
 
@@ -70,8 +71,8 @@ gives up on a call after two minutes.
 
 | `method`   | `arg`                                   | Reply when it works                                               |
 | ---------- | --------------------------------------- | ----------------------------------------------------------------- |
-| `prices`   | product ids, comma separated            | `{ "ok": true, "prices": { "diamonds_10": "$0.99", … } }`         |
-| `purchase` | a product id                            | `{ "ok": true, "order": { "id": "<purchase token>", "product": "diamonds_10" } }` |
+| `prices`   | product ids, comma separated            | `{ "ok": true, "prices": { "black_pearls_10": "$0.99", … } }`         |
+| `purchase` | a product id                            | `{ "ok": true, "order": { "id": "<purchase token>", "product": "black_pearls_10" } }` |
 | `pending`  | empty                                   | `{ "ok": true, "orders": [ { "id": "…", "product": "…" } ] }`     |
 | `finish`   | an order id                             | `{ "ok": true }`                                                  |
 | `rewarded` | a placement id                          | `{ "ok": true }`, only once the video was watched to the end       |
@@ -80,7 +81,7 @@ gives up on a call after two minutes.
 
 1. `purchase` runs the Play Billing flow. Reply once the purchase is
    `PURCHASED` (not `PENDING`). Use the purchase token as the order id.
-2. The game credits the diamonds, writes the save, then calls `finish`
+2. The game credits the black pearls, writes the save, then calls `finish`
    with that order id.
 3. On `finish`, **consume** the purchase (`consumeAsync`) so it can be bought
    again and Play doesn't refund it after three days.

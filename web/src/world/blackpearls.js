@@ -1,4 +1,4 @@
-// Diamonds lie where the danger is: in a whirlpool's pull just outside the
+// Black pearls lie where the danger is: in a whirlpool's pull just outside the
 // eye, over a kraken's lair, or off the cove a pirate brig keeps watch from.
 // A voyage has one at most, always in the same place, and none once it has
 // been brought home.
@@ -19,12 +19,12 @@ function lairs(def, level) {
 }
 
 // Does this voyage have somewhere dangerous enough to hide one?
-export function holdsDiamond(def) {
+export function holdsBlackPearl(def) {
   return !def.endless && !def.race && !!((def.whirlpools || []).length || (def.krakens || []).length || (def.pirates || []).length);
 }
 
 // A spot in open water within one of the rings, clear of other pickups.
-export function diamondSpot(level, rings, rng) {
+export function blackPearlSpot(level, rings, rng) {
   if (!rings.length) return null;
   const first = rng.int(0, rings.length - 1);
   for (let k = 0; k < rings.length; k++) {
@@ -42,19 +42,19 @@ export function diamondSpot(level, rings, rng) {
   return null;
 }
 
-export function placeDiamond(def, level, seed) {
-  const spot = diamondSpot(level, lairs(def, level), createRng(seed ^ 0xd1a305));
+export function placeBlackPearl(def, level, seed) {
+  const spot = blackPearlSpot(level, lairs(def, level), createRng(seed ^ 0xd1a305));
   if (!spot) return null;
-  const pickup = { ...spot, kind: 'diamond', id: `diamond-${def.id}`, taken: false, bob: 1.3 };
+  const pickup = { ...spot, kind: 'blackPearl', id: `black-pearl-${def.id}`, taken: false, bob: 1.3 };
   level.pickups.push(pickup);
   return pickup;
 }
 
 // On the open sea a whirlpool sometimes guards one.
-export function whirlpoolDiamond(level, whirlpool, rng, id) {
-  const spot = diamondSpot(level, [{ x: whirlpool.x, y: whirlpool.y, near: whirlpool.r * 0.38, far: whirlpool.r * 0.5 }], rng);
+export function whirlpoolBlackPearl(level, whirlpool, rng, id) {
+  const spot = blackPearlSpot(level, [{ x: whirlpool.x, y: whirlpool.y, near: whirlpool.r * 0.38, far: whirlpool.r * 0.5 }], rng);
   if (!spot) return null;
-  const pickup = { ...spot, kind: 'diamond', id, taken: false, bob: 1.3 };
+  const pickup = { ...spot, kind: 'blackPearl', id, taken: false, bob: 1.3 };
   level.pickups.push(pickup);
   return pickup;
 }

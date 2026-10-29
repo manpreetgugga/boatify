@@ -2,6 +2,7 @@
 // results, wiring simulation events to sound, haptics, particles and toasts.
 
 import { LEVELS } from './data/levels.js';
+import { CAMPAIGN, voyageDef } from './data/worlds.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { createGame, stepGame, drainEvents, speedOf } from './world/game.js';
 import { openSeaDef, reviveRun } from './world/opensea.js';
@@ -18,15 +19,27 @@ import { hudLayout } from './render/layout.js';
 import { burst, ring, floatText } from './render/effects.js';
 import { C, setColorblind } from './render/palette.js';
 import { islandAnimals, placeIslandLife } from './render/islandlife.js';
+import { HIT_COLOR } from './render/themes.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
-import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, zoomName } from './platform/save.js';
+import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
-import { voyagePay, seaPay, racePay, payOut, diamondWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
+import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
 import { commerce, installCommerce, restoreOrders, watchVideo, videosLeft, REWARDS } from './platform/commerce.js';
+
+// Things that thud rather than crack when you hit them.
+const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice']);
+
+// What a lair's ring means, in each world.
+const LAIR_WARNINGS = {
+  kraken: 'The water is boiling! Get out of the ring!',
+  vent: 'The vent is about to blow! Get out of the ring!',
+  crane: 'A container is coming down! Get out of the ring!',
+  beast: 'Something is rising! Get out of the ring!',
+};
 
 const root = document.getElementById('boatify');
 const canvas = document.getElementById('game');
@@ -78,7 +91,13 @@ function readInsets() {
 }
 
 function getLayout() {
-  if (!layout) layout = hudLayout(renderer.w, renderer.h, insets, save.settings);
+  if (!layout) {
+    layout = hudLayout(renderer.w, renderer.h, insets, save.settings);
+    // Tips sit in the band between the zoom button and the minimap.
+    const s = document.documentElement.style;
+    s.setProperty('--band-left', `${layout.zoom.x + layout.zoom.w + 10}px`);
+    s.setProperty('--band-right', `${layout.w - layout.minimap.x + 10}px`);
+  }
   return layout;
 }
 
@@ -139,6 +158,13 @@ const input = createInput(canvas, {
     writeSave(save);
     ui.toast(`View: ${zoomName(z)}`);
   },
+  onPinchEnd: (zoom) => {
+    const z = nearestZoom(zoom);
+    if (z === save.settings.zoom) return;
+    save.settings.zoom = z;
+    writeSave(save);
+    ui.toast(`View: ${zoomName(z)}`);
+  },
 });
 
 // Today's course: charted once, then cached for the rest of the day.
@@ -161,7 +187,7 @@ function dailyPeek() {
   return chartedDaily(dateKey(), loadDailyCourse());
 }
 
-const ui = createUI(root, LEVELS, {
+const ui = createUI(root, CAMPAIGN, {
   daily: dailyDef,
   dailyPeek,
   chartDaily: chartToday,
@@ -222,8 +248,8 @@ const ui = createUI(root, LEVELS, {
 
 function startDemo() {
   // The title screen shows the autopilot sailing one of the unlocked voyages.
-  const unlocked = LEVELS.filter((l, i) => i === 0 || save.levels[LEVELS[i - 1].id]);
-  const def = unlocked[demoIndex % unlocked.length];
+  const unlocked = CAMPAIGN.filter((l, i) => i === 0 || save.levels[CAMPAIGN[i - 1].id]);
+  const def = voyageDef(unlocked[demoIndex % unlocked.length].id);
   demoIndex += 1;
   game = createGame(def, { seed: demoIndex * 7, boat: selectedBoat(save) });
   game.tipsShown = new Set(def.tips.map((t, i) => i));
@@ -243,26 +269,26 @@ function showTitle(withMenu = true) {
   startDemo();
   if (withMenu) ui.title(save);
   // Chart today's course in the background so the daily voyage opens at once.
-  if (isDailyUnlocked(save, LEVELS) && !dailyPeek()) setTimeout(() => chartToday(), 2500);
+  if (isDailyUnlocked(save, CAMPAIGN) && !dailyPeek()) setTimeout(() => chartToday(), 2500);
 }
 
 function startLevel(ref) {
   // Every Open Sea run is a fresh stretch of sea, and every regatta a fresh
   // course, raced against the fleet your wins have earned.
   const seed = (Date.now() % 1e9) + 1;
-  const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'daily' ? dailyDef() : LEVELS[ref];
+  const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'daily' ? dailyDef() : CAMPAIGN[ref] && voyageDef(CAMPAIGN[ref].id);
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
   settleJars();
   film = null;
   levelIndex = ref;
   // Jars from the hold go aboard (not in a regatta: the fleet has none), and
-  // the voyage's diamond is out if it hasn't been brought home yet.
+  // the voyage's black pearl is out if it hasn't been brought home yet.
   carried = def.race ? 0 : jarsAboard(save);
   windTaken = false;
   pending = null;
-  const diamond = !def.race && (def.endless || diamondWaiting(save, def.id));
-  game = createGame(def, { boat: selectedBoat(save), guide: guideOn(), startJars: carried, diamond });
+  const blackPearl = !def.race && (def.endless || blackPearlWaiting(save, def.id));
+  game = createGame(def, { boat: selectedBoat(save), guide: guideOn(), startJars: carried, blackPearl });
   autopilot = botDriving ? createAutopilot(game) : null;
   guideTold = {};
   // No ghost on the open sea or in a regatta: no two runs share a course.
@@ -313,7 +339,7 @@ function finishVoyage(result) {
   mode = 'finishing';
   finishTimer = 1.8;
   input.setEnabled(false);
-  // An Open Sea run can go on for a few diamonds (or a video), once.
+  // An Open Sea run can go on for a few black pearls (or a video), once.
   if (game.sea && !windTaken && !botDriving && windOnOffer()) {
     pending = { offer: true, result };
     return;
@@ -322,7 +348,7 @@ function finishVoyage(result) {
 }
 
 function windOnOffer() {
-  return canAfford(save, { diamonds: SECOND_WIND }) || (commerce().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0);
+  return canAfford(save, { blackPearls: SECOND_WIND }) || (commerce().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0);
 }
 
 // Record the voyage, award medals and pay out. Returns what the results show.
@@ -332,7 +358,7 @@ function settleVoyage(result) {
   if (game.sea) {
     improved = recordSeaRun(save, result);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
-    improved.pay = payOut(save, seaPay(result, improved), { diamonds: result.diamonds });
+    improved.pay = payOut(save, seaPay(result, improved), { blackPearls: result.blackPearls });
   } else if (game.race) {
     improved = recordRace(save, result);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
@@ -346,7 +372,7 @@ function settleVoyage(result) {
     improved.newBoats = unlockedBoats(save).slice(boatsBefore).map((id) => BOAT_TYPES[id].name);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
     const streak = daily ? currentStreak(save, daily) : 0;
-    improved.pay = payOut(save, voyagePay(game.def, result, improved, streak), { diamonds: result.diamonds, voyage: game.def.id });
+    improved.pay = payOut(save, voyagePay(game.def, result, improved, streak), { blackPearls: result.blackPearls, voyage: game.def.id });
     // Keep the fastest run as the ghost (or the first one we see for a voyage).
     if (recorder && (improved.time || !hadGhost || result.time < ghost.score)) {
       storeGhost(game.def.id, { ...finishGhost(recorder, game.time), score: result.time });
@@ -361,10 +387,10 @@ function showResults() {
   if (game.sea) ui.seaResults(pending.result, pending.improved, save);
   else if (game.race) ui.raceResults(pending.result, pending.improved, save);
   else ui.results(levelIndex, pending.result, pending.improved, save);
-  if (pending.improved.pay.coins || pending.improved.pay.diamonds) setTimeout(() => mode === 'results' && audio.sfx.coins(), 900);
+  if (pending.improved.pay.coins || pending.improved.pay.blackPearls) setTimeout(() => mode === 'results' && audio.sfx.coins(), 900);
 }
 
-// The run ended: sail on for diamonds or a video, or call it a day.
+// The run ended: sail on for black pearls or a video, or call it a day.
 function offerSecondWind() {
   mode = 'offer';
   const { result } = pending;
@@ -384,7 +410,7 @@ function offerSecondWind() {
   };
   ui.secondWind(result, save, {
     onTake: () => {
-      if (!spend(save, { diamonds: SECOND_WIND })) return;
+      if (!spend(save, { blackPearls: SECOND_WIND })) return;
       writeSave(save);
       audio.sfx.coins();
       takeWind();
@@ -507,7 +533,7 @@ function handleEvents(events, live) {
         if (live) ui.toast(e.text, 'tip', 5200);
         break;
       case 'pickup': {
-        const colors = { pearl: '#fbf6ee', gust: '#bff3ff', repair: C.ok, bottle: '#c9e8b8', diamond: '#9fe9fb' };
+        const colors = { pearl: '#fbf6ee', gust: '#bff3ff', repair: C.ok, bottle: '#c9e8b8', blackPearl: '#cdb8ff' };
         burst(fx, e.x, e.y, { count: 16, speed: 30, color: colors[e.kind] || C.foam, size: 2.2 });
         ring(fx, e.x, e.y, colors[e.kind] || C.foam, 22, 0.6);
         if (!live) break;
@@ -516,11 +542,11 @@ function handleEvents(events, live) {
         if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, game.sea ? `PEARL +${e.bonus} s` : `PEARL ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
         else if (e.kind === 'gust') floatText(fx, e.x, e.y - 10, 'GUST JAR', '#bff3ff');
         else if (e.kind === 'repair') floatText(fx, e.x, e.y - 10, 'HULL +35', C.ok);
-        else if (e.kind === 'diamond') {
-          floatText(fx, e.x, e.y - 12, 'DIAMOND!', '#9fe9fb');
+        else if (e.kind === 'blackPearl') {
+          floatText(fx, e.x, e.y - 12, 'BLACK PEARL!', '#cdb8ff');
           ring(fx, e.x, e.y, '#ffffff', 40, 1);
           buzz(60);
-          firstSight('diamond', 'A diamond! They are rare. Bring it home: finish the voyage to keep it.');
+          firstSight('blackPearl', 'A black pearl! They are rare. Bring it home: finish the voyage to keep it.');
         }
         else if (e.kind === 'bottle') {
           audio.sfx.note();
@@ -598,12 +624,12 @@ function handleEvents(events, live) {
         burst(fx, e.x, e.y, {
           count: Math.round(6 + e.impact * 1.5),
           speed: 18 + e.impact * 3,
-          color: sand ? '#e8d6a8' : e.material === 'coral' ? '#ff8a7a' : e.material === 'ice' ? C.ice : C.foam,
+          color: sand ? '#e8d6a8' : e.material === 'coral' ? '#ff8a7a' : e.material === 'ice' ? C.ice : HIT_COLOR[e.material] || C.foam,
           size: 2,
         });
         cam.shake = Math.min(1, cam.shake + e.impact / 14);
         if (!live) break;
-        audio.sfx.collide(e.impact, e.material);
+        audio.sfx.collide(e.impact, SOFT.has(e.material) ? 'sand' : e.material);
         buzz(Math.min(120, 20 + e.impact * 8));
         break;
       }
@@ -648,7 +674,7 @@ function handleEvents(events, live) {
       case 'kraken':
         if (!live) break;
         audio.sfx.kraken(e.phase);
-        if (e.phase === 'warning') ui.toast('The water is boiling! Get out of the ring!', 'alert', 2200);
+        if (e.phase === 'warning') ui.toast(LAIR_WARNINGS[e.look] || LAIR_WARNINGS.kraken, 'alert', 2200);
         else buzz(160);
         cam.shake = Math.min(1, cam.shake + (e.phase === 'strike' ? 0.7 : 0.1));
         break;
@@ -837,7 +863,8 @@ function frame(now) {
     crew: film && SKIPPER,
     layout: getLayout(),
     controls: input.state.controls,
-    zoom: save.settings.zoom,
+    zoom: input.state.pinchZoom ?? save.settings.zoom,
+    pinching: input.state.pinchZoom !== null,
   });
   if (mode === 'playing' && renderer.life.colonies && renderer.life.colonies.near) {
     firstSight('penguins', 'Penguins! Sail close and they dive in for a swim.');
@@ -923,6 +950,8 @@ window.addEventListener('keydown', (e) => {
 // Hooks for automated playtests.
 window.__boatify = {
   levels: LEVELS,
+  campaign: CAMPAIGN,
+  voyageDef,
   daily: dailyDef,
   startLevel,
   showTitle,
@@ -959,9 +988,9 @@ window.__boatify = {
     return { x: c.w / 2 + c.ox + (game.boat.x - c.x) * c.scale, y: c.h / 2 + c.oy + (game.boat.y - c.y) * c.scale, scale: c.scale };
   },
   // Fill the purse for a test.
-  give({ coins = 0, diamonds = 0 } = {}) {
+  give({ coins = 0, blackPearls = 0 } = {}) {
     save.wallet.coins += coins;
-    save.wallet.diamonds += diamonds;
+    save.wallet.blackPearls += blackPearls;
     writeSave(save);
   },
   // Wind the Open Sea clock down to see a run end.
@@ -1044,7 +1073,9 @@ window.__boatify = {
       race: game && game.race && { place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
       result: game && game.result,
       wallet: { ...save.wallet },
-      diamonds: game && game.diamonds,
+      blackPearls: game && game.blackPearls,
+      zoom: save.settings.zoom,
+      pinch: input.state.pinchZoom,
       film: film && { t: film.t, shot: film.shot.id, oar: film.oar.state, route: !!film.route },
       frames,
     };
@@ -1065,7 +1096,7 @@ try {
 }
 // Anything paid for but not yet in the wallet (say the app closed mid-purchase).
 restoreOrders(save, () => writeSave(save)).then((n) => {
-  if (n) ui.toast(`+${n} diamonds from your purchase. Thank you!`, 'good', 4200);
+  if (n) ui.toast(`+${n} black pearls from your purchase. Thank you!`, 'good', 4200);
 });
 // A first launch opens on the prologue; after that, on the title.
 if (!save.seenFilm && !save.stats.voyages) playFilm();

@@ -15,17 +15,19 @@ import { dateKey, dailyId } from '../data/daily.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
-import { formatCoins, canAfford, shortOf, buyJar, tradeDiamond, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
+import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
 import { commerce, PACKS, REWARDS, buyPack, watchVideo, videosLeft } from '../platform/commerce.js';
-import { holdsDiamond } from '../world/diamonds.js';
+import { holdsBlackPearl } from '../world/blackpearls.js';
+import { LEVELS } from '../data/levels.js';
+import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
 import { icon } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-// The purse: coins and diamonds, as shown in a sheet's head or on the title.
+// The purse: coins and black pearls, as shown in a sheet's head or on the title.
 function wallet(save) {
   const w = save.wallet;
-  return `<span class="wallet" aria-label="${formatCoins(w.coins)} coins, ${w.diamonds} diamonds"><span class="coins">${icon('coin', 17)}<b>${formatCoins(w.coins)}</b></span><span class="gems">${icon('diamond', 17)}<b>${w.diamonds}</b></span></span>`;
+  return `<span class="wallet" aria-label="${formatCoins(w.coins)} coins, ${w.blackPearls} black pearls"><span class="coins">${icon('coin', 17)}<b>${formatCoins(w.coins)}</b></span><span class="gems">${icon('blackPearl', 17)}<b>${w.blackPearls}</b></span></span>`;
 }
 
 // Show the purse again after a purchase.
@@ -35,21 +37,21 @@ function refreshWallet(node, save) {
   });
 }
 
-const priceTag = (price) => (price.diamonds ? `${icon('diamond', 16)}${price.diamonds}` : `${icon('coin', 16)}${formatCoins(price.coins)}`);
+const priceTag = (price) => (price.blackPearls ? `${icon('blackPearl', 16)}${price.blackPearls}` : `${icon('coin', 16)}${formatCoins(price.coins)}`);
 
 function needMore(save, price) {
   const short = shortOf(save, price);
-  if (short.diamonds) return `You need ${short.diamonds} more ${short.diamonds === 1 ? 'diamond' : 'diamonds'}. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.`;
+  if (short.blackPearls) return `You need ${short.blackPearls} more ${short.blackPearls === 1 ? 'black pearl' : 'black pearls'}. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.`;
   return `You need ${formatCoins(short.coins)} more coins. Every voyage you sail pays some.`;
 }
 
 // What a voyage paid, under its results.
 function rewardStrip(pay) {
-  if (!pay || (!pay.coins && !pay.diamonds)) return '';
+  if (!pay || (!pay.coins && !pay.blackPearls)) return '';
   const lines = pay.lines.map((l) => `${esc(l.label)} <b>${formatCoins(l.coins)}</b>`).join(' · ');
   return `<div class="reward">
-      <div class="reward-sum"><span class="coins">${icon('coin', 20)}+${formatCoins(pay.coins)}</span>${pay.diamonds ? `<span class="gems">${icon('diamond', 20)}+${pay.diamonds}</span>` : ''}</div>
-      <small>${lines}${pay.diamonds ? ` · Diamond <b>${pay.diamonds}</b>` : ''}</small>
+      <div class="reward-sum"><span class="coins">${icon('coin', 20)}+${formatCoins(pay.coins)}</span>${pay.blackPearls ? `<span class="gems">${icon('blackPearl', 20)}+${pay.blackPearls}</span>` : ''}</div>
+      <small>${lines}${pay.blackPearls ? ` · Black pearl <b>${pay.blackPearls}</b>` : ''}</small>
     </div>`;
 }
 
@@ -65,21 +67,31 @@ function stars(n, total = 3) {
   return s;
 }
 
+// What each world's rocks, lairs and drifting things are called.
+const ROCK_NAMES = { coral: 'Coral reefs', rock: 'Rocks', basalt: 'Rocks', piling: 'Pilings', container: 'Containers', shard: 'Crystal shards', pod: 'Spore pods' };
+const LAIR_NAMES = { kraken: 'Kraken', vent: 'Steam vents', crane: 'Cranes', beast: 'Beasts' };
+const DRIFT_NAMES = { ice: 'Drifting ice', pumice: 'Pumice rafts', ferry: 'Ferries', jelly: 'Jellies' };
+
 function hazardsOf(def) {
   const out = [];
+  const once = (names, list, key, fallback, bad) => {
+    for (const n of new Set((list || []).map((x) => names[x[key]] || fallback))) out.push([n, bad]);
+  };
   if ((def.rocks || []).some((r) => r.material === 'coral')) out.push(['Coral reefs', true]);
-  else if ((def.rocks || []).length) out.push(['Rocks', true]);
+  once(ROCK_NAMES, (def.rocks || []).filter((r) => r.material !== 'coral'), 'material', 'Rocks', true);
   if ((def.currents || []).length) out.push(['Currents', false]);
   if ((def.whirlpools || []).length) out.push(['Whirlpools', true]);
   if ((def.calms || []).length) out.push(['Calm patches', false]);
   if ((def.storms || []).length) out.push(['Squalls', true]);
-  if ((def.krakens || []).length) out.push(['Kraken', true]);
-  if ((def.floes || []).length) out.push(['Drifting ice', true]);
+  once(LAIR_NAMES, def.krakens, 'look', 'Kraken', true);
+  once(DRIFT_NAMES, def.floes, 'look', 'Drifting ice', true);
+  if ((def.pirates || []).length) out.push(['Pirates', true]);
   const w = def.weather || {};
   if (w.fog) out.push(['Fog', false]);
   if (w.night) out.push(['Night', false]);
   if (w.lightning) out.push(['Lightning', false]);
   if (w.snow) out.push(['Snow', false]);
+  if (w.ash) out.push(['Ash', false]);
   if ((def.wind.events || []).length) out.push(['Wind shifts', false]);
   return out;
 }
@@ -387,7 +399,10 @@ export function createUI(root, levels, handlers) {
   };
 
   // A voyage is referred to by its campaign index or as 'daily'.
-  const defOf = (ref) => (ref === 'daily' ? handlers.daily() : levels[ref]);
+  const defOf = (ref) => (ref === 'daily' ? handlers.daily() : voyageDef(levels[ref].id) || levels[ref]);
+  const worldAt = (i) => (levels[i] && levels[i].world) || 'home';
+  // The world the Voyages screen shows: the last one looked at or sailed in.
+  let worldTab = null;
   const recordOf = (save, def) => (def.daily ? save.daily : save.levels)[def.id];
 
   // Charting today's course can take a moment on a slow phone, so the button
@@ -413,10 +428,10 @@ export function createUI(root, levels, handlers) {
     });
   }
 
-  // Unlock a boat with diamonds, after asking. `after` redraws the screen.
+  // Unlock a boat with black pearls, after asking. `after` redraws the screen.
   function unlockBoat(save, id, after) {
     const t = BOAT_TYPES[id];
-    const price = { diamonds: BOAT_PRICES[id] };
+    const price = { blackPearls: BOAT_PRICES[id] };
     if (!canAfford(save, price)) {
       ui.toast(needMore(save, price));
       return;
@@ -544,13 +559,13 @@ export function createUI(root, levels, handlers) {
             ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">Open Sea</button>` : ''}
             ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">Regatta</button>` : ''}
             <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
-            <button class="btn small ${save.wallet.diamonds && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">Shop</button>
+            <button class="btn small ${save.wallet.blackPearls && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">Shop</button>
             <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">Prologue</button>
             <button class="btn small" data-act="settings">Settings</button>
           </div>
-          <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>Voyage ${resume + 1} of ${levels.length}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
+          <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>${esc(voyageLabel(levels[resume].id) || `Voyage ${resume + 1}`)}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
         </div>
       </section>`);
       click(node, '[data-act=play]', () => ui.begin(save));
@@ -609,19 +624,24 @@ export function createUI(root, levels, handlers) {
     },
 
     voyages(save, push = false) {
-      const cards = levels
-        .map((l, i) => {
-          const rec = save.levels[l.id];
-          const open = isUnlocked(save, levels, i);
-          const isNext = open && (!rec || rec.best === null);
-          return `<button class="voyage ${open ? '' : 'locked'} ${isNext ? 'next' : ''}" data-i="${i}" ${open ? '' : 'aria-disabled="true"'}>
-            <span class="num">${String(i + 1).padStart(2, '0')}</span>
+      const tab = WORLDS.some((w) => w.id === worldTab) ? worldTab : worldAt(resumeIndex(save));
+      const card = (l, i) => {
+        const rec = save.levels[l.id];
+        const open = isUnlocked(save, levels, i);
+        const isNext = open && (!rec || rec.best === null);
+        return `<button class="voyage ${open ? '' : 'locked'} ${isNext ? 'next' : ''}" data-i="${i}" ${open ? '' : 'aria-disabled="true"'}>
+            <span class="num">${String((l.index ?? i) + 1).padStart(2, '0')}</span>
             <span class="name">${esc(l.name)}</span>
             <span class="stars">${stars(rec ? rec.stars : 0)}</span>
-            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ${icon('pearl', 13)}${rec.pearls}/${rec.pearlsTotal ?? '?'}${save.wallet.found[l.id] ? ` · ${icon('diamond', 13)}` : ''}` : `<em class="teaser">${esc(l.teaser)}</em>`}</span>
+            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ${icon('pearl', 13)}${rec.pearls}/${rec.pearlsTotal ?? '?'}${save.wallet.found[l.id] ? ` · ${icon('blackPearl', 13)}` : ''}` : `<em class="teaser">${esc(l.teaser)}</em>`}</span>
           </button>`;
-        })
-        .join('');
+      };
+      // Each world's voyages, in campaign order, with its first one's index.
+      const worlds = WORLDS.map((w) => {
+        const at = levels.map((l, i) => i).filter((i) => worldAt(i) === w.id);
+        const have = at.reduce((a, i) => a + ((save.levels[levels[i].id] || {}).stars || 0), 0);
+        return { w, at, have, open: at.length > 0 && isUnlocked(save, levels, at[0]) };
+      }).filter((x) => x.at.length);
       const today = dateKey();
       const dailyOpen = isDailyUnlocked(save, levels);
       const dailyRec = save.daily[dailyId(today)];
@@ -654,15 +674,32 @@ export function createUI(root, levels, handlers) {
             <span class="stars">${race.wins ? `🏆 ${race.wins}` : ''}</span>
             <span class="best">${!dailyOpen ? `Finish voyage ${DAILY_UNLOCK} to unlock` : race.races ? `${FLEETS[fleetFor(race.wins)].name} fleet · ${race.races} raced` : 'Race three rival boats'}</span>
           </button>`;
+      const tabs = worlds
+        .map(({ w, at, have, open }) => `<button class="world-tab ${open ? '' : 'locked'}" role="tab" data-world="${w.id}" aria-selected="${w.id === tab}" style="--accent:${w.accent}"><b>${esc(w.name)}</b><small>${open ? `★ ${have} / ${at.length * 3}` : `🔒 ${at.length} voyages`}</small></button>`)
+        .join('');
+      const panels = worlds
+        .map(({ w, at }) => `<div class="world-panel" role="tabpanel" data-world="${w.id}" ${w.id === tab ? '' : 'hidden'}>
+            ${w.id === 'home' ? '' : `<p class="world-blurb" style="--accent:${w.accent}">${esc(w.blurb)}</p>`}
+            <div class="voyage-grid">${w.id === 'home' ? dailyCard + seaCard + raceCard : ''}${at.map((i) => card(levels[i], i)).join('')}</div>
+          </div>`)
+        .join('');
       const node = el(`<section class="screen dim" aria-label="Voyages">
         <div class="sheet">
           <div class="sheet-head"><h2>Voyages</h2><span class="eyebrow">★ ${totalStars(save)} / ${levels.length * 3}</span><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><div class="voyage-grid">${dailyCard}${seaCard}${raceCard}${cards}</div></div>
+          <div class="sheet-body"><div class="world-tabs" role="tablist" aria-label="Worlds">${tabs}</div>${panels}</div>
         </div></section>`);
+      click(node, '.world-tab', (e, b) => {
+        worldTab = b.dataset.world;
+        node.querySelectorAll('.world-tab').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+        node.querySelectorAll('.world-panel').forEach((x) => (x.hidden = x.dataset.world !== worldTab));
+        node.querySelector('.sheet-body').scrollTop = 0;
+      });
       click(node, '.voyage[data-i]', (e, b) => {
         const i = Number(b.dataset.i);
         if (!isUnlocked(save, levels, i)) {
-          ui.toast(`Finish ${levels[i - 1].name} to sail on to ${levels[i].name}.`);
+          const w = getWorld(worldAt(i));
+          if (worldAt(i - 1) !== worldAt(i)) ui.toast(`Finish ${levels[i - 1].name} to reach ${w.name}.`);
+          else ui.toast(`Finish ${levels[i - 1].name} to sail on to ${levels[i].name}.`);
           return;
         }
         ui.briefing(i, save);
@@ -700,7 +737,7 @@ export function createUI(root, levels, handlers) {
       const pearls = (def.pickups || []).filter((p) => p.kind === 'pearl').length;
       const node = el(`<section class="screen dim" aria-label="Voyage briefing">
         <div class="sheet">
-          <div class="sheet-head"><span class="eyebrow">${def.daily ? `Daily voyage · ${esc(dayLabel(def.daily))}` : `Voyage ${index + 1}`}</span><h2>${esc(def.name)}</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${def.daily ? `Daily voyage · ${esc(dayLabel(def.daily))}` : esc(voyageLabel(levels[index].id) || `Voyage ${index + 1}`)}</span><h2>${esc(def.name)}</h2></div>
           <div class="sheet-body"><div class="brief">
             <p class="lead">${esc(def.blurb)}</p>
             <div>
@@ -709,7 +746,7 @@ export function createUI(root, levels, handlers) {
                 <dt>Wind</dt><dd>${windSentence(def)}</dd>
                 <dt>Goal</dt><dd>Reach the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'} at <b style="color:var(--signal)">B</b></dd>
                 <dt>Pearls</dt><dd>${pearls}</dd>
-                ${holdsDiamond(def) ? `<dt>Diamond</dt><dd>${save.wallet.found[def.id] ? '<span style="color:var(--gem)">brought home ✓</span>' : 'One lies near the danger'}</dd>` : ''}
+                ${holdsBlackPearl(def) ? `<dt>Black pearl</dt><dd>${save.wallet.found[def.id] ? '<span style="color:var(--gem)">brought home ✓</span>' : 'One lies near the danger'}</dd>` : ''}
                 ${save.wallet.jars ? `<dt>Gust jars</dt><dd>${save.wallet.jars} from the hold</dd>` : ''}
                 ${(def.castaways || []).map((c) => `<dt>Castaway</dt><dd>${esc(c.name)} ${rec && rec.rescued ? '<span style="color:var(--ok)">rescued ✓</span>' : 'is adrift. Stop alongside'}</dd>`).join('')}
                 <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
@@ -732,13 +769,14 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=go]', () => handlers.onPlay(index));
       click(node, '[data-act=shipyard]', () => ui.shipyard(save));
       lastBriefing = index;
+      if (typeof index === 'number') worldTab = worldAt(index);
       show('briefing', node, { push: how === 'push', keep: how === 'restore' });
     },
 
     seaBriefing(save, how = 'push') {
       const rec = save.openSea;
       const medal = MEDALS.find((m) => m.id === 'far-horizon');
-      const [have, need] = medalProgress(medal, save, levels);
+      const [have, need] = medalProgress(medal, save, LEVELS);
       const node = el(`<section class="screen dim" aria-label="Open Sea briefing">
         <div class="sheet">
           <div class="sheet-head"><span class="eyebrow">Endless</span><h2>Open Sea</h2></div>
@@ -868,6 +906,8 @@ export function createUI(root, levels, handlers) {
       tipQueue = []; // the voyage is over, its tips are moot
       const def = defOf(index);
       const hasNext = !def.daily && index + 1 < levels.length;
+      // The last voyage of a world opens the next one.
+      const nextWorld = hasNext && worldAt(index + 1) !== worldAt(index) ? getWorld(worldAt(index + 1)) : null;
       const rec = recordOf(save, def);
       const streak = def.daily ? currentStreak(save, def.daily) : 0;
       const node = el(`<section class="screen dim" aria-label="Voyage complete">
@@ -893,7 +933,7 @@ export function createUI(root, levels, handlers) {
           <div class="sheet-foot">
             ${hasNext ? '<button class="btn small" data-act="voyages">Voyages</button>' : ''}
             <button class="btn small" data-act="retry">Retry</button>
-            ${hasNext ? '<button class="btn primary" data-act="next" data-autofocus>Next voyage</button>' : '<button class="btn primary" data-act="voyages" data-autofocus>Done</button>'}
+            ${hasNext ? `<button class="btn primary" data-act="next" data-autofocus>${nextWorld ? `Sail to ${esc(nextWorld.name)}` : 'Next voyage'}</button>` : '<button class="btn primary" data-act="voyages" data-autofocus>Done</button>'}
           </div>
         </div></section>`);
       click(node, '[data-act=retry]', () => handlers.onRestart());
@@ -1022,7 +1062,7 @@ export function createUI(root, levels, handlers) {
           ? '<button class="btn small" disabled>Sailing</button>'
           : open
             ? `<button class="btn small primary" data-boat="${id}">Choose</button>`
-            : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} diamonds">${priceTag({ diamonds: BOAT_PRICES[id] })} Now</button></div>`;
+            : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })} Now</button></div>`;
         return `<div class="boat-card ${open ? '' : 'locked'} ${picked ? 'picked' : ''}">
             <canvas class="boat-art" data-type="${id}" aria-hidden="true"></canvas>
             <div class="boat-head"><h3>${esc(t.name)}</h3><span class="tag">${esc(t.tag)}</span></div>
@@ -1034,7 +1074,7 @@ export function createUI(root, levels, handlers) {
       const node = el(`<section class="screen dim" aria-label="Shipyard">
         <div class="sheet wide">
           <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="locker">Sail Locker</button><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats, or unlock one now with diamonds. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
+          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats, or unlock one now with black pearls. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-boat]', (e, b) => {
         const t = BOAT_TYPES[b.dataset.boat];
@@ -1060,7 +1100,7 @@ export function createUI(root, levels, handlers) {
       const card = (kind, g) => {
         const open = isGearUnlocked(save, g);
         const medal = medalFor(g);
-        const name = medal && isSealed(medal, save, levels) ? 'A secret medal' : medal && esc(medal.name);
+        const name = medal && isSealed(medal, save, LEVELS) ? 'A secret medal' : medal && esc(medal.name);
         const sub = g.price ? (open ? 'From the Shop' : priceTag({ coins: g.price })) : !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
         const state = open ? '' : g.price ? `, ${formatCoins(g.price)} coins` : ', locked';
         return `<button class="gear ${open ? '' : g.price ? 'for-sale' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${state}">
@@ -1124,7 +1164,7 @@ export function createUI(root, levels, handlers) {
         if (!isGearUnlocked(save, g)) {
           const medal = medalFor(g);
           const what = `the ${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}`;
-          if (isSealed(medal, save, levels)) ui.toast(`A secret medal unlocks ${what}. “${medal.riddle}”`);
+          if (isSealed(medal, save, LEVELS)) ui.toast(`A secret medal unlocks ${what}. “${medal.riddle}”`);
           else ui.toast(`Earn the ${medal.name} medal for ${what}. ${medal.text}`);
           return;
         }
@@ -1255,7 +1295,7 @@ export function createUI(root, levels, handlers) {
         const earned = isEarned(save, m.id);
         const gear = rewardFor(m.id);
         const reward = gear ? `<span class="medal-reward">Sail Locker: ${esc(gear.label)}</span>` : '';
-        if (isSealed(m, save, levels)) {
+        if (isSealed(m, save, LEVELS)) {
           // A secret: only its riddle, until you reach the waters it's won in.
           sealed += 1;
           return `<div class="medal sealed">
@@ -1263,7 +1303,7 @@ export function createUI(root, levels, handlers) {
             <span class="medal-text"><b><span aria-hidden="true">???</span><span class="sr-only">Secret medal</span></b><small class="riddle">“${esc(m.riddle)}”</small>${reward}</span>
           </div>`;
         }
-        const p = earned ? null : medalProgress(m, save, levels);
+        const p = earned ? null : medalProgress(m, save, LEVELS);
         const meter =
           p && p[1] > 1
             ? `<span class="medal-meter"><i style="width:${Math.round((100 * Math.min(p[0], p[1])) / p[1])}%"></i></span><span class="medal-count">${p[0]} / ${p[1]}${m.unit ? ` ${m.unit}` : ''}</span>`
@@ -1316,8 +1356,8 @@ export function createUI(root, levels, handlers) {
       show('logbook', node, { push: true });
     },
 
-    // Diamonds (one day for money or a video), supplies for coins, boats for
-    // diamonds. Buying and videos say "Coming soon" until the store is in.
+    // Black pearls (one day for money or a video), supplies for coins, boats for
+    // black pearls. Buying and videos say "Coming soon" until the store is in.
     shop(save, restore = false) {
       const store = commerce();
       const today = dateKey();
@@ -1327,16 +1367,16 @@ export function createUI(root, levels, handlers) {
         `<div class="shop-item"><span class="shop-art">${art}</span><span class="shop-text"><b>${name}</b><small>${sub}</small></span>${button}</div>`;
       const packs = PACKS.map((p) =>
         item(
-          icon('diamond', 28),
+          icon('blackPearl', 28),
           esc(p.name),
-          `${p.diamonds + p.bonus} diamonds${p.bonus ? ` <span class="badge">+${p.bonus} FREE</span>` : ''}`,
+          `${p.blackPearls + p.bonus} black pearls${p.bonus ? ` <span class="badge">+${p.bonus} FREE</span>` : ''}`,
           `<button class="btn small" data-pack="${p.id}" ${selling ? '' : 'disabled'}>${selling ? 'Buy' : 'Coming soon'}</button>`,
         ),
       ).join('');
       const video = item(
         icon('play', 28),
         'Watch a video',
-        `One diamond · <span data-left>${videosLeft(save, REWARDS.diamond, today)}</span> left today`,
+        `One black pearl · <span data-left>${videosLeft(save, REWARDS.blackPearl, today)}</span> left today`,
         `<button class="btn small" data-video ${ads ? '' : 'disabled'}>${ads ? 'Watch' : 'Coming soon'}</button>`,
       );
       const boats = BOAT_ORDER.filter((id) => BOAT_PRICES[id] && !isBoatUnlocked(save, id));
@@ -1344,13 +1384,13 @@ export function createUI(root, levels, handlers) {
         <div class="sheet wide">
           <div class="sheet-head"><h2>Shop</h2>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
           <div class="sheet-body">
-            <h3 class="setting-group">Diamonds</h3>
-            <p class="sheet-note">Diamonds are rare. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.</p>
+            <h3 class="setting-group">Black pearls</h3>
+            <p class="sheet-note">Black pearls are rare, far rarer than the white ones. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.</p>
             <div class="shop-grid">${packs}${video}</div>
             <h3 class="setting-group">Supplies</h3>
             <div class="shop-grid">
               ${item(icon('wind', 28), 'Gust jar', `Goes aboard on your next voyage. In the hold: <b data-jars>${save.wallet.jars}</b> / ${JAR_HOLD}`, `<button class="btn small" data-buy="jar">${priceTag({ coins: JAR_PRICE })}</button>`)}
-              ${item(icon('coin', 28), 'Trade a diamond', `${formatCoins(TRADE_COINS)} coins for one diamond`, `<button class="btn small" data-buy="trade">${priceTag({ diamonds: 1 })}</button>`)}
+              ${item(icon('coin', 28), 'Trade a black pearl', `${formatCoins(TRADE_COINS)} coins for one black pearl`, `<button class="btn small" data-buy="trade">${priceTag({ blackPearls: 1 })}</button>`)}
             </div>
             <h3 class="setting-group">Boats</h3>
             <div class="shop-grid">${
@@ -1358,7 +1398,7 @@ export function createUI(root, levels, handlers) {
                 ? boats
                     .map((id) => {
                       const t = BOAT_TYPES[id];
-                      return item(`<canvas class="shop-boat" data-type="${id}" aria-hidden="true"></canvas>`, esc(t.name), `${esc(t.tag)} · or ★ ${t.unlock}`, `<button class="btn small gem-btn" data-boat="${id}" aria-label="Unlock the ${esc(t.name)} for ${BOAT_PRICES[id]} diamonds">${priceTag({ diamonds: BOAT_PRICES[id] })}</button>`);
+                      return item(`<canvas class="shop-boat" data-type="${id}" aria-hidden="true"></canvas>`, esc(t.name), `${esc(t.tag)} · or ★ ${t.unlock}`, `<button class="btn small gem-btn" data-boat="${id}" aria-label="Unlock the ${esc(t.name)} for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })}</button>`);
                     })
                     .join('')
                 : '<p class="sheet-note">Every boat in the Shipyard is yours.</p>'
@@ -1370,7 +1410,7 @@ export function createUI(root, levels, handlers) {
       const redraw = () => {
         refreshWallet(node, save);
         node.querySelector('[data-jars]').textContent = save.wallet.jars;
-        node.querySelector('[data-left]').textContent = videosLeft(save, REWARDS.diamond, today);
+        node.querySelector('[data-left]').textContent = videosLeft(save, REWARDS.blackPearl, today);
       };
       click(node, '[data-buy=jar]', () => {
         if (save.wallet.jars >= JAR_HOLD) {
@@ -1386,16 +1426,16 @@ export function createUI(root, levels, handlers) {
         redraw();
       });
       click(node, '[data-buy=trade]', () => {
-        if (!canAfford(save, { diamonds: 1 })) {
-          ui.toast(needMore(save, { diamonds: 1 }));
+        if (!canAfford(save, { blackPearls: 1 })) {
+          ui.toast(needMore(save, { blackPearls: 1 }));
           return;
         }
         ui.confirm({
-          title: 'Trade a diamond?',
-          text: `One diamond for ${formatCoins(TRADE_COINS)} coins.`,
-          ok: `Trade ${priceTag({ diamonds: 1 })}`,
+          title: 'Trade a black pearl?',
+          text: `One black pearl for ${formatCoins(TRADE_COINS)} coins.`,
+          ok: `Trade ${priceTag({ blackPearls: 1 })}`,
           onOk: () => {
-            if (!tradeDiamond(save)) return;
+            if (!tradeBlackPearl(save)) return;
             handlers.onWallet();
             redraw();
           },
@@ -1407,21 +1447,21 @@ export function createUI(root, levels, handlers) {
         const r = await buyPack(save, b.dataset.pack, () => handlers.onWallet());
         b.disabled = false;
         if (current !== 'shop') return;
-        if (r.ok && r.diamonds) ui.toast(`+${r.diamonds} diamonds. Thank you!`, 'good');
+        if (r.ok && r.blackPearls) ui.toast(`+${r.blackPearls} black pearls. Thank you!`, 'good');
         else if (r.reason && r.reason !== 'cancelled') ui.toast("The store couldn't finish that. You haven't been charged.", 'warn');
         redraw();
       });
       click(node, '[data-video]', async (e, b) => {
-        if (!videosLeft(save, REWARDS.diamond, today)) {
+        if (!videosLeft(save, REWARDS.blackPearl, today)) {
           ui.toast('That is all the videos for today. More tomorrow!');
           return;
         }
         b.disabled = true;
-        const r = await watchVideo(save, REWARDS.diamond, today);
+        const r = await watchVideo(save, REWARDS.blackPearl, today);
         b.disabled = false;
         if (r.ok) handlers.onWallet();
         if (current !== 'shop') return;
-        if (r.ok) ui.toast('+1 diamond. Thanks for watching!', 'good');
+        if (r.ok) ui.toast('+1 black pearl. Thanks for watching!', 'good');
         else if (r.reason !== 'cancelled') ui.toast('No video right now. Try again later.');
         redraw();
       });
@@ -1477,10 +1517,10 @@ export function createUI(root, levels, handlers) {
       return true;
     },
 
-    // An Open Sea run has ended: offer a second wind for diamonds (or a video).
+    // An Open Sea run has ended: offer a second wind for black pearls (or a video).
     secondWind(result, save, { onTake, onVideo, onEnd }) {
       tipQueue = [];
-      const price = { diamonds: SECOND_WIND };
+      const price = { blackPearls: SECOND_WIND };
       const store = commerce();
       const video = store.adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0;
       const node = el(`<section class="screen dim" aria-label="Second wind">

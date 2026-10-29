@@ -12,14 +12,14 @@ import {
   seaPay,
   racePay,
   payOut,
-  diamondWaiting,
+  blackPearlWaiting,
   spend,
   canAfford,
   shortOf,
   buyJar,
   jarsAboard,
   useJars,
-  tradeDiamond,
+  tradeBlackPearl,
   buyBoat,
   buyGear,
   JAR_HOLD,
@@ -30,29 +30,37 @@ import {
 import { commerce, setCommerceProvider, nativeProvider, installCommerce, creditOrder, buyPack, restoreOrders, watchVideo, videosLeft, PACKS, REWARDS } from '../web/src/platform/commerce.js';
 import { createGame, stepGame, drainEvents } from '../web/src/world/game.js';
 import { isClear } from '../web/src/world/collision.js';
-import { holdsDiamond } from '../web/src/world/diamonds.js';
+import { holdsBlackPearl } from '../web/src/world/blackpearls.js';
 import { openSeaDef, reviveRun, endRun } from '../web/src/world/opensea.js';
 import { BOAT_ORDER } from '../web/src/physics/boat.js';
 
 const total = (lines) => lines.reduce((a, l) => a + l.coins, 0);
-const rich = (coins = 0, diamonds = 0) => {
+const rich = (coins = 0, blackPearls = 0) => {
   const save = loadSave();
   save.wallet.coins = coins;
-  save.wallet.diamonds = diamonds;
+  save.wallet.blackPearls = blackPearls;
   return save;
 };
 
 test('a new save starts with an empty purse, and a broken one is mended', () => {
   assert.deepEqual(loadSave().wallet, blankWallet());
-  const w = cleanWallet({ coins: '120', diamonds: -4, jars: 9, owned: ['boat:proa', 7], orders: 'x', ads: null, found: [] });
+  const w = cleanWallet({ coins: '120', blackPearls: -4, jars: 9, owned: ['boat:proa', 7], orders: 'x', ads: null, found: [] });
   assert.equal(w.coins, 120);
-  assert.equal(w.diamonds, 0);
+  assert.equal(w.blackPearls, 0);
   assert.equal(w.jars, JAR_HOLD);
   assert.deepEqual(w.owned, ['boat:proa']);
   assert.deepEqual(w.orders, []);
   assert.deepEqual(w.found, {});
   assert.deepEqual(w.ads, { day: null, seen: {} });
   assert.deepEqual(cleanWallet(null), blankWallet());
+});
+
+test('diamonds saved before 0.22 come back as black pearls', () => {
+  const w = cleanWallet({ coins: 40, diamonds: 7, found: { 'whirlpool-strait': 1 } });
+  assert.equal(w.blackPearls, 7);
+  assert.equal(w.diamonds, undefined);
+  assert.deepEqual(w.found, { 'whirlpool-strait': 1 });
+  assert.equal(cleanWallet({ blackPearls: 3, diamonds: 9 }).blackPearls, 3);
 });
 
 test('a voyage pays for finishing, stars, pearls, rescues and medals', () => {
@@ -91,17 +99,17 @@ test('the open sea pays by distance and gates, a regatta by place', () => {
   assert.ok(seaPay({ distance: 40, gates: 0, pearls: 0 }, {}).every((l) => l.coins > 0));
 });
 
-test("a voyage's diamond is paid once; the open sea's every time", () => {
+test("a voyage's black pearl is paid once; the open sea's every time", () => {
   const save = rich();
-  assert.ok(diamondWaiting(save, 'whirlpool-strait'));
-  const a = payOut(save, [{ label: 'Voyage', coins: 10 }], { diamonds: 1, voyage: 'whirlpool-strait' });
-  assert.deepEqual([a.coins, a.diamonds], [10, 1]);
-  assert.ok(!diamondWaiting(save, 'whirlpool-strait'));
-  const b = payOut(save, [{ label: 'Voyage', coins: 10 }], { diamonds: 1, voyage: 'whirlpool-strait' });
-  assert.equal(b.diamonds, 0);
-  payOut(save, [], { diamonds: 1 });
-  payOut(save, [], { diamonds: 1 });
-  assert.equal(save.wallet.diamonds, 3);
+  assert.ok(blackPearlWaiting(save, 'whirlpool-strait'));
+  const a = payOut(save, [{ label: 'Voyage', coins: 10 }], { blackPearls: 1, voyage: 'whirlpool-strait' });
+  assert.deepEqual([a.coins, a.blackPearls], [10, 1]);
+  assert.ok(!blackPearlWaiting(save, 'whirlpool-strait'));
+  const b = payOut(save, [{ label: 'Voyage', coins: 10 }], { blackPearls: 1, voyage: 'whirlpool-strait' });
+  assert.equal(b.blackPearls, 0);
+  payOut(save, [], { blackPearls: 1 });
+  payOut(save, [], { blackPearls: 1 });
+  assert.equal(save.wallet.blackPearls, 3);
   assert.equal(save.wallet.coins, 20);
   assert.equal(save.wallet.earned, 20);
 });
@@ -109,14 +117,14 @@ test("a voyage's diamond is paid once; the open sea's every time", () => {
 test('spending takes only what the purse covers', () => {
   const save = rich(100, 2);
   assert.ok(!spend(save, { coins: 120 }));
-  assert.ok(!spend(save, { diamonds: 3 }));
+  assert.ok(!spend(save, { blackPearls: 3 }));
   assert.equal(save.wallet.coins, 100);
   assert.ok(canAfford(save, { coins: 100 }));
   assert.deepEqual(shortOf(save, { coins: 160 }), { coins: 60 });
-  assert.deepEqual(shortOf(save, { diamonds: 5 }), { diamonds: 3 });
+  assert.deepEqual(shortOf(save, { blackPearls: 5 }), { blackPearls: 3 });
   assert.ok(spend(save, { coins: 40 }));
-  assert.ok(spend(save, { diamonds: 2 }));
-  assert.deepEqual([save.wallet.coins, save.wallet.diamonds], [60, 0]);
+  assert.ok(spend(save, { blackPearls: 2 }));
+  assert.deepEqual([save.wallet.coins, save.wallet.blackPearls], [60, 0]);
 });
 
 test('gust jars wait in the hold and are only lost once used', () => {
@@ -135,14 +143,14 @@ test('gust jars wait in the hold and are only lost once used', () => {
   assert.equal(game.gustJars, 1);
 });
 
-test('a diamond trades for coins', () => {
+test('a black pearl trades for coins', () => {
   const save = rich(0, 1);
-  assert.ok(tradeDiamond(save));
-  assert.ok(!tradeDiamond(save));
-  assert.deepEqual([save.wallet.coins, save.wallet.diamonds], [TRADE_COINS, 0]);
+  assert.ok(tradeBlackPearl(save));
+  assert.ok(!tradeBlackPearl(save));
+  assert.deepEqual([save.wallet.coins, save.wallet.blackPearls], [TRADE_COINS, 0]);
 });
 
-test('diamonds unlock a boat before the stars do, and a reset keeps it', () => {
+test('black pearls unlock a boat before the stars do, and a reset keeps it', () => {
   for (const id of BOAT_ORDER.slice(1)) assert.ok(BOAT_PRICES[id] > 0, id);
   const save = rich(0, BOAT_PRICES.proa);
   assert.ok(!isBoatUnlocked(save, 'proa'));
@@ -177,8 +185,8 @@ test('with no store in the app, nothing is for sale', async () => {
   assert.ok(!commerce().adsReady());
   const save = rich();
   assert.equal((await buyPack(save, PACKS[0].id)).ok, false);
-  assert.equal((await watchVideo(save, REWARDS.diamond, '2026-10-29')).ok, false);
-  assert.equal(save.wallet.diamonds, 0);
+  assert.equal((await watchVideo(save, REWARDS.blackPearl, '2026-10-29')).ok, false);
+  assert.equal(save.wallet.blackPearls, 0);
 });
 
 test('a paid order is credited once, saved before the store hears it is done', async () => {
@@ -188,20 +196,20 @@ test('a paid order is credited once, saved before the store hears it is done', a
     purchase: async (id) => ({ ok: true, order: { id: 'GPA.1', product: id } }),
     finish: async (id) => log.push(`finish ${id}`),
     pending: async () => [
-      { id: 'GPA.1', product: 'diamonds_35' },
-      { id: 'GPA.2', product: 'diamonds_90' },
+      { id: 'GPA.1', product: 'black_pearls_35' },
+      { id: 'GPA.2', product: 'black_pearls_90' },
       { id: 'GPA.3', product: 'nonsense' },
     ],
   });
   const save = rich();
-  const r = await buyPack(save, 'diamonds_35', () => log.push('saved'));
-  assert.deepEqual(r, { ok: true, diamonds: 35 });
+  const r = await buyPack(save, 'black_pearls_35', () => log.push('saved'));
+  assert.deepEqual(r, { ok: true, blackPearls: 35 });
   assert.deepEqual(log, ['saved', 'finish GPA.1']);
-  assert.deepEqual(creditOrder(save, { id: 'GPA.1', product: 'diamonds_35' }), { ok: true, diamonds: 0, repeat: true });
+  assert.deepEqual(creditOrder(save, { id: 'GPA.1', product: 'black_pearls_35' }), { ok: true, blackPearls: 0, repeat: true });
   // On the next launch: the pack already credited isn't paid again.
   assert.equal(await restoreOrders(save, () => {}), 90);
-  assert.equal(save.wallet.diamonds, 125);
-  assert.equal(creditOrder(save, { product: 'diamonds_10' }).ok, false);
+  assert.equal(save.wallet.blackPearls, 125);
+  assert.equal(creditOrder(save, { product: 'black_pearls_10' }).ok, false);
   setCommerceProvider(null);
 });
 
@@ -210,15 +218,15 @@ test('a rewarded video pays only when watched, a few times a day', async () => {
   setCommerceProvider({ adsReady: () => true, rewarded: async () => (watched ? { ok: true } : { ok: false, reason: 'cancelled' }) });
   const save = rich();
   const day = '2026-10-29';
-  for (let i = 0; i < REWARDS.diamond.perDay; i++) assert.ok((await watchVideo(save, REWARDS.diamond, day)).ok);
-  assert.equal(videosLeft(save, REWARDS.diamond, day), 0);
-  assert.equal((await watchVideo(save, REWARDS.diamond, day)).reason, 'limit');
-  assert.equal(save.wallet.diamonds, REWARDS.diamond.perDay);
+  for (let i = 0; i < REWARDS.blackPearl.perDay; i++) assert.ok((await watchVideo(save, REWARDS.blackPearl, day)).ok);
+  assert.equal(videosLeft(save, REWARDS.blackPearl, day), 0);
+  assert.equal((await watchVideo(save, REWARDS.blackPearl, day)).reason, 'limit');
+  assert.equal(save.wallet.blackPearls, REWARDS.blackPearl.perDay);
   // A new day, and the other placement has its own count.
-  assert.equal(videosLeft(save, REWARDS.diamond, '2026-10-30'), REWARDS.diamond.perDay);
+  assert.equal(videosLeft(save, REWARDS.blackPearl, '2026-10-30'), REWARDS.blackPearl.perDay);
   watched = false;
-  assert.equal((await watchVideo(save, REWARDS.diamond, '2026-10-30')).ok, false);
-  assert.equal(videosLeft(save, REWARDS.diamond, '2026-10-30'), REWARDS.diamond.perDay);
+  assert.equal((await watchVideo(save, REWARDS.blackPearl, '2026-10-30')).ok, false);
+  assert.equal(videosLeft(save, REWARDS.blackPearl, '2026-10-30'), REWARDS.blackPearl.perDay);
   setCommerceProvider(null);
 });
 
@@ -232,53 +240,53 @@ test("the native bridge's replies come back to the right call", async () => {
     },
     request(id, method, arg) {
       calls.push([method, arg]);
-      const reply = method === 'prices' ? { ok: true, prices: { diamonds_10: '$0.99' } } : method === 'purchase' ? { ok: true, order: { id: 'GPA.9', product: arg } } : { ok: true };
+      const reply = method === 'prices' ? { ok: true, prices: { black_pearls_10: '$0.99' } } : method === 'purchase' ? { ok: true, order: { id: 'GPA.9', product: arg } } : { ok: true };
       setTimeout(() => host.BoatifyStoreReply(String(id), JSON.stringify(reply)), 1);
     },
   };
   const store = setCommerceProvider(nativeProvider(bridge, host));
   assert.ok(store.storeReady());
   assert.ok(!store.adsReady());
-  assert.deepEqual(await store.prices(), { diamonds_10: '$0.99' });
+  assert.deepEqual(await store.prices(), { black_pearls_10: '$0.99' });
   const save = rich();
-  assert.deepEqual(await buyPack(save, 'diamonds_10'), { ok: true, diamonds: 10 });
+  assert.deepEqual(await buyPack(save, 'black_pearls_10'), { ok: true, blackPearls: 10 });
   assert.deepEqual(calls.map((c) => c[0]), ['prices', 'purchase', 'finish']);
   assert.equal(calls[0][1], PACKS.map((p) => p.id).join(','));
   host.BoatifyStoreReply('77', '{}'); // a stray reply is ignored
   setCommerceProvider(null);
 });
 
-test('every voyage with a whirlpool, kraken or pirate hides a diamond in clear water near it', () => {
-  const withLairs = LEVELS.filter(holdsDiamond);
+test('every voyage with a whirlpool, kraken or pirate hides a black pearl in clear water near it', () => {
+  const withLairs = LEVELS.filter(holdsBlackPearl);
   assert.ok(withLairs.length >= 3);
   for (const def of LEVELS) {
-    const game = createGame(def, { diamond: true });
-    const gems = game.level.pickups.filter((p) => p.kind === 'diamond');
-    assert.equal(gems.length, holdsDiamond(def) ? 1 : 0, def.id);
+    const game = createGame(def, { blackPearl: true });
+    const gems = game.level.pickups.filter((p) => p.kind === 'blackPearl');
+    assert.equal(gems.length, holdsBlackPearl(def) ? 1 : 0, def.id);
     if (!gems.length) continue;
     const d = gems[0];
     assert.ok(isClear(game.level, d.x, d.y, 15), def.id);
     const lairs = [...game.level.whirlpools, ...game.level.krakens, ...(def.pirates || []).map((p) => ({ ...p, r: 300 }))];
-    assert.ok(lairs.some((l) => dist(l.x, l.y, d.x, d.y) <= l.r), `${def.id}: diamond far from danger`);
+    assert.ok(lairs.some((l) => dist(l.x, l.y, d.x, d.y) <= l.r), `${def.id}: black pearl far from danger`);
     // Always the same place, and none when it has been found.
-    const again = createGame(def, { diamond: true }).level.pickups.find((p) => p.kind === 'diamond');
+    const again = createGame(def, { blackPearl: true }).level.pickups.find((p) => p.kind === 'blackPearl');
     assert.deepEqual([again.x, again.y], [d.x, d.y]);
-    assert.ok(!createGame(def).level.pickups.some((p) => p.kind === 'diamond'));
+    assert.ok(!createGame(def).level.pickups.some((p) => p.kind === 'blackPearl'));
   }
 });
 
-test('picking up a diamond counts it in the result', () => {
-  const def = LEVELS.find(holdsDiamond);
-  const game = createGame(def, { diamond: true });
-  const gem = game.level.pickups.find((p) => p.kind === 'diamond');
+test('picking up a black pearl counts it in the result', () => {
+  const def = LEVELS.find(holdsBlackPearl);
+  const game = createGame(def, { blackPearl: true });
+  const gem = game.level.pickups.find((p) => p.kind === 'blackPearl');
   Object.assign(game.boat, { x: gem.x, y: gem.y, vx: 0, vy: 0 });
   stepGame(game, { steer: 0, trimTarget: 0.5, autoTrim: true, boost: false }, 1 / 60);
-  assert.equal(game.diamonds, 1);
-  assert.ok(drainEvents(game).some((e) => e.type === 'pickup' && e.kind === 'diamond'));
+  assert.equal(game.blackPearls, 1);
+  assert.ok(drainEvents(game).some((e) => e.type === 'pickup' && e.kind === 'blackPearl'));
 });
 
 test('a second wind puts an Open Sea run back on the water', () => {
-  const game = createGame(openSeaDef(11), { diamond: true });
+  const game = createGame(openSeaDef(11), { blackPearl: true });
   game.hull = 20;
   game.sea.clock = 0;
   endRun(game, 'time');
@@ -296,10 +304,10 @@ test('a second wind puts an Open Sea run back on the water', () => {
   assert.ok(game.sea.clock < 30);
 });
 
-test('the open sea hides at most one diamond a run, by a whirlpool', () => {
+test('the open sea hides at most one black pearl a run, by a whirlpool', () => {
   let found = 0;
   for (let seed = 1; seed <= 30; seed++) {
-    const game = createGame(openSeaDef(seed), { diamond: true });
+    const game = createGame(openSeaDef(seed), { blackPearl: true });
     const idle = { steer: 0, trimTarget: 0.5, autoTrim: true, boost: false };
     // Chart a long way ahead by carrying the boat east.
     for (let i = 0; i < 60; i++) {
@@ -307,7 +315,7 @@ test('the open sea hides at most one diamond a run, by a whirlpool', () => {
       game.sea.clock = 60;
       stepGame(game, idle, 1 / 30);
     }
-    const gems = game.level.pickups.filter((p) => p.kind === 'diamond');
+    const gems = game.level.pickups.filter((p) => p.kind === 'blackPearl');
     assert.ok(gems.length <= 1, `seed ${seed}`);
     for (const g of gems) assert.ok(game.level.whirlpools.some((w) => dist(w.x, w.y, g.x, g.y) <= w.r), `seed ${seed}`);
     found += gems.length;
@@ -317,7 +325,7 @@ test('the open sea hides at most one diamond a run, by a whirlpool', () => {
       none.sea.clock = 60;
       stepGame(none, idle, 1 / 30);
     }
-    assert.ok(!none.level.pickups.some((p) => p.kind === 'diamond'));
+    assert.ok(!none.level.pickups.some((p) => p.kind === 'blackPearl'));
   }
   assert.ok(found > 0, 'some runs should have one');
 });

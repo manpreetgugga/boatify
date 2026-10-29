@@ -5,6 +5,8 @@ import { pointInPolygon } from '../core/math.js';
 import { viewBounds } from './camera.js';
 import { C, font } from './palette.js';
 import { drawGreenery } from './islandlife.js';
+import { themeOf } from './themes.js';
+import { drawWorldShallows, drawWorldIsland, drawWorldRock, drawWorldFloe } from './worldart.js';
 
 const cache = new WeakMap();
 
@@ -46,10 +48,12 @@ function inView(v, b, pad) {
 // Pale shallows around every island, drawn first so neighbours blend.
 export function drawShallows(ctx, game, cam, time) {
   const v = viewBounds(cam, 60);
+  const theme = themeOf(game.level);
   ctx.lineJoin = 'round';
   for (const isl of game.level.islands) {
     if (!inView(v, isl.bounds, 40)) continue;
     const { path } = islandCache(isl);
+    if (drawWorldShallows(ctx, isl, path, time)) continue;
     if (isl.kind === 'ice') {
       // Ice rises from deep water: just a pale glow of the ice below.
       ctx.strokeStyle = 'rgba(150, 220, 235, 0.2)';
@@ -57,10 +61,10 @@ export function drawShallows(ctx, game, cam, time) {
       ctx.stroke(path);
       continue;
     }
-    ctx.strokeStyle = 'rgba(63, 167, 160, 0.16)';
+    ctx.strokeStyle = `rgba(${theme.shallow}, 0.16)`;
     ctx.lineWidth = 46;
     ctx.stroke(path);
-    ctx.strokeStyle = 'rgba(70, 180, 170, 0.22)';
+    ctx.strokeStyle = `rgba(${theme.shallowHi}, 0.22)`;
     ctx.lineWidth = 24;
     ctx.stroke(path);
     const lap = 0.5 + 0.5 * Math.sin(time * 1.4 + isl.seed);
@@ -70,12 +74,23 @@ export function drawShallows(ctx, game, cam, time) {
   }
   for (const r of game.level.rocks) {
     if (r.x + r.r + 20 < v.minX || r.x - r.r - 20 > v.maxX || r.y + r.r + 20 < v.minY || r.y - r.r - 20 > v.maxY) continue;
-    ctx.fillStyle = r.material === 'coral' ? 'rgba(240, 150, 130, 0.12)' : 'rgba(63, 167, 160, 0.2)';
+    const halo = ROCK_HALO[r.material] || `rgba(${theme.shallow}, 0.2)`;
+    ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(r.x, r.y, r.r + 9, 0, Math.PI * 2);
+    ctx.arc(r.x, r.y, r.r + (r.material === 'piling' || r.material === 'container' ? 4 : 9), 0, Math.PI * 2);
     ctx.fill();
   }
 }
+
+// The water around a rock, by what it is.
+const ROCK_HALO = {
+  coral: 'rgba(240, 150, 130, 0.12)',
+  basalt: 'rgba(220, 220, 214, 0.12)',
+  piling: 'rgba(4, 16, 22, 0.25)',
+  container: 'rgba(4, 16, 22, 0.25)',
+  shard: 'rgba(190, 150, 255, 0.2)',
+  pod: 'rgba(120, 240, 200, 0.2)',
+};
 
 // Ice: `lift` is how far the top stands out of the water, so tall bergs
 // show a deep blue side and flat floes barely any.
@@ -134,7 +149,7 @@ export function drawFloes(ctx, game, cam, time) {
       ctx.stroke(path);
       ctx.restore();
     }
-    ctx.strokeStyle = 'rgba(150, 220, 235, 0.18)';
+    ctx.strokeStyle = f.look === 'jelly' ? 'rgba(255, 160, 220, 0.18)' : f.look === 'ice' ? 'rgba(150, 220, 235, 0.18)' : 'rgba(232, 244, 242, 0.1)';
     ctx.lineWidth = 16;
     ctx.stroke(path);
     if (speed > 0.5) {
@@ -149,7 +164,7 @@ export function drawFloes(ctx, game, cam, time) {
     ctx.lineWidth = 2;
     ctx.stroke(path);
     ctx.save();
-    drawIce(ctx, path, decor, 0.45);
+    if (!drawWorldFloe(ctx, f, path, decor, time)) drawIce(ctx, path, decor, 0.45);
     ctx.restore();
     if (pace > 0.15) {
       const a = Math.atan2(f.vy, f.vx);
@@ -183,7 +198,9 @@ export function drawIslands(ctx, game, cam, time) {
     ctx.lineWidth = 2.4;
     ctx.stroke(path);
     ctx.save();
-    if (isl.kind === 'ice') {
+    if (drawWorldIsland(ctx, isl, path, decor, time, game)) {
+      // Drawn by its own world.
+    } else if (isl.kind === 'ice') {
       drawIce(ctx, path, decor);
     } else if (isl.kind === 'rock') {
       ctx.fillStyle = C.rockDark;
@@ -235,6 +252,7 @@ export function drawIslands(ctx, game, cam, time) {
     ctx.beginPath();
     ctx.arc(r.x, r.y, r.r + 1.6 + Math.sin(time * 2 + r.x) * 0.6, 0, Math.PI * 2);
     ctx.fill();
+    if (drawWorldRock(ctx, r, time)) continue;
     ctx.fillStyle = coral ? C.coralDark : C.rockDark;
     ctx.beginPath();
     ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
@@ -292,13 +310,13 @@ export function drawPickups(ctx, game, cam, time) {
     const bob = Math.sin(time * 2.2 + p.bob);
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.fillStyle = p.kind === 'diamond' ? `rgba(150, 236, 255, ${0.2 + 0.08 * bob})` : 'rgba(232, 244, 242, 0.13)';
+    ctx.fillStyle = p.kind === 'blackPearl' ? `rgba(205, 184, 255, ${0.22 + 0.08 * bob})` : 'rgba(232, 244, 242, 0.13)';
     ctx.beginPath();
-    ctx.arc(0, 0, (p.kind === 'diamond' ? 17 : 13) + bob * 1.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, (p.kind === 'blackPearl' ? 17 : 13) + bob * 1.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.scale(1 + bob * 0.06, 1 + bob * 0.06);
     if (p.kind === 'pearl') drawPearl(ctx, time + p.bob);
-    else if (p.kind === 'diamond') drawDiamond(ctx, time + p.bob);
+    else if (p.kind === 'blackPearl') drawBlackPearl(ctx, time + p.bob);
     else if (p.kind === 'gust') drawJar(ctx, time + p.bob);
     else if (p.kind === 'repair') drawCrate(ctx, bob);
     else drawBottle(ctx, bob);
@@ -306,58 +324,76 @@ export function drawPickups(ctx, game, cam, time) {
   }
 }
 
-// A cut gem seen from above the water, glinting.
-function drawDiamond(ctx, t) {
-  const s = 10;
-  ctx.fillStyle = 'rgba(6, 30, 40, 0.3)';
+// A black pearl in an open oyster: dark nacre round a big pearl with a
+// peacock sheen, and a glint that comes and goes.
+function drawBlackPearl(ctx, t) {
+  ctx.fillStyle = 'rgba(6, 20, 28, 0.35)';
   ctx.beginPath();
-  ctx.ellipse(1.5, 2.5, s * 0.95, s * 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(1.5, 3, 11, 7, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Crown and pavilion.
-  const top = -s * 0.75;
-  const girdle = -s * 0.2;
-  const facets = [
-    ['#e8fbff', [[-s * 0.55, top], [s * 0.55, top], [s * 0.3, girdle], [-s * 0.3, girdle]]],
-    ['#9fe9fb', [[-s * 0.55, top], [-s * 0.3, girdle], [-s, girdle]]],
-    ['#c8f4ff', [[s * 0.55, top], [s, girdle], [s * 0.3, girdle]]],
-    ['#5fcbe8', [[-s, girdle], [-s * 0.3, girdle], [0, s * 0.85]]],
-    ['#86dcf2', [[-s * 0.3, girdle], [s * 0.3, girdle], [0, s * 0.85]]],
-    ['#3fb2d6', [[s * 0.3, girdle], [s, girdle], [0, s * 0.85]]],
-  ];
-  for (const [color, pts] of facets) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.lineWidth = 0.7;
+  // The open shell: the upper valve behind, the lower one with its nacre.
+  ctx.fillStyle = '#4a4258';
   ctx.beginPath();
-  ctx.moveTo(-s, girdle);
-  ctx.lineTo(-s * 0.55, top);
-  ctx.lineTo(s * 0.55, top);
-  ctx.lineTo(s, girdle);
-  ctx.lineTo(0, s * 0.85);
+  ctx.ellipse(0, -4.5, 10, 6.5, 0, Math.PI, Math.PI * 2);
   ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(30, 24, 40, 0.7)';
+  ctx.lineWidth = 0.8;
+  for (let i = 1; i < 5; i++) {
+    const a = Math.PI + (i / 5) * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(0, -4.5);
+    ctx.lineTo(Math.cos(a) * 9.5, -4.5 + Math.sin(a) * 6);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#5b5370';
+  ctx.beginPath();
+  ctx.ellipse(0, 1.5, 10.5, 7.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const nacre = ctx.createLinearGradient(-8, -3, 8, 6);
+  nacre.addColorStop(0, '#c9d8f0');
+  nacre.addColorStop(0.5, '#e8d4f2');
+  nacre.addColorStop(1, '#b8e6de');
+  ctx.fillStyle = nacre;
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 8.5, 5.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // The pearl.
+  const g = ctx.createRadialGradient(-1.6, -1.2, 0.4, 0, 0.5, 5.2);
+  g.addColorStop(0, '#9aa6c8');
+  g.addColorStop(0.35, '#3a3552');
+  g.addColorStop(1, '#0e0c16');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0.5, 5, 0, Math.PI * 2);
+  ctx.fill();
+  const sheen = 0.5 + 0.5 * Math.sin(t * 1.7);
+  ctx.strokeStyle = `rgba(${Math.round(90 + 90 * sheen)}, ${Math.round(220 - 60 * sheen)}, 200, 0.55)`;
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.arc(0, 0.5, 3.8, 0.3, 1.9);
   ctx.stroke();
-  // A four-pointed glint that comes and goes.
-  const g = Math.max(0, Math.sin(t * 2.6));
-  if (g > 0.05) {
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.beginPath();
+  ctx.arc(-1.8, -1.4, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  // A glint now and then.
+  const g2 = Math.max(0, Math.sin(t * 2.6));
+  if (g2 > 0.2) {
     ctx.save();
-    ctx.translate(-s * 0.35, -s * 0.55);
-    ctx.rotate(t * 0.8);
-    ctx.fillStyle = `rgba(255, 255, 255, ${g})`;
-    const r = 2 + 5 * g;
+    ctx.translate(3.2, -2.4);
+    ctx.rotate(t * 0.5);
+    ctx.fillStyle = `rgba(255, 255, 255, ${(g2 * 0.9).toFixed(3)})`;
+    const r = 1.5 + 4 * g2;
     ctx.beginPath();
     ctx.moveTo(0, -r);
-    ctx.lineTo(0.9, -0.9);
+    ctx.lineTo(0.8, -0.8);
     ctx.lineTo(r, 0);
-    ctx.lineTo(0.9, 0.9);
+    ctx.lineTo(0.8, 0.8);
     ctx.lineTo(0, r);
-    ctx.lineTo(-0.9, 0.9);
+    ctx.lineTo(-0.8, 0.8);
     ctx.lineTo(-r, 0);
-    ctx.lineTo(-0.9, -0.9);
+    ctx.lineTo(-0.8, -0.8);
     ctx.closePath();
     ctx.fill();
     ctx.restore();

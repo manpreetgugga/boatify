@@ -118,3 +118,37 @@ export function prepareIsland(pts, kind = 'sand', seed = 1) {
   }
   return { pts, kind, cx, cy, radius, bounds: b, decor, seed };
 }
+
+// A straight-edged slab (a quay, a breakwater) w by h around (x, y), turned
+// by `rotate`. Each corner gets two points close by so the smoothed outline
+// keeps it square.
+export function slab(x, y, w, h, rotate = 0, corner = 7) {
+  const c = Math.cos(rotate);
+  const s = Math.sin(rotate);
+  const hw = w / 2;
+  const hh = h / 2;
+  const k = Math.min(corner, hw / 3, hh / 3);
+  const local = [
+    [-hw + k, -hh], [hw - k, -hh], [hw, -hh], [hw, -hh + k],
+    [hw, hh - k], [hw, hh], [hw - k, hh], [-hw + k, hh],
+    [-hw, hh], [-hw, hh - k], [-hw, -hh + k], [-hw, -hh],
+  ];
+  return local.map(([lx, ly]) => [x + lx * c - ly * s, y + lx * s + ly * c]);
+}
+
+// A hull outline `length` long and `beam` wide around (x, y), its bow along
+// `rotate`. Double-ended (both ends pointed), like a ferry.
+export function hull(x, y, length, beam, rotate = 0) {
+  const c = Math.cos(rotate);
+  const s = Math.sin(rotate);
+  const pts = [];
+  const n = 22;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    // A squarish ellipse: straight sides, rounded ends.
+    const lx = Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 0.55) * (length / 2);
+    const ly = Math.sign(Math.sin(a)) * Math.pow(Math.abs(Math.sin(a)), 0.3) * (beam / 2);
+    pts.push([x + lx * c - ly * s, y + lx * s + ly * c]);
+  }
+  return pts;
+}

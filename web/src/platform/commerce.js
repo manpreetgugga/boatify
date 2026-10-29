@@ -1,4 +1,4 @@
-// Buying diamonds and watching videos for them. Neither is switched on yet:
+// Buying black pearls and watching videos for them. Neither is switched on yet:
 // the game runs on the 'none' provider, which offers nothing, so the Shop
 // says "Coming soon". When the Android shell gains Google Play Billing and a
 // rewarded-video SDK it exposes them to the page as `window.BoatifyStore`
@@ -8,18 +8,18 @@
 
 import { blankWallet } from '../data/economy.js';
 
-// Diamond packs. Prices come from the store, in the player's own currency.
+// Black pearl packs. Prices come from the store, in the player's own currency.
 export const PACKS = [
-  { id: 'diamonds_10', name: 'Handful of diamonds', diamonds: 10, bonus: 0 },
-  { id: 'diamonds_35', name: 'Pouch of diamonds', diamonds: 30, bonus: 5 },
-  { id: 'diamonds_90', name: 'Chest of diamonds', diamonds: 70, bonus: 20 },
+  { id: 'black_pearls_10', name: 'Handful of black pearls', blackPearls: 10, bonus: 0 },
+  { id: 'black_pearls_35', name: 'Pouch of black pearls', blackPearls: 30, bonus: 5 },
+  { id: 'black_pearls_90', name: 'Chest of black pearls', blackPearls: 70, bonus: 20 },
 ];
 
 // Rewarded videos: where they are offered, what they give, and how many a
 // day each one allows.
 export const REWARDS = {
-  diamond: { id: 'reward_diamond', diamonds: 1, perDay: 3 },
-  secondWind: { id: 'reward_second_wind', diamonds: 0, perDay: 3 },
+  blackPearl: { id: 'reward_black_pearl', blackPearls: 1, perDay: 3 },
+  secondWind: { id: 'reward_second_wind', blackPearls: 0, perDay: 3 },
 };
 
 const REPLY_TIMEOUT = 120000; // a video or a payment sheet can take a while
@@ -111,19 +111,19 @@ export function installCommerce(host = globalThis) {
   return provider;
 }
 
-// Put a paid order's diamonds in the wallet, once.
+// Put a paid order's black pearls in the wallet, once.
 export function creditOrder(save, order) {
   const pack = order && PACKS.find((p) => p.id === order.product);
   if (!pack || !order.id) return { ok: false, reason: 'bad-order' };
   const w = save.wallet || (save.wallet = blankWallet());
-  if (w.orders.includes(order.id)) return { ok: true, diamonds: 0, repeat: true };
+  if (w.orders.includes(order.id)) return { ok: true, blackPearls: 0, repeat: true };
   w.orders.push(order.id);
-  const diamonds = pack.diamonds + pack.bonus;
-  w.diamonds += diamonds;
-  return { ok: true, diamonds };
+  const blackPearls = pack.blackPearls + pack.bonus;
+  w.blackPearls += blackPearls;
+  return { ok: true, blackPearls };
 }
 
-// Buy a pack: the store takes the payment, the wallet gets the diamonds,
+// Buy a pack: the store takes the payment, the wallet gets the black pearls,
 // `persist` writes the save, and only then is the order marked done, so a
 // crash in between leaves it to `restoreOrders` next time.
 export async function buyPack(save, packId, persist = () => {}) {
@@ -141,15 +141,15 @@ export async function buyPack(save, packId, persist = () => {}) {
 // Orders paid for but never credited (say the app was closed mid-purchase).
 export async function restoreOrders(save, persist = () => {}) {
   const orders = await provider.pending();
-  let diamonds = 0;
+  let blackPearls = 0;
   for (const order of orders) {
     const r = creditOrder(save, order);
     if (!r.ok) continue;
-    diamonds += r.diamonds;
+    blackPearls += r.blackPearls;
     persist();
     await provider.finish(order.id);
   }
-  return diamonds;
+  return blackPearls;
 }
 
 export function videosLeft(save, reward, today) {
@@ -169,6 +169,6 @@ export async function watchVideo(save, reward, today) {
     ads.seen = {};
   }
   ads.seen[reward.id] = (ads.seen[reward.id] || 0) + 1;
-  if (reward.diamonds) save.wallet.diamonds += reward.diamonds;
-  return { ok: true, diamonds: reward.diamonds };
+  if (reward.blackPearls) save.wallet.blackPearls += reward.blackPearls;
+  return { ok: true, blackPearls: reward.blackPearls };
 }

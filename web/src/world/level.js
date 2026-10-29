@@ -16,6 +16,7 @@ export function buildLevel(def) {
   const level = {
     id: def.id,
     name: def.name,
+    theme: def.theme || 'home',
     width,
     height,
     islands,
@@ -27,7 +28,7 @@ export function buildLevel(def) {
     floes: prepareFloes(def.floes),
     calms: def.calms || [],
     storms: def.storms || [],
-    krakens: (def.krakens || []).map((k) => ({ ...k, phase: 'idle', phaseTime: 0, hit: false })),
+    krakens: (def.krakens || []).map((k) => ({ look: 'kraken', ...k, phase: 'idle', phaseTime: 0, hit: false })),
     start: { x: def.start.x, y: def.start.y, heading: fromBearing(def.start.heading) },
     finish: { ...def.finish },
     weather: { rain: 0, snow: 0, fog: 0, night: false, lightning: false, dark: 0, ...(def.weather || {}) },

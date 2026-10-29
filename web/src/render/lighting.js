@@ -3,6 +3,7 @@
 
 import { worldToScreen } from './camera.js';
 import { lighthouseLamp } from './terrain.js';
+import { worldLights } from './worldart.js';
 
 const RES = 0.5;
 
@@ -80,6 +81,13 @@ export function drawLighting(ctx, light, game, cam, time, w, h) {
     if (p.taken) continue;
     const [x, y] = toS(p.x, p.y);
     hole(l, x, y, 18 * k, 0.6);
+  }
+  // Lava, harbor lamps, glowing crystal and the like.
+  for (const [x0, y0, r, strength] of worldLights(level, time)) {
+    const [x, y] = toS(x0, y0);
+    const rr = r * k;
+    if (x + rr < 0 || y + rr < 0 || x - rr > cw || y - rr > ch) continue;
+    hole(l, x, y, rr, strength);
   }
   const f = level.finish;
   const [fx, fy] = toS(f.x, f.y);

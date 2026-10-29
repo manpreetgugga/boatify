@@ -1,6 +1,8 @@
 // Drifting ice floes: slabs of ice that slide back and forth on the tide.
 // Each one is an island-like polygon plus a drift offset that follows a
-// sine over `period` seconds, so it is predictable once you watch it.
+// sine over `period` seconds, so it is predictable once you watch it. Other
+// worlds' drifters (pumice rafts, ferries, jellies) follow the same rules
+// with their own `kind` (what a bump hits) and `look`.
 
 import { prepareIsland } from './shapes.js';
 import { circlePolygon } from './collision.js';
@@ -9,7 +11,8 @@ const TAU = Math.PI * 2;
 
 export function prepareFloes(list = []) {
   return list.map((f, i) => ({
-    ...prepareIsland(f.pts, 'ice', 101 + i),
+    ...prepareIsland(f.pts, f.kind || 'ice', 101 + i),
+    look: f.look || 'ice',
     drift: f.drift,
     period: f.period,
     phase: f.phase || 0,
