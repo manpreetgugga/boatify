@@ -17,6 +17,7 @@ import { VISUAL } from './render/boat.js';
 import { hudLayout } from './render/layout.js';
 import { burst, ring, floatText } from './render/effects.js';
 import { C, setColorblind } from './render/palette.js';
+import { islandAnimals, placeIslandLife } from './render/islandlife.js';
 import { createInput } from './input/input.js';
 import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
@@ -726,6 +727,12 @@ function frame(now) {
   if (mode === 'playing' && renderer.life.colonies && renderer.life.colonies.near) {
     firstSight('penguins', 'Penguins! Sail close and they dive in for a swim.');
   }
+  const isles = renderer.life.isles;
+  if (mode === 'playing' && isles && isles.near === 'turtle') {
+    firstSight('turtles', 'Sea turtles on the beach! Sail close and they slip into the sea.');
+  } else if (mode === 'playing' && isles && isles.near === 'seal') {
+    firstSight('seals', 'Seals on the rocks! Sail close and they flop in for a swim.');
+  }
   audio.update(game, dt, mode === 'playing' || mode === 'finishing' || mode === 'film');
   requestAnimationFrame(frame);
 }
@@ -852,10 +859,37 @@ window.__boatify = {
     Object.assign(game.boat, { x: c.x + Math.cos(into) * 10, y: c.y + Math.sin(into) * 10, vx: 0, vy: 0, heading: into, yawRate: 0 });
     return c.name;
   },
+  // Heave to off the shore where an island's turtles (sand) or seals (rock)
+  // are basking, or sail past along it at `speed`. Returns where they are.
+  offIsland(kind = 'sand', off = 60, speed = 0) {
+    const which = kind === 'rock' ? 'seals' : 'turtles';
+    const isl = game && game.level.islands.find((i) => i.kind === kind && placeIslandLife(i)[which].length);
+    if (!isl) return null;
+    const { x, y, edge: e } = placeIslandLife(isl)[which][0];
+    const heading = speed ? Math.atan2(e.ty, e.tx) : game.wind.angle + Math.PI;
+    const vx = Math.cos(heading) * speed;
+    const vy = Math.sin(heading) * speed;
+    Object.assign(game.boat, { x: e.x + e.nx * off - vx * 2, y: e.y + e.ny * off - vy * 2, vx, vy, heading, yawRate: 0 });
+    return { x, y };
+  },
   // What the skipper is up to on deck.
   skipper() {
     const s = renderer.skipper;
     return { doing: s.doing, goal: s.goal, walking: s.path.length > 0, cheer: s.cheer > 0, fish: s.fish > 0 };
+  },
+  // Animals on the islands near the boat, and how many are in the water.
+  islandLife() {
+    const all = islandAnimals(renderer.life, game);
+    const wet = (list) => list.filter((a) => a.state !== 'rest').length;
+    return {
+      crabs: all.crabs.length,
+      turtles: all.turtles.length,
+      seals: all.seals.length,
+      goats: all.goats.length,
+      parrots: all.parrots.length,
+      swimming: wet(all.turtles) + wet(all.seals),
+      flying: all.parrots.filter((p) => p.state === 'fly').length,
+    };
   },
   // Penguins on the ice: how many, and how many have gone for a swim.
   penguins() {

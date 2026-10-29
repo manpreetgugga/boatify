@@ -18,7 +18,7 @@ const SIZE = 2; // drawn large, so they read on a phone
 
 // Where an ice shelf's or berg's edge meets the water, `along` units round
 // from its first point: the point, and the way out to sea.
-function edgeAt(pts, along) {
+export function edgeAt(pts, along) {
   for (let i = 0; i < pts.length; i++) {
     const [ax, ay] = pts[i];
     const [bx, by] = pts[(i + 1) % pts.length];
@@ -38,7 +38,7 @@ function edgeAt(pts, along) {
   return null;
 }
 
-function perimeter(pts) {
+export function perimeter(pts) {
   let p = 0;
   for (let i = 0; i < pts.length; i++) {
     const [ax, ay] = pts[i];

@@ -4,6 +4,7 @@
 import { pointInPolygon } from '../core/math.js';
 import { viewBounds } from './camera.js';
 import { C, font } from './palette.js';
+import { drawGreenery } from './islandlife.js';
 
 const cache = new WeakMap();
 
@@ -206,10 +207,12 @@ export function drawIslands(ctx, game, cam, time) {
         ctx.ellipse(d.x, d.y, r, r * 0.8, d.r, 0, Math.PI * 2);
         ctx.fill();
       }
+      drawGreenery(ctx, isl, 'plants');
     } else {
       ctx.fillStyle = C.grass;
       ctx.fill(path);
       ctx.clip(path);
+      drawGreenery(ctx, isl, 'ground');
       ctx.strokeStyle = C.sand;
       ctx.lineWidth = 22;
       ctx.stroke(path);
@@ -218,6 +221,8 @@ export function drawIslands(ctx, game, cam, time) {
       ctx.globalAlpha = 0.5;
       ctx.stroke(path);
       ctx.globalAlpha = 1;
+      drawGreenery(ctx, isl, 'beach');
+      drawGreenery(ctx, isl, 'plants');
       for (const d of decor) drawPalm(ctx, d, time);
     }
     ctx.restore();

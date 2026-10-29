@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.19.0] - 2026-10-29
+
+A skipper on deck, and islands full of life.
+
+- **Your skipper.** A sailor in a yellow jacket and red hat now sails with you. He sits at the tiller while you steer, with his hand on it as it swings. Leave the helm alone for a few seconds and he wanders up the deck, round the mast: to the bow to shade his eyes and look out, to the mast to haul on a halyard, or to lean on the rail. When you're going slowly he fishes over the stern, and now and then he lands one and holds it up. Steer and he runs back to the tiller. Heel her over and he sits out on the high side, and when you tack he ducks under the boom and crosses over. He cheers every pearl and every castaway you pick up, cheers at the bow when you reach the harbor, and if she capsizes he's in the water beside her until she's back up. The rival boats in a regatta and the boat in the Shipyard have a helmsman too.
+- **Green islands.** The sandy islands now have patches of light and dark grass, tufts, meadows of white, yellow, pink and violet wild flowers, bushes (some in flower) and broadleaf trees. Their beaches have shells, pebbles, starfish, driftwood and marram grass where the sand meets the green. The rocky islands have moss, lichen, scrub and cushions of pink sea thrift.
+- **Island animals.** Crabs scuttle sideways along the shore, busier when you sail close. Goats graze inland in little herds, with kids skipping after their mothers, and lift their heads to watch you go by. Parrots (scarlet, green and blue) perch in the palms and fly between them, and take off when you come close. Gulls stand about on the rocks.
+- **Turtles and seals.** Sea turtles doze on the beaches and seals bask in groups on the rocks. Sail close and fast and they slip into the sea and swim about (the turtles dive and come up for air), staying out while you're near and hauling themselves out again once you've gone. The first time you see them a tip says so.
+
 ## [0.18.0] - 2026-10-29
 
 Steer with your thumb, a clearer screen, and penguins.

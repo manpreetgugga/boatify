@@ -1,5 +1,5 @@
-// Draws a frame: sea, flows, shallows, wake, islands, marks, pickups,
-// castaways, sea life, pirates, the regatta fleet and its dirty air, boat,
+// Draws a frame: sea, flows, shallows, wake, islands and the life on them,
+// marks, pickups, castaways, sea life, pirates, the regatta fleet and its dirty air, boat,
 // birds, cannonballs and spray, weather and lighting, then the HUD on top.
 // The prologue film swaps in its own camera and draws its marks over the sea.
 
@@ -23,6 +23,7 @@ import {
 import { createLifeFx, updateLifeFx, drawSeaBelow, drawSeaLife, drawSkyLife } from './wildlife.js';
 import { updateColonies, drawColonies, drawColonyGulls } from './penguins.js';
 import { createSkipper, updateSkipper } from './skipper.js';
+import { updateIslandLife, drawIslandLife } from './islandlife.js';
 import { drawPirates, drawCannonballs } from './pirates.js';
 import { drawCastaways, shirtOf, skinOf } from './castaways.js';
 import { createLighting, drawLighting } from './lighting.js';
@@ -92,6 +93,7 @@ export function renderFrame(r, game, dt, time, ui) {
   updateParticles(r.fx, dt);
   updateLifeFx(r.life, game, dt);
   updateColonies(r.life, game, dt);
+  updateIslandLife(r.life, game, dt);
   updateSkipper(r.skipper, game, dt);
   updateFleetFx(r.fleet, game);
 
@@ -117,6 +119,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
   drawFloes(ctx, game, cam, time);
+  drawIslandLife(ctx, r.life, game, cam, time);
   drawColonies(ctx, r.life, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
