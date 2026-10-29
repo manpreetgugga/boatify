@@ -112,14 +112,18 @@ list). Answers for this game:
     compliance**.
   - **Approximate location** (from the IP address): collected and shared, for
     the same purposes.
-  - **App interactions**, **Crash logs** and **Diagnostics**: collected and
-    shared, for **Analytics**, **Advertising or marketing** and **Fraud
-    prevention**.
-  - None of it is processed only on the device, and collection isn't
-    optional (consent is asked separately, where the law needs it).
+  - **App interactions** and **Diagnostics**: collected and shared, for the
+    same purposes.
+  - Not processed ephemerally, and collection is required (consent is asked
+    separately, where the law needs it). No accounts, no outside logins.
   Google keeps its current list at
-  <https://developers.google.com/admob/android/privacy/play-data-disclosure>.
-- **Advertising ID:** Yes, for **Advertising or marketing**.
+  <https://developers.google.com/admob/android/privacy/play-data-disclosure>
+  (for SDK 25.5.0: IP address, app interactions, diagnostics, device IDs).
+- **Advertising ID:** Yes, for **Analytics**, **Advertising or marketing**
+  and **Fraud prevention, security, and compliance**.
+- **Health apps:** the app has no health features.
+- **Closed testing:** the Google Group `testers-community@googlegroups.com`
+  (as for the other MSG Studios apps), all countries.
 - **Government, financial, health and news apps:** No / none.
 
 ## 7. Store listing
