@@ -171,13 +171,13 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   step(`${race[2]} in ${race[1].time.toFixed(1)} s, ${race[1].bumps} bumps`);
   await snap('09e-race-results');
 
-  step('shipyard: four boats, the sloop is sailing');
+  step('shipyard: five boats, the sloop is sailing');
   await tab.evaluate(() => window.__boatify.showTitle());
   await tab.getByRole('button', { name: 'Shipyard' }).click();
   await tab.waitForSelector('section[aria-label="Shipyard"].open');
   const cards = await tab.locator('.boat-card').count();
   const picked = await tab.locator('.boat-card.picked h3').textContent();
-  if (cards !== 4 || picked !== 'Driftwood Sloop') throw new Error(`shipyard shows ${cards} boats, picked ${picked}`);
+  if (cards !== 5 || picked !== 'Driftwood Sloop') throw new Error(`shipyard shows ${cards} boats, picked ${picked}`);
   await tab.waitForTimeout(300);
   await snap('10-shipyard');
 

@@ -79,6 +79,20 @@ function addHull(p, L, B, dy = 0) {
   return p;
 }
 
+// A ship's hull: a full bow and a square stern.
+function addShipHull(p, L, B) {
+  p.moveTo(L * 0.5, 0);
+  p.bezierCurveTo(L * 0.42, -B * 0.42, L * 0.2, -B * 0.52, -L * 0.05, -B * 0.52);
+  p.lineTo(-L * 0.4, -B * 0.48);
+  p.quadraticCurveTo(-L * 0.5, -B * 0.46, -L * 0.5, -B * 0.3);
+  p.lineTo(-L * 0.5, B * 0.3);
+  p.quadraticCurveTo(-L * 0.5, B * 0.46, -L * 0.4, B * 0.48);
+  p.lineTo(-L * 0.05, B * 0.52);
+  p.bezierCurveTo(L * 0.2, B * 0.52, L * 0.42, B * 0.42, L * 0.5, 0);
+  p.closePath();
+  return p;
+}
+
 // Hull outline and deck for a boat type; a twin-hulled boat gets two slim
 // hulls a beam apart.
 const hulls = new Map();
@@ -87,7 +101,9 @@ function hullShapes(type) {
   if (!h) {
     const L = type.length * VISUAL;
     const B = type.beam * VISUAL;
-    if (type.twin) {
+    if (type.rig === 'square') {
+      h = { path: addShipHull(new Path2D(), L, B), deck: addShipHull(new Path2D(), L * 0.9, B * 0.8), off: 0 };
+    } else if (type.twin) {
       const off = B * 0.36;
       const path = addHull(addHull(new Path2D(), L, B * 0.28, -off), L, B * 0.28, off);
       const deck = addHull(addHull(new Path2D(), L * 0.8, B * 0.16, -off), L * 0.8, B * 0.16, off);
@@ -325,7 +341,9 @@ export function drawBoat(ctx, boat, time, state = {}) {
   ctx.stroke(hull.path);
   ctx.fillStyle = look.deck;
   ctx.fill(hull.deck);
-  if (!type.twin) {
+  if (type.rig === 'square') {
+    drawShipDeck(ctx, L, B, look, boat);
+  } else if (!type.twin) {
     ctx.strokeStyle = 'rgba(94, 59, 37, 0.5)';
     ctx.lineWidth = 0.5;
     for (let i = -2; i <= 2; i++) {
@@ -342,7 +360,7 @@ export function drawBoat(ctx, boat, time, state = {}) {
     ctx.arc(-L * 0.12, -B * 0.42, 0.7, 0, Math.PI * 2);
     ctx.fill();
   }
-  if (!type.twin && state.skipper) {
+  if (!type.twin && !type.rig && state.skipper) {
     // The tiller, swinging opposite the rudder blade.
     const a = boat.rudder * 0.6;
     ctx.strokeStyle = '#4a3220';
@@ -400,6 +418,12 @@ export function drawBoat(ctx, boat, time, state = {}) {
       ctx.globalAlpha /= 0.75;
       drawSkipper(ctx, state.skipper, g, boat, time, true);
     }
+    ctx.restore();
+    return;
+  }
+
+  if (type.rig === 'square') {
+    drawSquareRig(ctx, boat, L, B, look, time, state);
     ctx.restore();
     return;
   }
@@ -546,6 +570,182 @@ export function drawBoat(ctx, boat, time, state = {}) {
     }
   }
   ctx.restore();
+}
+
+// A ship's deck: planking, gun ports in the bulwarks, the raised quarterdeck
+// aft with the wheel, a forecastle and the bowsprit.
+function drawShipDeck(ctx, L, B, look, boat) {
+  ctx.strokeStyle = 'rgba(94, 59, 37, 0.45)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  for (let i = -3; i <= 3; i++) {
+    ctx.moveTo(-L * 0.44, i * B * 0.1);
+    ctx.lineTo(L * 0.36 - Math.abs(i) * L * 0.03, i * B * 0.1);
+  }
+  ctx.stroke();
+  // Gun ports, five a side.
+  ctx.fillStyle = '#140b06';
+  for (let i = 0; i < 5; i++) {
+    const gx = -L * 0.26 + i * L * 0.12;
+    for (const sy of [-1, 1]) ctx.fillRect(gx - 1.1, sy * B * 0.455 - 0.75, 2.2, 1.5);
+  }
+  // Quarterdeck: a step up, with a rail round it.
+  const qx = -L * 0.47;
+  const qw = L * 0.21;
+  ctx.fillStyle = look.hullDark;
+  ctx.fillRect(qx - 0.4, -B * 0.4 - 0.4, qw + 0.8, B * 0.8 + 0.8);
+  ctx.fillStyle = look.deck;
+  ctx.fillRect(qx, -B * 0.4, qw, B * 0.8);
+  ctx.strokeStyle = 'rgba(94, 59, 37, 0.45)';
+  ctx.beginPath();
+  for (let i = -1; i <= 1; i++) {
+    ctx.moveTo(qx, i * B * 0.16);
+    ctx.lineTo(qx + qw, i * B * 0.16);
+  }
+  ctx.stroke();
+  if (look.trim) {
+    ctx.strokeStyle = look.trim;
+    ctx.lineWidth = 0.7;
+    ctx.strokeRect(qx + 0.6, -B * 0.4 + 0.6, qw - 1.2, B * 0.8 - 1.2);
+  }
+  // The wheel, turning with the rudder.
+  ctx.save();
+  ctx.translate(-L * 0.3, 0);
+  ctx.rotate(boat.rudder * 2);
+  ctx.strokeStyle = '#3a2416';
+  ctx.lineWidth = 0.55;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 0.6, 1.9, 0, 0, Math.PI * 2);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI;
+    ctx.moveTo(Math.cos(a) * 0.8, Math.sin(a) * 2.5);
+    ctx.lineTo(-Math.cos(a) * 0.8, -Math.sin(a) * 2.5);
+  }
+  ctx.stroke();
+  ctx.restore();
+  // Stern lanterns.
+  ctx.fillStyle = '#ffd36b';
+  for (const sy of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(-L * 0.485, sy * B * 0.32, 0.75, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Forecastle and bowsprit.
+  ctx.fillStyle = look.hullDark;
+  ctx.beginPath();
+  ctx.moveTo(L * 0.44, 0);
+  ctx.quadraticCurveTo(L * 0.36, -B * 0.34, L * 0.3, -B * 0.34);
+  ctx.lineTo(L * 0.3, B * 0.34);
+  ctx.quadraticCurveTo(L * 0.36, B * 0.34, L * 0.44, 0);
+  ctx.fill();
+  ctx.strokeStyle = look.hullDark;
+  ctx.lineWidth = 1.3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(L * 0.46, 0);
+  ctx.lineTo(L * 0.7, 0);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+// Three masts of square sails. The yards are braced round with the trim:
+// square across the ship running downwind, sharp up toward the bow on the
+// wind, with the leeward yardarm aft. The cloth bellies forward as it fills.
+const MASTS = [
+  [0.3, 1.45],
+  [0.06, 1.7],
+  [-0.2, 1.3],
+];
+function drawSquareRig(ctx, boat, L, B, look, time, state) {
+  const boom = boat.boom;
+  const brace = clamp((Math.PI / 2 - Math.abs(boom)) * 0.62, 0, 0.78) * (Math.sign(boom) || 1);
+  const drive = Math.min(1, Math.max(0, boat.drive) / 6);
+  const flutter = boat.luffing ? Math.sin(time * 34) * 1.6 : 0;
+  const depth = boat.luffing ? 1.2 : 2.2 + drive * 3.6;
+  const sheX = 4 + Math.abs(Math.sin(boat.heel)) * 4;
+  const sheY = 7;
+  const c = Math.cos(boat.heading);
+  const s = Math.sin(boat.heading);
+  for (const [u, span] of MASTS) {
+    const half = (B * span) / 2;
+    const cloth = new Path2D();
+    cloth.moveTo(0, -half);
+    cloth.quadraticCurveTo(depth * 2 + flutter, 0, 0, half);
+    cloth.quadraticCurveTo(depth * 0.5 - flutter * 0.5, 0, 0, -half);
+    ctx.save();
+    ctx.translate(u * L, 0);
+    ctx.rotate(brace);
+    // The shadow falls on the water down and to the right, like the boats'.
+    ctx.save();
+    ctx.rotate(-brace - boat.heading);
+    ctx.translate(sheX, sheY);
+    ctx.rotate(boat.heading + brace);
+    ctx.fillStyle = 'rgba(0, 10, 18, 0.2)';
+    ctx.fill(cloth);
+    ctx.restore();
+    ctx.fillStyle = boat.luffing ? look.sailShade : look.sail;
+    ctx.fill(cloth);
+    ctx.strokeStyle = look.sailShade;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(depth * 0.45, -half * 0.62);
+    ctx.quadraticCurveTo(depth * 1.3, 0, depth * 0.45, half * 0.62);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(60, 50, 38, 0.7)';
+    ctx.lineWidth = 0.6;
+    ctx.stroke(cloth);
+    if (look.trim && u > 0 && u < 0.2) {
+      // A painted cross on the main course.
+      ctx.strokeStyle = look.trim;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(depth * 0.9, -half * 0.28);
+      ctx.lineTo(depth * 0.9, half * 0.28);
+      ctx.moveTo(depth * 0.55, 0);
+      ctx.lineTo(depth * 1.25, 0);
+      ctx.stroke();
+    }
+    // The yard, and the mast seen end on.
+    ctx.strokeStyle = '#3a2416';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -half - 0.6);
+    ctx.lineTo(0, half + 0.6);
+    ctx.stroke();
+    ctx.fillStyle = '#3a2416';
+    ctx.beginPath();
+    ctx.arc(0, 0, 1.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  // A long pennant from the main truck streams with the apparent wind.
+  if (state.pennant) {
+    const [awx, awy] = state.pennant;
+    const lx = awx * c + awy * s;
+    const ly = -awx * s + awy * c;
+    const l = Math.hypot(lx, ly) || 1;
+    const px = (lx / l) * 9;
+    const py = (ly / l) * 9;
+    const wv = Math.sin(time * 16) * 1;
+    const mx = MASTS[1][0] * L;
+    ctx.fillStyle = C.signal;
+    ctx.beginPath();
+    ctx.moveTo(mx, -0.9);
+    ctx.lineTo(mx + px - py * 0.1 + wv * (ly / l), py + px * 0.1 - wv * (lx / l));
+    ctx.lineTo(mx, 0.9);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (boat.boostTime > 0) {
+    ctx.strokeStyle = `rgba(160, 235, 255, ${(0.4 + 0.4 * Math.sin(time * 20)).toFixed(3)})`;
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 3; i++) {
+      const off = ((time * 30 + i * 7) % 22) + 6;
+      ctx.beginPath();
+      ctx.arc(-L * 0.2 - off, 0, 4 + off * 0.35, -1, 1);
+      ctx.stroke();
+    }
+  }
 }
 
 // The best run's boat: a pale outline with a sail, no physics.

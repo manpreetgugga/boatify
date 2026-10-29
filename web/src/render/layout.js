@@ -32,7 +32,8 @@ export function hudLayout(w, h, insets = {}, settings = {}) {
   };
   const pause = { x: l + pad, y: t + pad, w: 44, h: 44 };
   const timer = { x: l + pad + 56, y: t + pad };
-  return { w, h, pad, compact, panel, minimap, gust, helm, sheet, pause, timer, lefty, insets: { l, r, t, b } };
+  const zoom = { x: timer.x + (compact ? 150 : 176) + 8, y: t + pad, w: 44, h: 44 };
+  return { w, h, pad, compact, panel, minimap, gust, helm, sheet, pause, timer, zoom, lefty, insets: { l, r, t, b } };
 }
 
 export function inCircle(px, py, c, extra = 0) {

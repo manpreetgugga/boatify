@@ -3,7 +3,8 @@
 // Touch: put a thumb down anywhere and slide it sideways to steer (a ring
 // appears under the thumb, so where it lands never turns the boat), tap the
 // gust button to uncork a gust jar, and when trimming by hand steer on the
-// helm side and drag on the other side to sheet in and out.
+// helm side and drag on the other side to sheet in and out. The zoom button
+// (or + / - and the mouse wheel) brings the view closer or pulls it back.
 
 import { clamp, approach } from '../core/math.js';
 import { inCircle, inRect } from '../render/layout.js';
@@ -15,7 +16,7 @@ const KEYS = {
   sheetOut: ['ArrowDown', 'KeyS'],
 };
 
-export function createInput(target, { getLayout, getSettings, onPause, onRestart, onMute, onToggleTrim }) {
+export function createInput(target, { getLayout, getSettings, onPause, onRestart, onMute, onToggleTrim, onZoom }) {
   const keys = new Set();
   const pointers = new Map();
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
@@ -55,6 +56,10 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
       onMute();
     } else if (e.code === 'KeyT') {
       onToggleTrim();
+    } else if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+      onZoom(1);
+    } else if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+      onZoom(-1);
     }
     if (e.code.startsWith('Arrow')) e.preventDefault();
   }
@@ -77,6 +82,10 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
     let role = null;
     if (inRect(x, y, L.pause, 8)) {
       onPause();
+      return;
+    }
+    if (inRect(x, y, L.zoom, 6)) {
+      onZoom(0);
       return;
     }
     if (state.controls.touch && inCircle(x, y, L.gust, 10)) {
@@ -155,6 +164,20 @@ export function createInput(target, { getLayout, getSettings, onPause, onRestart
   target.addEventListener('pointerup', onPointerUp);
   target.addEventListener('pointercancel', onPointerUp);
   target.addEventListener('contextmenu', (e) => e.preventDefault());
+  // A mouse wheel zooms a step at a time.
+  let wheelAt = 0;
+  target.addEventListener(
+    'wheel',
+    (e) => {
+      if (!state.enabled) return;
+      e.preventDefault();
+      const now = performance.now();
+      if (now - wheelAt < 180 || !e.deltaY) return;
+      wheelAt = now;
+      onZoom(e.deltaY < 0 ? 1 : -1);
+    },
+    { passive: false },
+  );
 
   const any = (list) => list.some((k) => keys.has(k));
 

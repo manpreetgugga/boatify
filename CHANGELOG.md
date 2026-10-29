@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.20.0] - 2026-10-29
+
+A ship as big as the pirates', and a closer look.
+
+- **The Grand Galleon.** A fifth boat in the Shipyard, unlocked at 24 stars. She's as long as the pirate brig, with three masts of square sail, a quarterdeck with a ship's wheel, gun ports along both sides, stern lanterns and a long bowsprit. She's heavy: slow to get going, slow to turn and slow to stop, so she carries her way through lulls and calms. She's the toughest boat in the yard, so rocks and cannonballs hurt her far less, and she's nearly impossible to tip over. She doesn't point as high as the small boats. Her yards swing round to the wind as you trim, and the sails fill and flap like the others.
+- **Zoom.** A magnifier button at the top of the screen, next to the timer, steps the view through Far, Normal, Close and Closer, with dots showing which one you're on. The same setting is in Settings under "View". On a keyboard, + and - zoom in and out, and so does the mouse wheel.
+- **Sails on the right side.** Every boat drew its sail on the side the wind comes from. Sails now swing away from the wind, the way real ones do, and the skipper hikes out on the correct side.
+- **Shipyard** shows the bigger boat scaled down to fit its card.
+
 ## [0.19.0] - 2026-10-29
 
 A skipper on deck, and islands full of life.

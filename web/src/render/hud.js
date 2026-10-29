@@ -57,6 +57,7 @@ export function drawHud(ctx, hud, game, cam, layout, controls, time, ghost = nul
   if (ghost) drawGhostInfo(ctx, game, cam, L, ghost);
   drawEscort(ctx, game, L, time, ghost && ghost.gap !== null && game.time >= 2);
   drawMinimap(ctx, hud, game, cam, L, time);
+  drawZoom(ctx, L, cam.zoom);
   drawHull(ctx, game, L);
   if (game.castaways.length) drawRescue(ctx, game, L, time);
   drawPointers(ctx, game, cam, L, time);
@@ -89,6 +90,38 @@ function drawTopLeft(ctx, game, L) {
   ctx.arc(x + w - 46, y + 30, 5, 0, Math.PI * 2);
   ctx.fill();
   text(ctx, `${game.pearls}/${game.pearlsTotal}`, x + w - 10, y + 31, 16, C.text, 'right', 700);
+}
+
+// The zoom button: a magnifier, with a dot for each step and the current one lit.
+const ZOOM_STEPS = [0.8, 1, 1.25, 1.55];
+function drawZoom(ctx, L, zoom) {
+  const z = L.zoom;
+  if (!z) return;
+  panel(ctx, z.x, z.y, z.w, z.h, 10);
+  const cx = z.x + 19;
+  const cy = z.y + 18;
+  ctx.strokeStyle = C.text;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.moveTo(cx + 6, cy + 6);
+  ctx.lineTo(cx + 12, cy + 12);
+  ctx.stroke();
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, cy);
+  ctx.lineTo(cx + 4, cy);
+  ctx.moveTo(cx, cy - 4);
+  ctx.lineTo(cx, cy + 4);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  ZOOM_STEPS.forEach((s, i) => {
+    ctx.fillStyle = Math.abs(s - zoom) < 0.01 ? C.brass : 'rgba(232, 244, 242, 0.3)';
+    ctx.beginPath();
+    ctx.arc(z.x + 9 + i * 5.5, z.y + z.h - 6, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 function drawPause(ctx, L) {

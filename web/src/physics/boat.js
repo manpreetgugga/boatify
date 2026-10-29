@@ -91,10 +91,36 @@ export const BOAT_TYPES = {
     stats: { speed: 2, pointing: 4, stability: 4, agility: 2, toughness: 5 },
     look: { hull: '#6e3a24', hullDark: '#43200f', deck: '#b57a4c', sail: '#c4492f', sailShade: '#9e3a26' },
   },
+  // As big on the water as the pirate brig. `mass` slows how fast she gathers
+  // and loses way without changing her top speed; `yawResponse` is how fast
+  // the helm takes hold (5 for the small boats).
+  galleon: {
+    id: 'galleon',
+    name: 'Grand Galleon',
+    tag: 'Huge, tough and heavy',
+    blurb: 'Three masts of square sail on a hull as big as the pirate brig. She shrugs off rocks and cannonballs and carries her way through the lulls, but she is slow to turn and slow to get going.',
+    unlock: 24,
+    length: 20,
+    beam: 7.4,
+    sailPower: 0.0505,
+    surgeDrag: 0.034,
+    surgeDragLinear: 0.055,
+    swayDrag: 6,
+    swayDragLinear: 11,
+    turnRate: 1.05,
+    yawResponse: 2.6,
+    mass: 1.9,
+    rightingMoment: 170,
+    trimSpeed: 1.0,
+    toughness: 2.6,
+    rig: 'square',
+    stats: { speed: 3, pointing: 2, stability: 5, agility: 1, toughness: 5 },
+    look: { hull: '#5a3520', hullDark: '#2f1a0e', deck: '#c49663', sail: '#f3ead6', sailShade: '#d8ccb1', trim: '#c9a13b' },
+  },
 };
 
 // Shipyard order, which is also the order they unlock in.
-export const BOAT_ORDER = ['sloop', 'skiff', 'proa', 'junk'];
+export const BOAT_ORDER = ['sloop', 'skiff', 'proa', 'junk', 'galleon'];
 
 export const CAPSIZE_ANGLE = 1.0; // radians (~57 degrees)
 export const HEEL_WARNING = 0.72; // radians (~41 degrees)
@@ -197,8 +223,9 @@ export function stepBoat(boat, input, env, dt) {
     boat.boostTime = Math.max(0, boat.boostTime - dt);
   }
 
-  boat.vx += (accU * fx + accW * sx) * dt;
-  boat.vy += (accU * fy + accW * sy) * dt;
+  const mass = t.mass || 1;
+  boat.vx += ((accU * fx + accW * sx) / mass) * dt;
+  boat.vy += ((accU * fy + accW * sy) / mass) * dt;
 
   // Rudder authority grows with water flow past the blade; at a standstill
   // you can still scull a little with the tiller.
@@ -206,7 +233,7 @@ export function stepBoat(boat, input, env, dt) {
   const flow = clamp(Math.abs(u) / 6, 0, 1);
   const authority = 0.3 + 0.7 * flow;
   const targetYaw = boat.rudder * t.turnRate * authority;
-  boat.yawRate = approach(boat.yawRate, targetYaw, 5, dt);
+  boat.yawRate = approach(boat.yawRate, targetYaw, t.yawResponse || 5, dt);
   boat.heading = wrapAngle(boat.heading + boat.yawRate * dt);
 
   // Heel follows the heeling force with some lag. Crew on the rail hold her up.
@@ -218,7 +245,7 @@ export function stepBoat(boat, input, env, dt) {
 
   boat.beta = beta;
   boat.side = side;
-  boat.boom = coef.boom * -side; // boom swings to leeward (negative = port)
+  boat.boom = coef.boom * side; // boom swings to leeward (positive = starboard)
   boat.luffing = coef.luffing && aSpeed2 > 4;
   boat.surge = u;
   boat.sway = w;

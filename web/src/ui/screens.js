@@ -10,7 +10,7 @@ import { REGATTA_BLURB, FLEETS, RIVALS, fleetFor, ordinal } from '../world/regat
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { helmsman } from '../render/skipper.js';
-import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat } from '../platform/save.js';
+import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat, ZOOMS } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
@@ -104,8 +104,9 @@ function paintBoat(canvas, type, look) {
     ctx.quadraticCurveTo(x + 9, y - 3, x + 18, y);
     ctx.stroke();
   }
-  // The sail swings out to the lower side, so the hull sits high.
-  const scale = Math.min(w / 24, h / 15);
+  // The sail swings out to the lower side, so the hull sits high. The big
+  // ships are drawn smaller so they fit the card.
+  const scale = Math.min(w / 24, h / 15) * Math.min(1, 12.5 / type.length);
   ctx.translate(w * 0.5, h * 0.36);
   ctx.scale(scale / VISUAL, scale / VISUAL);
   const boat = { type, x: 0, y: 0, vx: 0, vy: 0, heading: -0.3, heel: 0.42, boom: 0.7, drive: 4, luffing: false, rudder: 0, boostTime: 0 };
@@ -1073,6 +1074,7 @@ export function createUI(root, levels, handlers) {
             ${toggle('autoTrim', 'Trim the sail by hand', 'For experienced sailors: W / S or the right-hand slider', true)}
             ${toggle('leftHanded', 'Left-handed controls', 'Steer on the right, gust button on the left')}
             ${seg('steerSensitivity', 'Steering', 'How hard a small thumb movement turns', [[0.75, 'Gentle'], [1, 'Normal'], [1.35, 'Sharp']])}
+            ${seg('zoom', 'View', 'How close the camera sits. The magnifier button changes it while you sail', ZOOMS)}
             ${toggle('ghost', 'Race your best run', 'A pale ghost boat replays your fastest voyage')}
             ${toggle('hints', 'Dolphin hints', 'Stuck or lost? Dolphins show you which way to turn')}
             <h3 class="setting-group">Seeing and reading</h3>

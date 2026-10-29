@@ -10,6 +10,27 @@ const GHOST_KEY = 'boatify.ghosts.v1';
 const DAILY_KEY = 'boatify.daily.v1';
 const DAILY_KEEP = 30; // days of daily results to remember
 
+// How close the camera sits, from the zoom button or Settings.
+export const ZOOMS = [
+  [0.8, 'Far'],
+  [1, 'Normal'],
+  [1.25, 'Close'],
+  [1.55, 'Closer'],
+];
+
+// The next zoom step in (dir 1) or out (dir -1); tapping the button (dir 0)
+// goes in and wraps round from the closest to the farthest.
+export function nextZoom(zoom, dir = 0) {
+  const i = Math.max(0, ZOOMS.findIndex(([z]) => z === zoom));
+  if (dir) return ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + dir))][0];
+  return ZOOMS[(i + 1) % ZOOMS.length][0];
+}
+
+export function zoomName(zoom) {
+  const z = ZOOMS.find(([v]) => v === zoom);
+  return z ? z[1] : 'Normal';
+}
+
 // Campaign voyages to finish before the daily voyage opens.
 export const DAILY_UNLOCK = 3;
 
@@ -20,6 +41,7 @@ export const DEFAULT_SETTINGS = {
   autoTrim: true,
   leftHanded: false,
   steerSensitivity: 1,
+  zoom: 1, // camera: one of ZOOMS
   quality: 'high',
   ghost: true,
   hints: true, // dolphins show the way when you're stuck or lost

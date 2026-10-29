@@ -23,7 +23,7 @@ import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
-import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats } from './platform/save.js';
+import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
 
 const root = document.getElementById('boatify');
@@ -125,6 +125,13 @@ const input = createInput(canvas, {
     layout = null;
     if (game) input.reset(game.boat.trim);
     ui.toast(save.settings.autoTrim ? 'Sail trims itself' : 'Manual trim: W / S to sheet in and out');
+  },
+  onZoom: (dir) => {
+    const z = nextZoom(save.settings.zoom, dir);
+    if (z === save.settings.zoom) return;
+    save.settings.zoom = z;
+    writeSave(save);
+    ui.toast(`View: ${zoomName(z)}`);
   },
 });
 
@@ -723,6 +730,7 @@ function frame(now) {
     crew: film && SKIPPER,
     layout: getLayout(),
     controls: input.state.controls,
+    zoom: save.settings.zoom,
   });
   if (mode === 'playing' && renderer.life.colonies && renderer.life.colonies.near) {
     firstSight('penguins', 'Penguins! Sail close and they dive in for a swim.');
@@ -830,6 +838,8 @@ window.__boatify = {
   setHud(on) {
     hudOff = !on;
   },
+  // Where the controls sit, in CSS pixels.
+  layout: () => getLayout(),
   // Where the boat is drawn, in CSS pixels, to frame it.
   boatOnScreen() {
     const c = renderer.cam;

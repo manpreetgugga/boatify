@@ -87,7 +87,10 @@ export function renderFrame(r, game, dt, time, ui) {
   const { ctx, cam } = r;
   const film = ui && ui.film;
   if (film) updateFilmCamera(cam, film, dt, r.w, r.h);
-  else updateCamera(cam, game, dt, r.w, r.h);
+  else {
+    cam.zoom = (ui && ui.zoom) || 1;
+    updateCamera(cam, game, dt, r.w, r.h);
+  }
   updateWake(r.wake, game.boat, game.clock, game.status === 'sailing' || game.status === 'finished');
   updateStreaks(r.fx, game, cam, dt, Math.round((r.w * r.h) / 9000));
   updateParticles(r.fx, dt);
