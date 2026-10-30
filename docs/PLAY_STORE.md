@@ -171,7 +171,46 @@ everyone.
    characters). The version code is `major*10000 + minor*100 + patch`, so
    1.2.3 is 10203.
 3. Push. CI publishes the release with the APK and the `.aab`.
-4. In Play Console, create a release on your track and upload the `.aab`.
+4. In Play Console, create a release on your track and upload the `.aab`, or
+   let GitHub do it (below).
+
+## Let GitHub upload to Play
+
+Once the first bundle is on Play (done by hand, step 8), CI can upload each new
+version itself: to the closed testing track, with the changelog as its release
+notes, sent for Google's review. Set it up once:
+
+1. **Turn on the API.** In <https://console.cloud.google.com>, signed in with
+   your Play Console account, create a project (any name), then **APIs &
+   Services → Library**, find **Google Play Android Developer API** and
+   **Enable** it.
+2. **Make a service account.** **IAM & Admin → Service accounts → Create
+   service account**, name it e.g. `github-play`, skip the optional roles and
+   finish. Open it, **Keys → Add key → Create new key → JSON**. A `.json` file
+   downloads: it is a password, keep it safe and never commit or share it.
+3. **Let it release.** Copy the account's email (`…@….iam.gserviceaccount.com`).
+   In Play Console: **Users and permissions → Invite new users**, paste the
+   email, **App permissions → Add app → No Paddle**, tick **Release apps to
+   testing tracks** (add **Release to production…** later, when you want CI to
+   publish there too), then **Invite user**.
+4. **Give it to GitHub.** Repository **Settings → Secrets and variables →
+   Actions → New repository secret**: name `PLAY_SERVICE_ACCOUNT_JSON`, value
+   the whole contents of the `.json` file. Then delete the downloaded file, or
+   keep it only in your password manager.
+5. **Pick the track** (optional). CI uploads to `alpha`, the id of Play's
+   built-in closed testing track. For another track, add a repository
+   *variable* (the **Variables** tab) `PLAY_TRACK` with its id: `beta`,
+   `production`, or the name of a closed track you created.
+
+From then on every push to `main` with a new version uploads its bundle. To
+upload the version already released (if it isn't on Play yet): **Actions →
+Build → Run workflow** on `main`, tick **Also upload this version's bundle to
+Google Play**. Play refuses a version code it already has, so that run fails if
+the version is up there already.
+
+If the upload fails with "The caller does not have permission", check that the
+service account was invited with No Paddle in step 3; new permissions can take
+a while to apply.
 
 Store pictures come from the game itself: `npm run store-art` redraws them
 (needs Playwright).

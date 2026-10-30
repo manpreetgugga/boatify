@@ -5,6 +5,11 @@ on:
     branches: ['**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      play:
+        description: Also upload this version's bundle to Google Play
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,6 +44,9 @@ jobs:
       # The Play upload key, if the repository has all of it (see docs/PLAY_STORE.md).
       # Without all four secrets the APK still ships; only the .aab is left out.
       UPLOAD_KEY: ${{ secrets.BOATIFY_UPLOAD_KEYSTORE != '' && secrets.BOATIFY_KEYSTORE_PASSWORD != '' && secrets.BOATIFY_KEY_ALIAS != '' && secrets.BOATIFY_KEY_PASSWORD != '' }}
+      # A Play Console service account, if the repository has one: then each
+      # new version's bundle goes straight to the Play track (docs/PLAY_STORE.md).
+      PLAY_UPLOAD: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,6 +97,7 @@ jobs:
           name: no-paddle-v${{ steps.apk.outputs.version }}-android
           path: out/
       - name: Publish pre-release
+        id: release
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -102,4 +111,29 @@ jobs:
           else
             node scripts/release-notes.mjs "$VERSION" ${BUNDLE:+--bundle} > notes.md
             gh release create "$TAG" "$FILE" $BUNDLE --target "$GITHUB_SHA" --title "No Paddle $TAG" --notes-file notes.md --prerelease
+            echo "created=true" >> "$GITHUB_OUTPUT"
           fi
+      # Only from main, only with the upload-key bundle, and only for a version
+      # that is new (just released) or when asked for by hand.
+      - name: Release notes for Google Play
+        id: play
+        if: env.PLAY_UPLOAD == 'true' && github.ref == 'refs/heads/main' && steps.apk.outputs.bundle != '' && (steps.release.outputs.created == 'true' || inputs.play)
+        env:
+          VERSION: ${{ steps.apk.outputs.version }}
+        run: |
+          CODE=$(node -p "const [a, b, c] = process.env.VERSION.split('.').map(Number); a * 10000 + b * 100 + c")
+          NOTES="fastlane/metadata/android/en-US/changelogs/${CODE}.txt"
+          mkdir -p out/whatsnew
+          if [ -f "$NOTES" ]; then cp "$NOTES" out/whatsnew/whatsnew-en-US; fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Upload to Google Play
+        if: steps.play.outputs.ready == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.github.manpreetgugga.boatify
+          releaseFiles: ${{ steps.apk.outputs.bundle }}
+          releaseName: v${{ steps.apk.outputs.version }}
+          track: ${{ vars.PLAY_TRACK || 'alpha' }}
+          status: completed
+          whatsNewDirectory: out/whatsnew
