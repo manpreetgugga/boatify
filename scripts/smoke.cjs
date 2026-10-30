@@ -294,6 +294,25 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
     window.__boatify.save.settings.boat = 'sloop';
   });
 
+  step('your harbor: a jetty built with coins');
+  await tab.locator('section[aria-label="Shop"] [data-act=harbor]').click();
+  await tab.waitForSelector('section[aria-label="Your harbor"].open');
+  await tab.evaluate(() => window.__boatify.give({ coins: 200 }));
+  const docked = await tab.evaluate(() => window.__boatify.save.wallet.coins);
+  await tab.getByRole('button', { name: 'Build the lighthouse lamp' }).count().then((n) => {
+    if (n) throw new Error('the lamp is buildable before the tower');
+  });
+  await tab.getByRole('button', { name: 'Build the wooden jetty for 120 coins' }).click();
+  await tab.locator('.confirm').getByRole('button', { name: /Build/ }).click();
+  await tab.waitForFunction(() => window.__boatify.save.wallet.owned.includes('harbor:jetty'));
+  await tab.waitForSelector('section[aria-label="Your harbor"].open .eyebrow:text("1 / 14")');
+  const left = await tab.evaluate(() => window.__boatify.save.wallet.coins);
+  if (left !== docked - 120) throw new Error(`harbor jetty cost ${docked - left}`);
+  await tab.waitForTimeout(300);
+  await snap('11d-harbor');
+  await tab.locator('section[aria-label="Your harbor"]').getByRole('button', { name: 'Back' }).click();
+  await tab.waitForSelector('section[aria-label="Shop"].open');
+
   step('medals: the first voyage is on the board');
   await tab.locator('section[aria-label="Shop"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Title"].open');

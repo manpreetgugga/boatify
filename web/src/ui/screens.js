@@ -10,9 +10,11 @@ import { REGATTA_BLURB, FLEETS, RIVALS, fleetFor, ordinal } from '../world/regat
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { helmsman } from '../render/skipper.js';
+import { drawHarbor } from '../render/harbor.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat, ZOOMS } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
 import { festivalOn, festivalById, nextWeek } from '../data/festivals.js';
+import { ROWS, PIECES, HARBOR_TOTAL, ROW_PEARLS, harborBuilt, isBuilt, waitingOn, rowDone, buildPiece, nextPiece } from '../data/harbor.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
@@ -188,6 +190,29 @@ function paintBoat(canvas, type, look) {
   ctx.scale(scale / VISUAL, scale / VISUAL);
   const boat = { type, x: 0, y: 0, vx: 0, vy: 0, heading: -0.3, heel: 0.42, boom: 0.7, drive: 4, luffing: false, rudder: 0, boostTime: 0 };
   drawBoat(ctx, boat, 0, { look, skipper: helmsman(type, -1) });
+}
+
+// Your harbor in its frame, kept moving while it's on screen (painted once
+// when motion is reduced).
+function showHarbor(canvas, save, still) {
+  let last = -1;
+  const paint = (now) => {
+    if (!canvas.isConnected) return;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w && h && now - last >= 50) {
+      last = now;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (canvas.width !== Math.round(w * dpr)) canvas.width = Math.round(w * dpr);
+      if (canvas.height !== Math.round(h * dpr)) canvas.height = Math.round(h * dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawHarbor(ctx, harborBuilt(save), w, h, still ? 4 : now / 1000);
+      if (still) return;
+    }
+    requestAnimationFrame(paint);
+  };
+  requestAnimationFrame(paint);
 }
 
 // A sail hanging on the locker wall.
@@ -642,6 +667,12 @@ export function createUI(root, levels, handlers) {
       const talk = fest && dailyOpen && !isGearUnlocked(save, sail)
         ? `<p class="rumor festive"><span>${esc(fest.name)} week</span> Sail today's ${esc(fest.name)} voyage home to win the ${esc(sail.name)} sail.</p>`
         : `<p class="rumor"><span>Harbor talk</span> ${esc(pickRumor(save, levels))}</p>`;
+      // Your harbor, once the daily voyage opens; a dot when coins cover the next piece.
+      const next = dailyOpen && nextPiece(save);
+      const builtCount = harborBuilt(save).length;
+      const harbor = dailyOpen
+        ? `<button class="harbor-view ${next && save.wallet.coins >= next.price ? 'fresh' : ''}" data-act="harbor" aria-label="Your harbor, ${builtCount} of ${HARBOR_TOTAL} built"><canvas aria-hidden="true"></canvas><span class="harbor-tag">Your harbor <b>${builtCount}/${HARBOR_TOTAL}</b></span></button>`
+        : '';
       const node = el(`<section class="screen scrim title ${fest ? `festive ${fest.id}` : ''}" aria-label="Title">
         <div class="title-wrap">
           <div class="eyebrow">${fest ? `${esc(fest.name)} week` : 'A sailing voyage'}</div>
@@ -666,12 +697,14 @@ export function createUI(root, levels, handlers) {
             <button class="btn small" data-act="settings">Settings</button>
           </div>
           <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>${esc(voyageLabel(levels[resume].id) || `Voyage ${resume + 1}`)}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
+          ${harbor}
         </div>
       </section>`);
       click(node, '[data-act=play]', () => ui.begin(save));
       click(node, '[data-act=voyages]', () => ui.voyages(save, true));
       click(node, '[data-act=orders]', () => ui.orders(save));
       click(node, '[data-act=daily]', (e, b) => openDaily(save, b, b));
+      click(node, '[data-act=harbor]', () => ui.harbor(save));
       click(node, '[data-act=sea]', () => ui.seaBriefing(save));
       click(node, '[data-act=regatta]', () => ui.regattaBriefing(save));
       click(node, '[data-act=howto]', () => ui.howto(save));
@@ -682,6 +715,60 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=settings]', () => ui.settings(save));
       click(node, '[data-act=film]', () => handlers.onFilm());
       show('title', node);
+      const view = node.querySelector('.harbor-view canvas');
+      if (view) showHarbor(view, save, handlers.motionReduced());
+    },
+
+    // Your harbor: what's built, and what coins can build next.
+    harbor(save, restore = false) {
+      const built = harborBuilt(save).length;
+      const card = (p) => {
+        const done = isBuilt(save, p.id);
+        const wait = waitingOn(save, p);
+        const sub = wait.length && !done ? `Needs the ${wait.map((w) => esc(w.name.toLowerCase())).join(' and the ')} first` : esc(p.text);
+        const button = done
+          ? '<button class="btn small" disabled>Built</button>'
+          : wait.length
+            ? `<button class="btn small" disabled aria-label="Locked">${icon('lock', 14)}</button>`
+            : `<button class="btn small" data-build="${p.id}" aria-label="Build the ${esc(p.name.toLowerCase())} for ${formatCoins(p.price)} coins">${priceTag({ coins: p.price })}</button>`;
+        return `<div class="shop-item ${done ? 'built' : ''}"><span class="shop-art">${icon(ROWS.find((r) => r.id === p.row).icon, 28)}</span><span class="shop-text"><b>${esc(p.name)}</b><small>${sub}</small></span>${button}</div>`;
+      };
+      const rows = ROWS.map(
+        (r) => `<h3 class="setting-group">${esc(r.name)}${rowDone(save, r.id) ? ' · done' : ''}</h3>
+            <div class="shop-grid">${PIECES.filter((p) => p.row === r.id).map(card).join('')}</div>`,
+      ).join('');
+      const node = el(`<section class="screen dim" aria-label="Your harbor">
+        <div class="sheet wide">
+          <div class="sheet-head"><h2>Your harbor</h2><span class="eyebrow">${built} / ${HARBOR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">
+            <div class="locker-top"><canvas class="harbor-preview" aria-hidden="true"></canvas>
+              <div><b class="locker-fit">${built === HARBOR_TOTAL ? 'Every piece is built' : built ? `${built} of ${HARBOR_TOTAL} built` : 'An empty island'}</b><p class="locker-blurb">Coins from your voyages build the harbor up piece by piece, and the title screen shows it growing. Finish a row and the harbor folk bring you ${ROW_PEARLS === 1 ? 'a black pearl' : `${ROW_PEARLS} black pearls`}.</p></div></div>
+            ${rows}
+          </div>
+        </div></section>`);
+      click(node, '[data-build]', (e, b) => {
+        const p = PIECES.find((x) => x.id === b.dataset.build);
+        const price = { coins: p.price };
+        if (!canAfford(save, price)) {
+          ui.toast(needMore(save, price));
+          return;
+        }
+        ui.confirm({
+          title: `Build the ${p.name.toLowerCase()}?`,
+          text: p.text,
+          ok: `Build ${priceTag(price)}`,
+          onOk: () => {
+            const r = buildPiece(save, p.id);
+            if (!r) return;
+            handlers.onWallet();
+            ui.toast(r.row ? `That finishes the ${r.row.name.toLowerCase()}! The harbor folk bring you a black pearl.` : `The ${p.name.toLowerCase()} is built.`, 'good', 3000);
+            ui.harbor(save, true);
+          },
+        });
+      });
+      click(node, '[data-act=back]', () => ui.back());
+      show('harbor', node, restore ? { keep: true } : { push: true });
+      showHarbor(node.querySelector('.harbor-preview'), save, handlers.motionReduced());
     },
 
     // The prologue's frame: letterbox bars, the caption under the picture, a
@@ -1650,6 +1737,8 @@ export function createUI(root, levels, handlers) {
                     .join('')
                 : '<p class="shop-empty">Every boat in the Shipyard is yours.</p>'
             }</div>
+            <h3 class="setting-group">Your harbor</h3>
+            <div class="shop-grid">${item(icon('anchor', 28), 'Your harbor', `A lighthouse, docks, houses and boats, built with coins. ${harborBuilt(save).length} / ${HARBOR_TOTAL} built.`, '<button class="btn small" data-act="harbor">Open</button>')}</div>
             <h3 class="setting-group">Sails and paints</h3>
             <div class="shop-grid">${item(icon('crown', 28), 'Sail Locker', 'Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.', '<button class="btn small" data-act="locker">Open</button>')}</div>
           </div>
@@ -1659,6 +1748,7 @@ export function createUI(root, levels, handlers) {
         node.querySelector('[data-jars]').textContent = save.wallet.jars;
         node.querySelector('[data-left]').textContent = videosLeft(save, REWARDS.blackPearl, today);
       };
+      click(node, '[data-act=harbor]', () => ui.harbor(save));
       click(node, '[data-buy=jar]', () => {
         if (save.wallet.jars >= JAR_HOLD) {
           ui.toast(`The hold is full: ${JAR_HOLD} jars is all a voyage carries.`);

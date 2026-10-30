@@ -830,6 +830,86 @@ button:focus-visible {
   }
 }
 
+/* Your harbor */
+
+.harbor-view {
+  position: relative;
+  display: block;
+  flex: none;
+  width: min(100%, 320px);
+  aspect-ratio: 5 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--foam-faint);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.harbor-view canvas,
+.harbor-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.harbor-tag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(4, 14, 22, 0.74);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(12px * var(--text, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foam);
+}
+
+.harbor-tag b {
+  color: var(--brass);
+}
+
+.harbor-view.fresh::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--signal);
+}
+
+/* On a wide screen it sits in the open sea above and right of the menu. */
+@media (min-width: 860px) {
+  .title .harbor-view {
+    position: absolute;
+    right: calc(var(--inset-right) + 20px);
+    top: calc(var(--inset-top) + 18px);
+    width: clamp(220px, calc(100vw - 680px), 320px);
+  }
+}
+
+.harbor-preview {
+  flex: none;
+  width: 250px;
+  height: 150px;
+  border-radius: 10px;
+}
+
+.shop-item.built .shop-art {
+  color: var(--ok);
+}
+
+@media (max-width: 560px) {
+  .harbor-preview {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 5 / 3;
+  }
+}
+
 /* Medals */
 
 .medal-grid {

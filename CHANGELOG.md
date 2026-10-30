@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.36.0] - 2026-10-30
+
+Your harbor: coins build an island up into a harbor of your own.
+
+- **Build it piece by piece.** Fourteen pieces in four rows: a lighthouse with a sweeping lamp and a keeper, a jetty, stone quay and breakwater, a fisher's hut, cottages, an inn and a fish market, and a rowing boat, a fishing smack, a trading junk and a tall ship. Some need others first: the inn wants the quay, the tall ship wants the breakwater.
+- **Watch it grow on the title screen.** The harbor sits in the sea beside the menu, with smoke from the chimneys and boats rocking at their moorings. Tap it, or find it in the Shop, to build. A dot says when you can afford the next piece.
+- **Finish a row, get a black pearl.** The harbor folk bring one round for each row you complete. The whole harbor costs 8,500 coins, and it travels with your backup code.
+
 ## [0.35.0] - 2026-10-30
 
 Festival weeks: Halloween, Diwali, Christmas and New Year.
