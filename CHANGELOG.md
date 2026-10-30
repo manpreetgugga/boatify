@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.41.1] - 2026-10-31
+
+A calmer title screen.
+
+- **Fewer buttons.** Set sail and Voyages stay big. The daily voyage, the Open Sea, the regatta and the orders share one row of small chips, each with an icon, once the daily voyage opens. The Shipyard, Shop, Medals, Atlas, Logbook and Settings are a row of icons with a word under each.
+- **Help moved to Settings.** How to sail stays on the title for your first three voyages, then lives in Settings under Help, with the Prologue.
+- Tests now read file paths the same way on Windows as on Linux.
+
+## [0.41.0] - 2026-10-30
+
+Google Play Games: leaderboards and your progress in the cloud.
+
+- **Sign in to Google Play Games.** Settings has a Google Play Games group: sign in, see who you're signed in as, and open the leaderboards.
+- **Four leaderboards.** Stars won, the furthest Open Sea run (in metres), the longest daily streak and regattas won. Your best go up after each voyage home, and only when they've improved.
+- **Cloud save.** Your progress is copied to Google Play Games as you sail: after a voyage (at most every three minutes), when you put the game away, or when you tap Save. Load brings the cloud's copy back. On a new phone, signing in finds the progress and asks before bringing it over. A phone never writes the cloud until it has looked at what's there, so an empty new phone can't wipe your progress.
+- **Off until it's set up.** Play Games needs a Play Games project id given to the Play build (docs/PLAY_STORE.md). Without it, and in the APK from the Releases page, the game is as before and Settings shows none of it.
+- **Fixed:** the Settings buttons that open the leaderboards, the backup code, the harbor and the Sail Locker read "Show", where Spanish, Portuguese and Indonesian had mistaken them for the regatta's Open fleet.
+- **Store release notes in English only.** The Google Play listing stays in all five languages; the notes for each new version are in English.
+
 ## [0.40.0] - 2026-10-30
 
 No Paddle speaks Hindi, Spanish, Portuguese and Indonesian.

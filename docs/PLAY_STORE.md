@@ -215,6 +215,122 @@ a while to apply.
 Store pictures come from the game itself: `npm run store-art` redraws them
 (needs Playwright).
 
+## Google Play Games (optional)
+
+The game can sign players in to Google Play Games, put their scores on four
+leaderboards and keep their progress in the cloud, so it comes back on a new
+phone. It is off until you give CI a Play Games project id: without one the
+build is the same as before and Settings shows nothing about Play Games. Only
+the Play bundle (`.aab`) gets the id, because Play Games only knows the key
+Google signs Play installs with; the APKs on the Releases page never have it.
+
+1. **Make the project.** In Play Console, open No Paddle, then **Grow users →
+   Play Games Services → Setup and management → Configuration**. Choose **No,
+   my game doesn't use Google APIs**, enter `No Paddle` and **Create**.
+2. **Properties.** **Edit properties**: the display name `No Paddle` and the
+   store description; turn **Saved games** on (cloud save needs it). Save.
+3. **Consent screen.** In **Credentials**, Play Console asks you to configure
+   the OAuth consent screen in Google Cloud and links there. Follow it, make it
+   available to everyone, with the scopes `games`, `games_lite` and
+   `drive.appdata`, and publish it.
+4. **Credential.** **Add credential → Android**, name `No Paddle`, then
+   **Create OAuth client**, which opens Google Cloud: type **Android**, package
+   `io.github.manpreetgugga.boatify`, and the **SHA-1** of the *app signing key
+   certificate* from Play Console's **Test and release → App integrity → App
+   signing**. Create it, pick it back in Play Console and **Save changes**.
+5. **Leaderboards** (optional). **Leaderboards → Create leaderboard**, four
+   times, each **Numeric**, larger is better:
+   - `Stars`: all stars won.
+   - `Open Sea`: the furthest run, in metres.
+   - `Daily streak`: the longest run of daily voyages, in days.
+   - `Regatta wins`: regattas won.
+   Copy each one's id (it starts `CgkI`).
+6. **Testers, then publish.** Until the Play Games project is published only
+   its **Testers** can sign in: add your own Google account there. When it
+   works, **Review and publish → Publish**.
+7. **Give it to GitHub.** Repository **Settings → Secrets and variables →
+   Actions**, as a secret (or, since it isn't a password, a variable):
+
+   | Name | Value |
+   | --- | --- |
+   | `PLAY_GAMES_APP_ID` | the project id at the top of the Configuration page, all digits (e.g. `123456789012`) |
+   | `PLAY_GAMES_LEADERBOARD_STARS` | optional: the `Stars` leaderboard id |
+   | `PLAY_GAMES_LEADERBOARD_SEA` | optional: the `Open Sea` leaderboard id |
+   | `PLAY_GAMES_LEADERBOARD_STREAK` | optional: the `Daily streak` leaderboard id |
+   | `PLAY_GAMES_LEADERBOARD_WINS` | optional: the `Regatta wins` leaderboard id |
+
+The next version's bundle has Play Games. A leaderboard left out is simply not
+sent to. A bad app id stops the build with a message, rather than shipping an
+app whose sign-in fails. In the game, **Settings → Google Play Games** signs in,
+shows the leaderboards, and saves or loads the cloud copy by hand; it is also
+saved after voyages and when the app is put away. A phone only writes to the
+cloud after it has looked at what is there, and asks before replacing its own
+progress with the cloud's. If players can't sign in, the SHA-1 in step 4 is the
+usual culprit: it must be the *app signing* key's, not the upload key's.
+
+Also update **Data safety** (step 6): with Play Games on, Google Play Games
+collects the player's Play Games profile and game activity when they sign in.
+Answer per Google's current notes for Play Games Services, and keep "no
+accounts" true: the game has none of its own.
+
+## Firebase Analytics and Crashlytics (optional)
+
+The game can send anonymous events and crash reports to Firebase, so you can
+see how far players get and fix crashes. It is off until CI has your
+`google-services.json`: without it the Firebase plugins aren't applied,
+Firebase never starts, the game sends nothing and Settings shows no switch.
+Only the Play bundle (`.aab`) gets it; the APK on GitHub Releases never does.
+The file is written at build time and never committed (`.gitignore`).
+
+1. **Create the Firebase project.** <https://console.firebase.google.com> →
+   **Add project**, name it No Paddle. Google Analytics: **on**, with a new
+   Analytics account (data sharing settings: leave Google's "Benchmarking" and
+   the like off if you prefer).
+2. **Add the Android app.** In the project: **Add app → Android**, package name
+   `io.github.manpreetgugga.boatify`, nickname No Paddle. Skip the SHA-1.
+3. **Download `google-services.json`** from that screen (or later from
+   **Project settings → Your apps**). Keep it out of the repository.
+4. **Give it to GitHub as a secret**, base64-encoded. PowerShell:
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("google-services.json")) | Set-Clipboard`,
+   then **Settings → Secrets and variables → Actions → New repository secret**,
+   name `GOOGLE_SERVICES_JSON`, paste.
+5. **Turn on Crashlytics.** Firebase console → **Crashlytics → Enable**. Do
+   this before the next version: the Play bundle's build uploads its R8 mapping
+   file to Crashlytics so crash stacks read as the real code.
+6. **The next version's bundle has Firebase.** Install it from your closed
+   test, sail a voyage, and within a few minutes you'll see events in
+   **Analytics → Realtime** (it takes up to a day for the reports).
+7. **Update Data safety** in Play Console (step 6 above). Add **Crash logs**
+   (App info and performance): *collected*, not shared (Firebase works for
+   you, as a service provider), for **Analytics** and **App functionality**,
+   not ephemeral, and **optional** (the Settings switch). **App
+   interactions**, **Diagnostics** and **Device or other IDs** are already
+   there for AdMob and already list Analytics, so they stay as they are
+   (required, because AdMob needs them).
+
+**How far players get.** Firebase console → **Analytics → Events →
+`voyage_complete`**, add `world` and `level` as custom dimensions (**Custom
+definitions → Create custom dimension**, event scope, for `level`, `world`,
+`stars`, `mode`), then **Explore → Funnel exploration** with steps
+`voyage_start` → `voyage_complete`, broken down by `world`, and a free-form
+table of `voyage_complete` by `level`. `world_reached` shows how many players
+make it to each world; `voyage_quit` by `level` shows where they give up.
+
+The events (all in `web/src/platform/analytics.js`, with only these fields):
+`voyage_start` (level, world, mode), `voyage_complete` (level, world, stars,
+time, bumps), `voyage_quit` (level, world, mode, time), `world_reached`
+(world), `open_sea_end` (distance in metres, gates), `regatta_finish` (place,
+fleet), `cup_finish` (place, fleet), `festival_voyage` (festival),
+`rewarded_ad_watched` (reward), `share` (what), `backup_used` (how) and
+`language` (lang). Script errors in the game go to Crashlytics as non-fatal
+reports with the voyage they happened on.
+
+**Consent.** Analytics never collects the advertising id and never works
+for ads (`AndroidManifest.xml`). Where Google's consent form applies, it stays
+off until the player agrees (storing on the device and measuring, TCF purposes
+1 and 8) or turns on **Settings → Analytics and crash reports**; elsewhere it
+is on until they turn it off.
+
 ## Play and the APK don't mix
 
 The APKs on the Releases page are signed with the public development key, the

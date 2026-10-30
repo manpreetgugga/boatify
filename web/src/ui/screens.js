@@ -22,6 +22,7 @@ import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
+import { hasAnalytics, analyticsOn } from '../platform/analytics.js';
 import { ads, REWARDS, watchVideo, videosLeft } from '../platform/ads.js';
 import { shareText } from '../platform/social.js';
 import { backupCode, readBackup } from '../platform/backup.js';
@@ -34,6 +35,20 @@ import { icon } from './icons.js';
 import { t, N_, ordinal, shortDate, nameOf, blurbOf, LANGS, currentLang } from '../i18n/index.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// The title keeps "How to sail" for the first few voyages; after that it lives
+// in Settings, with the prologue.
+export const HOWTO_ON_TITLE = 3;
+
+// The title's ways to sail, as small chips, and the rest of the menu as a dock
+// of icons. `label` is given escaped (it may hold markup); `name` reads it aloud.
+function chip(act, ic, label, fresh, name = '') {
+  return `<button class="btn small chip ${fresh ? 'fresh' : ''}" data-act="${act}"${name ? ` aria-label="${esc(name)}"` : ''}>${icon(ic, 18)}<span>${label}</span></button>`;
+}
+
+function tile(act, ic, label, fresh, name = '') {
+  return `<button class="dock-tile ${fresh ? 'fresh' : ''}" data-act="${act}"${name ? ` aria-label="${esc(name)}"` : ''}>${icon(ic, 22)}<span>${esc(label)}</span></button>`;
+}
 
 // The purse: coins and black pearls, as shown in a sheet's head or on the title.
 function wallet(save) {
@@ -86,6 +101,18 @@ function rewardStrip(pay, extra = 0) {
 }
 
 // Why a pasted backup code couldn't be read.
+// What a backup code (or the cloud's copy) holds, as {list} and {last}.
+function progressList(sum) {
+  const holds = [
+    `★ ${sum.stars}`,
+    sum.voyages === 1 ? t('1 voyage home') : t('{n} voyages home', { n: sum.voyages }),
+    t('{coins} coins', { coins: formatCoins(sum.coins) }),
+    sum.blackPearls === 1 ? t('1 black pearl') : t('{n} black pearls', { n: sum.blackPearls }),
+    sum.medals === 1 ? t('1 medal') : t('{n} medals', { n: sum.medals }),
+  ];
+  return { list: holds.slice(0, -1).join(', '), last: holds.at(-1) };
+}
+
 const BACKUP_TROUBLE = {
   empty: N_('Paste a backup code in the box first.'),
   'not-a-code': N_("That isn't a No Paddle backup code."),
@@ -731,21 +758,22 @@ export function createUI(root, levels, handlers) {
           <div class="title-buttons">
             <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? t('Set sail') : t('Start voyage')}</button>
             <button class="btn" data-act="voyages">${t('Voyages')}</button>
-            <button class="btn" data-act="howto">${t('How to sail')}</button>
+            ${save.stats.voyages < HOWTO_ON_TITLE ? `<button class="btn" data-act="howto">${t('How to sail')}</button>` : ''}
           </div>
-          <div class="title-buttons">
-            ${orders ? `<button class="btn small ${orders.seen || orders.done.length === orders.picks.length ? '' : 'fresh'}" data-act="orders" aria-label="${t('Orders, {n} of {of} done', { n: orders.done.length, of: orders.picks.length })}">${t('Orders')} <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span></button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">${fest ? esc(t('{fest} voyage', { fest: t(fest.name) })) : t('Daily voyage')}</button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">${t('Open Sea')}</button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">${t('Regatta')}</button>` : ''}
-            <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">${t('Shipyard')}</button>
-            <button class="btn small ${save.wallet.blackPearls && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">${t('Shop')}</button>
-            <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">${t('Medals')}</button>
-            <button class="btn small ${atlasCount(save) > save.atlasSeen ? 'fresh' : ''}" data-act="atlas" aria-label="${t('Sea Atlas, {n} of {of}', { n: atlasCount(save), of: ATLAS_TOTAL })}">${t('Atlas')}</button>
-            <button class="btn small" data-act="logbook">${t('Logbook')}</button>
-            <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">${t('Prologue')}</button>
-            <button class="btn small" data-act="settings">${t('Settings')}</button>
-          </div>
+          ${dailyOpen ? `<div class="title-modes">
+            ${chip('daily', 'sun', fest ? esc(t('{fest} voyage', { fest: t(fest.name) })) : t('Daily voyage'), !sailedToday)}
+            ${chip('sea', 'horizon', t('Open Sea'), !save.openSea.runs)}
+            ${chip('regatta', 'fleet', t('Regatta'), !save.regatta.races)}
+            ${orders ? chip('orders', 'bottle', `${t('Orders')} <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span>`, !orders.seen && orders.done.length < orders.picks.length, t('Orders, {n} of {of} done', { n: orders.done.length, of: orders.picks.length })) : ''}
+          </div>` : ''}
+          <nav class="title-dock">
+            ${tile('shipyard', 'anchor', t('Shipyard'), gearCount(save) > save.gearSeen)}
+            ${tile('shop', 'chest', t('Shop'), save.wallet.blackPearls && !save.sightings.shop)}
+            ${tile('medals', 'trophy', t('Medals'), medalsEarned(save) > save.medalsSeen)}
+            ${tile('atlas', 'map', t('Atlas'), atlasCount(save) > save.atlasSeen, t('Sea Atlas, {n} of {of}', { n: atlasCount(save), of: ATLAS_TOTAL }))}
+            ${tile('logbook', 'book', t('Logbook'), false)}
+            ${tile('settings', 'gear', t('Settings'), !save.seenFilm)}
+          </nav>
           <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>${esc(voyageLabel(levels[resume].id) || t('Voyage {n}', { n: resume + 1 }))}</span><span>${t('Medals')} <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>${t('Streak')} <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
           ${harbor}
         </div>
@@ -1569,7 +1597,7 @@ export function createUI(root, levels, handlers) {
       const s = save.settings;
       // Reduced motion may still be following the phone's own setting, and
       // reminders are only on if the phone allows them too.
-      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : key === 'reminders' ? !!s.reminders && handlers.remindersAllowed() : !!s[key]);
+      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : key === 'reminders' ? !!s.reminders && handlers.remindersAllowed() : key === 'analytics' ? analyticsOn(s) : !!s[key]);
       const toggle = (key, label, sub, invert = false) => `<div class="setting">
         <span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
         <button class="toggle" role="switch" data-key="${key}" data-invert="${invert}" aria-checked="${invert ? !value(key) : value(key)}" aria-label="${label}"></button></div>`;
@@ -1580,6 +1608,8 @@ export function createUI(root, levels, handlers) {
       const sizes = [t('Normal'), t('Large'), t('Largest')];
       // The word "Language" stays in English too, for anyone who picked one they can't read.
       const langLabel = currentLang() === 'en' ? t('Language') : `${t('Language')} · Language`;
+      // Google Play Games, when the app has it: { signedIn, name }, else null.
+      const games = handlers.games ? handlers.games() : null;
       const node = el(`<section class="screen dim" aria-label="${t('Settings')}">
         <div class="sheet narrow">
           <div class="sheet-head"><h2>${t('Settings')}</h2><button class="btn small" data-act="back">${t('Back')}</button></div>
@@ -1608,9 +1638,22 @@ export function createUI(root, levels, handlers) {
             <h3 class="setting-group">${t('Friends')}</h3>
             <div class="setting"><span class="label"><b>${t('Tell a friend')}</b><small>${t('Send them the link to No Paddle')}</small></span>
               <button class="btn small" data-act="share">${icon('share', 16)} ${t('Share')}</button></div>
+            ${games ? `<h3 class="setting-group">${t('Google Play Games')}</h3>
+            ${games.signedIn ? `<div class="setting"><span class="label"><b>${t('Leaderboards')}</b><small>${games.name ? t('Signed in as {name}', { name: esc(games.name) }) : t('Signed in')}</small></span>
+              <button class="btn small" data-act="boards">${t('Show')}</button></div>
+            <div class="setting"><span class="label"><b>${t('Cloud save')}</b><small>${t('Your progress is copied to the cloud as you sail')}</small></span>
+              <span class="setting-buttons"><button class="btn small" data-act="cloud-load">${t('Load')}</button><button class="btn small" data-act="cloud-save">${t('Save')}</button></span></div>` : `<div class="setting"><span class="label"><b>${t('Leaderboards and cloud save')}</b><small>${t('Sign in with Google Play Games')}</small></span>
+              <button class="btn small primary" data-act="games-in">${t('Sign in')}</button></div>`}` : ''}
+            ${hasAnalytics() ? `<h3 class="setting-group">${t('Analytics')}</h3>
+            ${toggle('analytics', t('Analytics and crash reports'), t('Anonymous: how far players get, and what went wrong in a crash. Nothing about you.'))}` : ''}
+            <h3 class="setting-group">${t('Help')}</h3>
+            <div class="setting"><span class="label"><b>${t('How to sail')}</b><small>${t('Tacking, trim and gusts, step by step')}</small></span>
+              <button class="btn small" data-act="howto">${t('Open')}</button></div>
+            <div class="setting"><span class="label"><b>${t('Prologue')}</b><small>${t('The film of the squall that took your oar')}</small></span>
+              <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film" aria-label="${t('Watch the prologue')}">${t('Watch')}</button></div>
             <h3 class="setting-group">${t('Progress')}</h3>
             <div class="setting"><span class="label"><b>${t('Backup code')}</b><small>${t('Move your progress to another phone')}</small></span>
-              <button class="btn small" data-act="backup">${t('Open')}</button></div>
+              <button class="btn small" data-act="backup">${t('Show')}</button></div>
             <div class="setting"><span class="label"><b>${t('Reset progress')}</b><small>${t('Clears times, stars, medals and the logbook')}</small></span>
               <button class="btn small" data-act="reset">${t('Reset')}</button></div>
           </div>
@@ -1647,6 +1690,34 @@ export function createUI(root, levels, handlers) {
       });
       click(node, '[data-act=share]', () => shareOut(shareText('game')));
       click(node, '[data-act=backup]', () => ui.backup(save));
+      click(node, '[data-act=howto]', () => ui.howto(save));
+      click(node, '[data-act=film]', () => handlers.onFilm());
+      click(node, '[data-act=games-in]', () => handlers.onGamesSignIn());
+      click(node, '[data-act=boards]', () => handlers.onLeaderboards());
+      click(node, '[data-act=cloud-save]', async (e, b) => {
+        b.disabled = true;
+        const r = await handlers.onCloudSave();
+        b.disabled = false;
+        // 'asked': the cloud had more, and the player is being asked about it.
+        if (r === 'saved') ui.toast(t('Saved to the cloud.'), 'good');
+        else if (r === 'failed') ui.toast(t("Couldn't reach Google Play Games. Try again later."), 'warn');
+      });
+      click(node, '[data-act=cloud-load]', async (e, b) => {
+        b.disabled = true;
+        const r = await handlers.onCloudLoad();
+        b.disabled = false;
+        if (!r.ok) ui.toast(t("Couldn't reach Google Play Games. Try again later."), 'warn');
+        else if (!r.found) ui.toast(t("There's no progress in the cloud yet."));
+        else if (!r.backup.ok) ui.toast(t("The progress in the cloud couldn't be read."), 'warn');
+        else {
+          ui.confirm({
+            title: t("Replace this phone's progress?"),
+            text: t("The cloud holds {list} and {last}. What's on this phone now will be gone.", progressList(r.backup.summary)),
+            ok: t('Restore'),
+            onOk: () => handlers.onRestore(r.backup.save, 'cloud'),
+          });
+        }
+      });
       click(node, '[data-act=privacy]', async () => {
         const r = await ads().privacyOptions();
         if (!r.ok) ui.toast(t("The privacy options couldn't open. Try again later."));
@@ -1706,17 +1777,9 @@ export function createUI(root, levels, handlers) {
           ui.toast(t(BACKUP_TROUBLE[r.reason]), 'warn', 5000);
           return;
         }
-        const sum = r.summary;
-        const holds = [
-          `★ ${sum.stars}`,
-          sum.voyages === 1 ? t('1 voyage home') : t('{n} voyages home', { n: sum.voyages }),
-          t('{coins} coins', { coins: formatCoins(sum.coins) }),
-          sum.blackPearls === 1 ? t('1 black pearl') : t('{n} black pearls', { n: sum.blackPearls }),
-          sum.medals === 1 ? t('1 medal') : t('{n} medals', { n: sum.medals }),
-        ];
         ui.confirm({
           title: t("Replace this phone's progress?"),
-          text: t("The code holds {list} and {last}. What's on this phone now will be gone.", { list: holds.slice(0, -1).join(', '), last: holds.at(-1) }),
+          text: t("The code holds {list} and {last}. What's on this phone now will be gone.", progressList(r.summary)),
           ok: t('Restore'),
           onOk: () => handlers.onRestore(r.save),
         });
@@ -1984,9 +2047,9 @@ export function createUI(root, levels, handlers) {
                 : `<p class="shop-empty">${t('Every boat in the Shipyard is yours.')}</p>`
             }</div>
             <h3 class="setting-group">${t('Your harbor')}</h3>
-            <div class="shop-grid">${item(icon('anchor', 28), t('Your harbor'), t('A lighthouse, docks, houses and boats, built with coins. {n} / {of} built.', { n: harborBuilt(save).length, of: HARBOR_TOTAL }), `<button class="btn small" data-act="harbor">${t('Open')}</button>`)}</div>
+            <div class="shop-grid">${item(icon('anchor', 28), t('Your harbor'), t('A lighthouse, docks, houses and boats, built with coins. {n} / {of} built.', { n: harborBuilt(save).length, of: HARBOR_TOTAL }), `<button class="btn small" data-act="harbor">${t('Show')}</button>`)}</div>
             <h3 class="setting-group">${t('Sails and paints')}</h3>
-            <div class="shop-grid">${item(icon('crown', 28), t('Sail Locker'), t('Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.'), `<button class="btn small" data-act="locker">${t('Open')}</button>`)}</div>
+            <div class="shop-grid">${item(icon('crown', 28), t('Sail Locker'), t('Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.'), `<button class="btn small" data-act="locker">${t('Show')}</button>`)}</div>
           </div>
         </div></section>`);
       const redraw = () => {
@@ -2053,15 +2116,40 @@ export function createUI(root, levels, handlers) {
     },
 
     // Ask before spending. `ok` is the confirm button's label (may hold an icon).
-    confirm({ title, text, ok = t('OK'), onOk }) {
+    // A phone that has just signed in to Google Play Games finds more
+    // progress in the cloud than it has itself.
+    cloudFound(backup, { onBring, onKeep }) {
+      ui.confirm({
+        title: t('Progress found in the cloud'),
+        text: t('Google Play Games has your progress with {list} and {last}. Bring it to this phone? What is on it now will be gone.', progressList(backup.summary)),
+        ok: t('Bring it here'),
+        onOk: onBring,
+        no: t("Keep this phone's"),
+        onNo: onKeep,
+      });
+    },
+
+    // Settings drawn again where it stands, as after signing in.
+    refreshSettings(save) {
+      if (ui.current !== 'settings') return;
+      const body = screens.settings && screens.settings.querySelector('.sheet-body');
+      const scroll = body ? body.scrollTop : 0;
+      ui.settings(save, true).querySelector('.sheet-body').scrollTop = scroll;
+    },
+
+    // `no` and `onNo` name the other answer, when it's more than "not now".
+    confirm({ title, text, ok = t('OK'), onOk, no = t('Not now'), onNo }) {
       ui.closeConfirm();
       const node = el(`<div class="confirm" role="dialog" aria-modal="true" aria-label="${esc(title)}">
         <div class="confirm-box">
           <h3>${esc(title)}</h3>
           <p>${esc(text)}</p>
-          <div class="confirm-foot"><button class="btn small" data-act="no">${t('Not now')}</button><button class="btn small primary" data-act="yes">${ok}</button></div>
+          <div class="confirm-foot"><button class="btn small" data-act="no">${esc(no)}</button><button class="btn small primary" data-act="yes">${ok}</button></div>
         </div></div>`);
-      click(node, '[data-act=no]', () => ui.closeConfirm());
+      click(node, '[data-act=no]', () => {
+        ui.closeConfirm();
+        if (onNo) onNo();
+      });
       click(node, '[data-act=yes]', () => {
         ui.closeConfirm();
         onOk();

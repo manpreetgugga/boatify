@@ -16,6 +16,8 @@ android/captures/
 *.aab
 # Signing keys stay out of the repo (the public dev key in android/keystore/ is the one exception).
 *.jks
+# Firebase config: written by CI for the Play bundle, never committed.
+google-services.json
 
 # Local playtest output
 playtest/
