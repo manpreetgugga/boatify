@@ -2023,6 +2023,12 @@ button:focus-visible {
   font-size: calc(13px * var(--text, 1));
 }
 
+.setting-buttons {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
 .toggle {
   position: relative;
   width: 54px;

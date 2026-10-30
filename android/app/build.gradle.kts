@@ -34,6 +34,13 @@ val releaseAdmob = testAdmob + realAdmob
 // Hashed ids (from logcat) of phones that get test ads and the UMP debug settings.
 val testDevices = setting("ADMOB_TEST_DEVICE_IDS").orEmpty()
     .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+// Google Play Games, off until the build is given its app id (the numeric
+// project id from Play Console). The leaderboard ids are optional, one each.
+val playGamesAppId = setting("PLAY_GAMES_APP_ID").orEmpty()
+if (playGamesAppId.isNotEmpty() && !Regex("""\d{6,}""").matches(playGamesAppId)) {
+    throw GradleException("PLAY_GAMES_APP_ID should be the numeric project id from Play Console, not $playGamesAppId")
+}
+val playGamesBoards = listOf("STARS", "SEA", "STREAK", "WINS").associateWith { setting("PLAY_GAMES_LEADERBOARD_$it").orEmpty() }
 fun quoted(s: String) = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 // Bundles web/ into a single index.html with the repo's build script.
@@ -78,6 +85,10 @@ android {
         versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
         versionName = appVersion
         buildConfigField("String", "ADMOB_TEST_DEVICES", quoted(testDevices.joinToString(",")))
+        buildConfigField("String", "PLAY_GAMES_APP_ID", quoted(playGamesAppId))
+        playGamesBoards.forEach { (name, id) -> buildConfigField("String", "PLAY_GAMES_BOARD_$name", quoted(id)) }
+        // A string resource, as Play Games wants: a bare number in the manifest would be read as a number.
+        resValue("string", "play_games_app_id", playGamesAppId)
     }
 
     signingConfigs {
@@ -123,6 +134,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        resValues = true
     }
 }
 
@@ -144,4 +156,5 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.google.android.play:review:2.0.2")
+    implementation("com.google.android.gms:play-services-games-v2:20.1.2")
 }

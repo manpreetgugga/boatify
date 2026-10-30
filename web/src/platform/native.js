@@ -129,7 +129,7 @@ export function askReview() {
   }
 }
 
-// handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed) }
+// handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed), games(event) }
 export function installNativeHooks(handlers) {
   window.BoatifyNative = {
     onBack() {
@@ -151,6 +151,10 @@ export function installNativeHooks(handlers) {
     },
     onReminders(allowed) {
       if (handlers.reminders) handlers.reminders(!!allowed);
+    },
+    // Google Play Games' answers (platform/games.js).
+    onGames(event) {
+      if (handlers.games) handlers.games(event);
     },
   };
   document.addEventListener('visibilitychange', () => {

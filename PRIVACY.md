@@ -1,8 +1,8 @@
 # Privacy policy
 
-_No Paddle (Android app `io.github.manpreetgugga.boatify`). Last updated 29 October 2026._
+_No Paddle (Android app `io.github.manpreetgugga.boatify`). Last updated 30 October 2026._
 
-No Paddle has no accounts and no analytics, and the developer collects no personal data. The game itself is inside the app and works offline. It shows ads from **Google AdMob**, and those ads use the internet. Google, not the developer, collects the information described below.
+No Paddle has no accounts of its own and no analytics, and the developer collects no personal data. The game itself is inside the app and works offline. It shows ads from **Google AdMob**, and those ads use the internet. If you choose to, you can sign in to **Google Play Games**. Google, not the developer, collects the information described below.
 
 ## Ads
 
@@ -18,9 +18,19 @@ Google uses this to show ads, to measure them, to prevent fraud and, if you agre
 - **Your choice.** Where the law requires it (for example in the European Economic Area, the UK and Switzerland), the game asks for your consent with Google's consent form before any ad loads. You can change your answer at any time in the game's **Settings → Ad privacy**.
 - **Advertising ID.** You can reset or delete your advertising ID in your phone's settings (**Settings → Google → Ads** on most Android phones). Without it, ads are not personalized.
 
+## Google Play Games (optional)
+
+The Google Play version of the game can use Google Play Games. Nothing is sent to it unless you sign in, in the game's **Settings → Google Play Games** or through Google Play Games itself. When you are signed in:
+
+- the game shows your **Play Games name** in Settings;
+- your **scores** (stars won, the furthest Open Sea run, the longest daily streak and regattas won) go to Google Play Games leaderboards, where other players can see them as your Play Games profile settings allow;
+- a **copy of your progress** (the same text as a backup code) is kept as a saved game in your Google account, so you can bring it back on another phone. Only you and the game can read it.
+
+This is handled by Google under your Google account and Google's privacy policy: <https://policies.google.com/privacy>. The developer can't see your saved game. You can sign out, and delete your Play Games data, in the Google Play Games app or your Google account settings.
+
 ## What the app keeps, and where
 
-- **Your progress and settings** (best times, stars, medals, coins and black pearls, the boats and gear you've unlocked, your logbook and your settings) are saved on your device only. Nothing about your play is sent to the developer or to anyone else.
+- **Your progress and settings** (best times, stars, medals, coins and black pearls, the boats and gear you've unlocked, your logbook and your settings) are saved on your device, and in Google Play Games only if you sign in to it (above). Nothing about your play is sent to the developer.
 - **Device backup.** If you have Android's backup turned on, Android may include the game's save in your device backup to your Google account, as it does for other apps. That backup is handled by Google under your Google account's settings; the developer can't see it.
 - Uninstalling the app, or clearing its storage in Android's settings, deletes your progress.
 

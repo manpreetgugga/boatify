@@ -31,6 +31,8 @@ import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, restoreSave, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
 import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders, share, canReview, askReview, copyText, canPaste, pasteText } from './platform/native.js';
 import { reviewDue, markReview } from './platform/social.js';
+import { hasGames, gamesState, gamesEvent, onGamesChange, signIn as gamesSignIn, showLeaderboards, submitScore, cloudSave, cloudLoad, gameScores, newScores, cloudChoice, loadCloudMemo, storeCloudMemo, cloudDue } from './platform/games.js';
+import { backupCode, readBackup, summarize } from './platform/backup.js';
 import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js';
 import { voyagePay, seaPay, racePay, payOut, doubleOf, doublePay, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
 import { tallyOrders } from './data/orders.js';
@@ -257,9 +259,22 @@ const ui = createUI(root, CAMPAIGN, {
   onCopy: (text) => copyText(text),
   canPaste,
   onPaste: () => pasteText(),
-  onRestore: (restored) => {
-    restoreSave(save, restored);
-    window.location.reload();
+  onRestore: (restored, from) => restoreFrom(restored, from),
+  // Google Play Games, when the app has it (platform/games.js).
+  games: () => (hasGames() ? gamesState() : null),
+  onGamesSignIn: () => gamesSignIn(),
+  onLeaderboards: () => showLeaderboards(),
+  onCloudSave: async () => {
+    if (!cloud.checked) {
+      const seen = await lookAtCloud(true);
+      if (seen !== 'seen') return seen;
+    }
+    return (await backUpToCloud(true, true)) ? 'saved' : 'failed';
+  },
+  onCloudLoad: async () => {
+    const r = await cloudLoad();
+    if (!r.ok || !r.code) return { ok: r.ok, found: false };
+    return { ok: true, found: true, backup: await readBackup(r.code) };
   },
   onSeenIntro: () => writeSave(save),
   onSeen: () => writeSave(save),
@@ -324,6 +339,7 @@ function showTitle(withMenu = true) {
   ui.clearToasts();
   startDemo();
   if (withMenu) ui.title(save);
+  if (cloudOffer) offerCloud();
   syncReminders();
   // Chart today's course in the background so the daily voyage opens at once.
   if (isDailyUnlocked(save, CAMPAIGN) && !dailyPeek()) setTimeout(() => chartToday(), 2500);
@@ -461,6 +477,8 @@ function settleVoyage(result) {
   if (ordersOpen) payOrders(improved, result);
   countVoyage(save, voyagesHome());
   writeSave(save);
+  sendScores();
+  backUpToCloud();
   return { improved, result };
 }
 
@@ -1032,6 +1050,91 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+// --- Google Play Games -----------------------------------------------------
+// Only when the app has it (platform/games.js). Scores go up after each
+// voyage, and a copy of the progress too, once this phone has looked at the
+// one already in the cloud.
+
+const cloud = loadCloudMemo();
+const scoresSent = {};
+let cloudOffer = null; // more progress found in the cloud, offered on the title
+
+function gamesSignedIn(s) {
+  ui.refreshSettings(save);
+  if (!s.signedIn) return;
+  sendScores();
+  if (cloud.checked) backUpToCloud();
+  else lookAtCloud().then((seen) => seen === 'seen' && backUpToCloud(true));
+}
+
+function sendScores() {
+  if (!gamesState().signedIn) return;
+  for (const [board, score] of newScores(gameScores(save), scoresSent)) {
+    submitScore(board, score);
+    scoresSent[board] = score;
+  }
+}
+
+// Before this phone writes to the cloud: is there more progress up there?
+// Resolves to 'seen' (go ahead), 'asked' (the player is offered it, now or
+// on the title) or 'failed' (Play Games couldn't say; look again next time).
+async function lookAtCloud(now = false) {
+  const r = await cloudLoad();
+  if (!r.ok) return 'failed';
+  const found = r.code ? await readBackup(r.code) : null;
+  if (found && found.ok && cloudChoice(found.summary, summarize(save)) === 'ask') {
+    cloudOffer = found;
+    if (now || mode === 'title' || mode === 'film') offerCloud();
+    return 'asked';
+  }
+  cloudSeen();
+  return 'seen';
+}
+
+function offerCloud() {
+  const found = cloudOffer;
+  cloudOffer = null;
+  ui.cloudFound(found, {
+    onBring: () => restoreFrom(found.save, 'cloud'),
+    onKeep: () => {
+      cloudSeen();
+      backUpToCloud(true);
+    },
+  });
+}
+
+function cloudSeen() {
+  cloud.checked = true;
+  storeCloudMemo(cloud);
+}
+
+// A copy of the progress for the cloud, unless the one there is the same.
+// force skips the wait between copies (leaving the app, Save in Settings),
+// always writes it even when it's the same.
+async function backUpToCloud(force = false, always = false) {
+  if (!gamesState().signedIn || !cloudDue(cloud, Date.now(), force)) return false;
+  const code = await backupCode(save);
+  const sum = code.slice(code.lastIndexOf('.') + 1);
+  if (sum === cloud.sum && !always) return true;
+  cloud.last = Date.now();
+  const held = summarize(save);
+  const ok = await cloudSave(code, `★ ${held.stars} · ${t('{n} voyages home', { n: held.voyages })}`);
+  if (ok) cloud.sum = sum;
+  storeCloudMemo(cloud);
+  return ok;
+}
+
+// A backup code or the cloud's copy takes this phone's place, and the game starts afresh.
+function restoreFrom(restored, from) {
+  if (from === 'cloud') {
+    cloud.checked = true;
+    cloud.sum = '';
+    storeCloudMemo(cloud);
+  }
+  restoreSave(save, restored);
+  window.location.reload();
+}
+
 // --- Platform --------------------------------------------------------------
 
 function onBack() {
@@ -1072,6 +1175,7 @@ installNativeHooks({
     audio.suspend();
     // Leaving the game: the reminders name the voyage to sail next.
     syncReminders();
+    backUpToCloud(true);
   },
   resume: () => {
     audio.resume();
@@ -1086,6 +1190,7 @@ installNativeHooks({
     ui.setToggle('reminders', allowed);
     ui.toast(allowed ? t('Reminders on, at {times}.', { times: reminderTimes() }) : t('No reminders, then. Settings can turn them on.'));
   },
+  games: (e) => gamesEvent(e),
   insets: ({ top, right, bottom, left }) => {
     const s = document.documentElement.style;
     s.setProperty('--native-inset-top', `${top}px`);
@@ -1285,6 +1390,10 @@ try {
   matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', applySettings);
 } catch {
   // Older WebViews: the setting is read again next launch.
+}
+if (hasGames()) {
+  onGamesChange(gamesSignedIn);
+  if (gamesState().signedIn) gamesSignedIn(gamesState());
 }
 // A first launch opens on the prologue; after that, on the title.
 if (!save.seenFilm && !save.stats.voyages) playFilm();

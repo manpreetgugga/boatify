@@ -215,6 +215,64 @@ a while to apply.
 Store pictures come from the game itself: `npm run store-art` redraws them
 (needs Playwright).
 
+## Google Play Games (optional)
+
+The game can sign players in to Google Play Games, put their scores on four
+leaderboards and keep their progress in the cloud, so it comes back on a new
+phone. It is off until you give CI a Play Games project id: without one the
+build is the same as before and Settings shows nothing about Play Games. Only
+the Play bundle (`.aab`) gets the id, because Play Games only knows the key
+Google signs Play installs with; the APKs on the Releases page never have it.
+
+1. **Make the project.** In Play Console, open No Paddle, then **Grow users →
+   Play Games Services → Setup and management → Configuration**. Choose **No,
+   my game doesn't use Google APIs**, enter `No Paddle` and **Create**.
+2. **Properties.** **Edit properties**: the display name `No Paddle` and the
+   store description; turn **Saved games** on (cloud save needs it). Save.
+3. **Consent screen.** In **Credentials**, Play Console asks you to configure
+   the OAuth consent screen in Google Cloud and links there. Follow it, make it
+   available to everyone, with the scopes `games`, `games_lite` and
+   `drive.appdata`, and publish it.
+4. **Credential.** **Add credential → Android**, name `No Paddle`, then
+   **Create OAuth client**, which opens Google Cloud: type **Android**, package
+   `io.github.manpreetgugga.boatify`, and the **SHA-1** of the *app signing key
+   certificate* from Play Console's **Test and release → App integrity → App
+   signing**. Create it, pick it back in Play Console and **Save changes**.
+5. **Leaderboards** (optional). **Leaderboards → Create leaderboard**, four
+   times, each **Numeric**, larger is better:
+   - `Stars`: all stars won.
+   - `Open Sea`: the furthest run, in metres.
+   - `Daily streak`: the longest run of daily voyages, in days.
+   - `Regatta wins`: regattas won.
+   Copy each one's id (it starts `CgkI`).
+6. **Testers, then publish.** Until the Play Games project is published only
+   its **Testers** can sign in: add your own Google account there. When it
+   works, **Review and publish → Publish**.
+7. **Give it to GitHub.** Repository **Settings → Secrets and variables →
+   Actions**, as a secret (or, since it isn't a password, a variable):
+
+   | Name | Value |
+   | --- | --- |
+   | `PLAY_GAMES_APP_ID` | the project id at the top of the Configuration page, all digits (e.g. `123456789012`) |
+   | `PLAY_GAMES_LEADERBOARD_STARS` | optional: the `Stars` leaderboard id |
+   | `PLAY_GAMES_LEADERBOARD_SEA` | optional: the `Open Sea` leaderboard id |
+   | `PLAY_GAMES_LEADERBOARD_STREAK` | optional: the `Daily streak` leaderboard id |
+   | `PLAY_GAMES_LEADERBOARD_WINS` | optional: the `Regatta wins` leaderboard id |
+
+The next version's bundle has Play Games. A leaderboard left out is simply not
+sent to. A bad app id stops the build with a message, rather than shipping an
+app whose sign-in fails. In the game, **Settings → Google Play Games** signs in,
+shows the leaderboards, and saves or loads the cloud copy by hand; it is also
+saved after voyages and when the app is put away. A phone only writes to the
+cloud after it has looked at what is there, and asks before replacing its own
+progress with the cloud's. If players can't sign in, the SHA-1 in step 4 is the
+usual culprit: it must be the *app signing* key's, not the upload key's.
+
+Also update **Data safety** (step 6): with Play Games on, Google Play Games
+collects the player's Play Games profile and game activity when they sign in.
+Answer per Google's current notes for Play Games Services, and keep "no
+accounts" true: the game has none of its own.
+
 ## Play and the APK don't mix
 
 The APKs on the Releases page are signed with the public development key, the

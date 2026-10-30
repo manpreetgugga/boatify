@@ -78,6 +78,13 @@ jobs:
           ADMOB_REWARDED_ID: ${{ secrets.ADMOB_REWARDED_ID }}
           ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
           ADMOB_TEST_DEVICE_IDS: ${{ secrets.ADMOB_TEST_DEVICE_IDS }}
+          # Google Play Games, for the Play bundle only and only once the
+          # repository has the app id; the leaderboard ids are optional.
+          PLAY_GAMES_APP_ID: ${{ secrets.PLAY_GAMES_APP_ID || vars.PLAY_GAMES_APP_ID }}
+          PLAY_GAMES_LEADERBOARD_STARS: ${{ secrets.PLAY_GAMES_LEADERBOARD_STARS || vars.PLAY_GAMES_LEADERBOARD_STARS }}
+          PLAY_GAMES_LEADERBOARD_SEA: ${{ secrets.PLAY_GAMES_LEADERBOARD_SEA || vars.PLAY_GAMES_LEADERBOARD_SEA }}
+          PLAY_GAMES_LEADERBOARD_STREAK: ${{ secrets.PLAY_GAMES_LEADERBOARD_STREAK || vars.PLAY_GAMES_LEADERBOARD_STREAK }}
+          PLAY_GAMES_LEADERBOARD_WINS: ${{ secrets.PLAY_GAMES_LEADERBOARD_WINS || vars.PLAY_GAMES_LEADERBOARD_WINS }}
         run: ./gradlew bundleRelease --stacktrace
       - name: Name the APK and bundle
         id: apk
@@ -122,12 +129,9 @@ jobs:
           VERSION: ${{ steps.apk.outputs.version }}
         run: |
           CODE=$(node -p "const [a, b, c] = process.env.VERSION.split('.').map(Number); a * 10000 + b * 100 + c")
+          # Release notes are in English only; the listing itself is in every language.
           mkdir -p out/whatsnew
-          for NOTES in fastlane/metadata/android/*/changelogs/${CODE}.txt; do
-            [ -f "$NOTES" ] || continue
-            LOCALE=$(basename "$(dirname "$(dirname "$NOTES")")")
-            cp "$NOTES" "out/whatsnew/whatsnew-${LOCALE}"
-          done
+          cp "fastlane/metadata/android/en-US/changelogs/${CODE}.txt" out/whatsnew/whatsnew-en-US
           echo "ready=true" >> "$GITHUB_OUTPUT"
       - name: Upload to Google Play
         if: steps.play.outputs.ready == 'true'
