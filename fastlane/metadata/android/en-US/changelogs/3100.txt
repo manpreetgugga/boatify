@@ -1,0 +1,1 @@
+A racing line for the regatta: a gold line now shows a course you can really sail, from the start round both marks and into the harbor. Up the beat it zig-zags, with the next tack ringed. The leg you're on is bright, the rest faint, and the minimap shows it too.

@@ -7,6 +7,8 @@ import { loadSave, recordRace } from '../web/src/platform/save.js';
 import { createGame, stepGame, drainEvents } from '../web/src/world/game.js';
 import { courseGoal } from '../web/src/world/level.js';
 import { hullContact, bounce } from '../web/src/world/contact.js';
+import { isClear } from '../web/src/world/collision.js';
+import { angleDiff, fromBearing, DEG } from '../web/src/core/math.js';
 import { createAutopilot, autopilotInput } from '../web/src/world/autopilot.js';
 import { regattaDef, fleetFor, ordinal, dirtyAirAt, shadeWind, giveWay, standings, FLEETS, RIVALS, REGATTA, DIRTY_REACH } from '../web/src/world/regatta.js';
 
@@ -31,6 +33,32 @@ test('every regatta is charted from its seed: two marks, a start line and a harb
   for (let i = 1; i < ys.length; i++) assert.ok(ys[i] - ys[i - 1] >= 60, 'room between boats on the line');
   // Each regatta has its own gusts, not just its own course.
   assert.notEqual(regattaDef(5).windSeed, regattaDef(6).windSeed);
+});
+
+test('the racing line is a course you can sail: tacks up the beat, clear of land, through every mark', () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const g = race(seed);
+    const { line } = g.race;
+    const { level } = g;
+    const windFrom = fromBearing(g.wind.baseFrom);
+    assert.equal(line.length, level.checkpoints.length + 1);
+    assert.deepEqual(line[0].pts[0], [g.boat.x, g.boat.y], 'it sets out from where you start');
+    [...level.checkpoints, level.finish].forEach((stop, i) => {
+      assert.deepEqual(line[i].pts.at(-1), [stop.x, stop.y], `seed ${seed} leg ${i} ends at its mark`);
+      if (i) assert.deepEqual(line[i].pts[0], line[i - 1].pts.at(-1), 'each leg picks up where the last one ended');
+    });
+    assert.equal(line[0].turn, 'tack', `seed ${seed}: the beat is sailed in tacks`);
+    assert.ok(line[0].pts.length >= 3);
+    for (const leg of line) {
+      for (let j = 1; j < leg.pts.length; j++) {
+        const [ax, ay] = leg.pts[j - 1];
+        const [bx, by] = leg.pts[j];
+        const twa = Math.abs(angleDiff(Math.atan2(by - ay, bx - ax), windFrom)) / DEG;
+        assert.ok(twa > 44 && twa < 160, `seed ${seed}: a board ${twa.toFixed(0)} degrees off the wind`);
+        for (let t = 0; t <= 1; t += 0.05) assert.ok(isClear(level, ax + (bx - ax) * t, ay + (by - ay) * t, 8), `seed ${seed}: the line runs over land`);
+      }
+    }
+  }
 });
 
 test('the fleet steps up with your wins', () => {

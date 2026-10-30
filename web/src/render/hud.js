@@ -376,6 +376,17 @@ function drawMinimap(ctx, hud, game, cam, L, time) {
   ctx.strokeStyle = 'rgba(232, 244, 242, 0.35)';
   ctx.lineWidth = 1;
   ctx.strokeRect(x + (cam.x - vw / 2) * k, y + (cam.y - vh / 2) * k, vw * k, vh * k);
+  // The regatta's racing line: the leg being sailed, then the rest faintly.
+  if (game.race && game.status !== 'finished') {
+    game.race.line.forEach((leg, i) => {
+      if (i < game.nextCheckpoint) return;
+      ctx.strokeStyle = i === game.nextCheckpoint ? rgba(C.warn, 0.85) : 'rgba(232, 244, 242, 0.3)';
+      ctx.lineWidth = i === game.nextCheckpoint ? 1.5 : 1;
+      ctx.beginPath();
+      leg.pts.forEach(([px, py], j) => (j ? ctx.lineTo(x + px * k, y + py * k) : ctx.moveTo(x + px * k, y + py * k)));
+      ctx.stroke();
+    });
+  }
   // Floes move, so they're drawn live.
   for (const fl of level.floes) {
     ctx.fillStyle = MAP_FLOE[fl.look] || C.ice;

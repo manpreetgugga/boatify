@@ -4,6 +4,7 @@
 import { createWake, updateWake, drawWake, drawBoat } from './boat.js';
 import { helmsman } from './skipper.js';
 import { DIRTY_REACH, shadowWidth } from '../world/regatta.js';
+import { C, font, rgba } from './palette.js';
 
 const RIVAL_JACKETS = ['#d9473a', '#3f8f5a', '#4a6fb5'];
 
@@ -50,6 +51,84 @@ export function drawDirtyAir(ctx, game, time) {
     ctx.closePath();
     ctx.fill();
   }
+}
+
+// The racing line: the leg being sailed in bright dashes running on toward
+// the mark, from the point on it nearest the boat, with the next tack (or
+// gybe) ringed; the legs after it faint, to show where the course goes.
+export function drawRacingLine(ctx, game, cam, time) {
+  const race = game.race;
+  if (!race || !race.line || game.status === 'finished') return;
+  const s = 1 / cam.scale;
+  const legs = race.line;
+  const at = Math.min(game.nextCheckpoint, legs.length - 1);
+  const trace = (pts) => {
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.stroke();
+  };
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([5 * s, 9 * s]);
+  ctx.strokeStyle = 'rgba(232, 244, 242, 0.22)';
+  ctx.lineWidth = 2 * s;
+  for (let i = at + 1; i < legs.length; i++) trace(legs[i].pts);
+  const { pts, turn } = legs[at];
+  const near = nearestOn(pts, game.boat.x, game.boat.y);
+  const ahead = [[near.x, near.y], ...pts.slice(near.i + 1)];
+  ctx.setLineDash([]);
+  ctx.strokeStyle = rgba(C.warn, 0.14);
+  ctx.lineWidth = 10 * s;
+  trace(ahead);
+  ctx.setLineDash([12 * s, 8 * s]);
+  ctx.lineDashOffset = -time * 40 * s;
+  ctx.strokeStyle = rgba(C.warn, 0.9);
+  ctx.lineWidth = 2.6 * s;
+  trace(ahead);
+  // Strayed off it: a fainter thread back to the line.
+  if (near.d > 40) {
+    ctx.setLineDash([2 * s, 6 * s]);
+    ctx.strokeStyle = rgba(C.warn, 0.45);
+    ctx.lineWidth = 1.6 * s;
+    trace([[game.boat.x, game.boat.y], [near.x, near.y]]);
+  }
+  // Where to turn next.
+  if (turn && near.i + 1 < pts.length - 1) {
+    const [tx, ty] = pts[near.i + 1];
+    const pulse = 0.5 + 0.5 * Math.sin(time * 4);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = rgba(C.warn, 0.55 + 0.35 * pulse);
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.arc(tx, ty, (8 + 3 * pulse) * s, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = font(14 * s, 800, undefined, true);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 3 * s;
+    ctx.strokeStyle = 'rgba(6, 20, 29, 0.6)';
+    ctx.strokeText(turn.toUpperCase(), tx, ty - 14 * s);
+    ctx.fillStyle = C.warn;
+    ctx.fillText(turn.toUpperCase(), tx, ty - 14 * s);
+  }
+  ctx.restore();
+}
+
+// The point on a line of points nearest (x, y), and the segment it's on.
+export function nearestOn(pts, x, y) {
+  let best = { i: 0, x: pts[0][0], y: pts[0][1], d: Infinity };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay] = pts[i];
+    const [bx, by] = pts[i + 1];
+    const len2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / len2));
+    const px = ax + (bx - ax) * t;
+    const py = ay + (by - ay) * t;
+    const d = Math.hypot(x - px, y - py);
+    if (d < best.d) best = { i, x: px, y: py, d };
+  }
+  return best;
 }
 
 export function drawFleet(ctx, game, time) {

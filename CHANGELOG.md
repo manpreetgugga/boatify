@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.31.0] - 2026-10-30
+
+A racing line for the regatta.
+
+- **Follow the gold line.** Every regatta now shows a course you can really sail, from the start round mark 1 and mark 2 and into the harbor. Upwind you can't sail straight at the mark, so the line zig-zags up the beat, and the next place to tack is ringed and marked TACK.
+- **The leg you're on stands out.** It's drawn bright, with its dashes running on toward the mark, from the point nearest your boat. The legs after it are faint, and stray off the line and a thin thread leads back to it.
+- **On the minimap too,** so you can see the whole course at a glance.
+- The line keeps clear of the islands and rocks. It's worked out from the prevailing wind, so when the wind shifts, sail by the wind and use the line as your guide.
+
 ## [0.30.0] - 2026-10-30
 
 A reason to sail: the way home.

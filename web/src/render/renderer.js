@@ -7,7 +7,7 @@ import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js
 import { createOcean, drawWater, drawWindMap, drawFlows } from './ocean.js';
 import { drawShallows, drawIslands, drawFloes, drawPickups, drawMarks } from './terrain.js';
 import { createWake, updateWake, drawWake, drawBoat, drawGhost } from './boat.js';
-import { createFleetFx, updateFleetFx, drawFleetWakes, drawDirtyAir, drawFleet } from './fleet.js';
+import { createFleetFx, updateFleetFx, drawFleetWakes, drawDirtyAir, drawRacingLine, drawFleet } from './fleet.js';
 import {
   createEffects,
   updateStreaks,
@@ -125,6 +125,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawWake(ctx, r.wake, game.clock);
   drawFleetWakes(ctx, r.fleet, game);
   drawDirtyAir(ctx, game, time);
+  drawRacingLine(ctx, game, cam, time);
   drawStreaks(ctx, r.fx, game);
   drawIslands(ctx, game, cam, time);
   drawFloes(ctx, game, cam, time);

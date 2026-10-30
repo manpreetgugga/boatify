@@ -4,14 +4,14 @@
 // on boats tuned by the fleet's tier, and every boat leaves dirty air
 // downwind: sail in another boat's wind shadow and you slow down.
 
-import { clamp, dist } from '../core/math.js';
+import { angleDiff, clamp, dist, fromBearing, DEG } from '../core/math.js';
 import { createRng, hashString } from '../core/rng.js';
 import { createBoat, stepBoat, BOAT_TYPES, CAPSIZE_ANGLE } from '../physics/boat.js';
 import { blob, rockField } from './shapes.js';
 import { sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
 import { hullContact, bounce, fence } from './contact.js';
-import { createAutopilot, autopilotInput } from './autopilot.js';
+import { createAutopilot, autopilotInput, findPath, lineClear } from './autopilot.js';
 
 export const REGATTA = 'regatta';
 export const REGATTA_BLURB = 'Three rival boats, three legs: beat up to mark 1, reach across to mark 2, then run for the harbor. Round the marks in order and keep out of the dirty air behind the others.';
@@ -28,6 +28,13 @@ const QUIET_START = 12; // the fleet sorts itself out off the line before places
 // Boats are drawn larger than their hulls (see render/boat.js), so they
 // bump at about the size they look.
 const BUMP_SCALE = 1.6;
+// The racing line: a leg closer to the wind than SAIL_UP (or further off it
+// than SAIL_DOWN) is drawn as tacks (or gybes) this far off the wind.
+const SAIL_UP = 47 * DEG;
+const SAIL_DOWN = 157 * DEG;
+const LINE_UP = 50 * DEG;
+const LINE_DOWN = 145 * DEG;
+const LINE_EDGE = 40; // it keeps this far inside the race area
 
 // The fleet steps up as you win. `power` scales each rival's sail: they
 // never misread a shift, so the club boats need a big handicap to be beaten.
@@ -97,7 +104,7 @@ export function regattaDef(seed = 1, fleet = 0) {
     checkpoints: marks,
     par: { gold: 0, silver: 0 },
     tips: [
-      { at: 0.5, text: 'Race the fleet round mark 1, then mark 2, then into the harbor. The marks count only in order.' },
+      { at: 0.5, text: 'Race the fleet round mark 1, then mark 2, then into the harbor. Follow the gold line: upwind it zig-zags, so tack where it turns.' },
       { at: 14, text: 'Every sail leaves dirty air downwind. Keep out of the shadow behind a rival, or it slows you down.' },
     ],
   };
@@ -140,6 +147,7 @@ export function prepareRace(game) {
   game.race = {
     fleet: fleet.id,
     rivals,
+    line: racingLine(game, first.grid),
     order: [],
     place: 0,
     placeTimer: 0,
@@ -152,6 +160,78 @@ export function prepareRace(game) {
   };
   rank(game, 0);
   return game.race;
+}
+
+// The racing line: a course a boat can really sail, from the start round
+// mark 1 and mark 2 and into the harbor. One leg per mark, each a list of
+// points and the turn it is sailed with ('tack', 'gybe' or none). It is
+// worked out from the prevailing wind, so it's a guide, not gospel, once the
+// wind shifts.
+export function racingLine(game, grid) {
+  const { level, boat } = game;
+  const windFrom = fromBearing(game.wind.baseFrom);
+  const stops = [...level.checkpoints, level.finish];
+  let from = { x: boat.x, y: boat.y };
+  let heading = boat.heading;
+  return stops.map((to) => {
+    const leg = legLine(grid, level, from, to, windFrom, heading);
+    const [a, b] = leg.pts.slice(-2);
+    heading = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    from = to;
+    return leg;
+  });
+}
+
+function legLine(grid, level, from, to, windFrom, heading) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const twa = Math.abs(angleDiff(Math.atan2(dy, dx), windFrom));
+  const clear = (pts) =>
+    pts.every(([x, y], i) => {
+      if (x < LINE_EDGE || y < LINE_EDGE || x > level.width - LINE_EDGE || y > level.height - LINE_EDGE) return i === pts.length - 1;
+      return !i || lineClear(grid, pts[i - 1][0], pts[i - 1][1], x, y);
+    });
+  const straight = [
+    [from.x, from.y],
+    [to.x, to.y],
+  ];
+  if (twa >= SAIL_UP && twa <= SAIL_DOWN && clear(straight)) return { pts: straight, turn: null };
+  if (twa < SAIL_UP || twa > SAIL_DOWN) {
+    // Split the leg into boards on the two tacks (or gybes): a·u + b·v.
+    const off = twa < SAIL_UP ? LINE_UP : LINE_DOWN;
+    const dirs = [windFrom + off, windFrom - off].map((h) => [Math.cos(h), Math.sin(h), h]);
+    const [u, v] = dirs;
+    const det = u[0] * v[1] - u[1] * v[0];
+    const len = [(dx * v[1] - dy * v[0]) / det, (u[0] * dy - u[1] * dx) / det];
+    if (len[0] >= 0 && len[1] >= 0) {
+      // Set out on whichever board needs the smaller turn from the way she's heading.
+      const near = Math.abs(angleDiff(u[2], heading)) <= Math.abs(angleDiff(v[2], heading)) ? 0 : 1;
+      for (const n of [2, 1, 3, 4]) {
+        for (const first of [near, 1 - near]) {
+          const pts = [[from.x, from.y]];
+          for (let i = 0; i < n * 2; i++) {
+            const k = i % 2 ? 1 - first : first;
+            const [px, py] = pts[pts.length - 1];
+            pts.push([px + dirs[k][0] * (len[k] / n), py + dirs[k][1] * (len[k] / n)]);
+          }
+          pts[pts.length - 1] = [to.x, to.y];
+          if (clear(pts)) return { pts, turn: twa < SAIL_UP ? 'tack' : 'gybe' };
+        }
+      }
+    }
+  }
+  // Something is in the way: round it on the planner's path, pulled taut.
+  const path = findPath(grid, from.x, from.y, to.x, to.y, windFrom);
+  if (!path) return { pts: straight, turn: null };
+  const pts = [path[0]];
+  for (let i = 0; i < path.length - 1; ) {
+    let j = path.length - 1;
+    while (j > i + 1 && !lineClear(grid, path[i][0], path[i][1], path[j][0], path[j][1])) j--;
+    pts.push(path[j]);
+    i = j;
+  }
+  pts[0] = [from.x, from.y];
+  return { pts, turn: null };
 }
 
 export function updateRace(game, dt) {
