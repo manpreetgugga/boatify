@@ -11,14 +11,15 @@ import { createAutopilot, autopilotInput } from '../world/autopilot.js';
 import { DRIFTERS } from '../world/castaways.js';
 import { angleDiff, toBearing } from '../core/math.js';
 import { festivalOn } from './festivals.js';
+import { N_ } from '../i18n/index.js';
 
 // Bump when the generator changes so cached courses are regenerated.
-export const DAILY_VERSION = 3;
+export const DAILY_VERSION = 4;
 
-const FIRST = ['Saltwind', 'Gull', 'Driftwood', 'Cormorant', 'Brine', 'Kelp', 'Sundown', 'Mackerel', 'Lantern', 'Pelican', 'Squall', 'Coral'];
-const SECOND = ['Passage', 'Run', 'Crossing', 'Sound', 'Reach', 'Narrows', 'Shoals', 'Channel', 'Skerries', 'Roads'];
+export const FIRST = ['Saltwind', 'Gull', 'Driftwood', 'Cormorant', 'Brine', 'Kelp', 'Sundown', 'Mackerel', 'Lantern', 'Pelican', 'Squall', 'Coral'];
+export const SECOND = ['Passage', 'Run', 'Crossing', 'Sound', 'Reach', 'Narrows', 'Shoals', 'Channel', 'Skerries', 'Roads'];
 
-const THEMES = {
+export const THEMES = {
   archipelago: 'Islands are scattered all the way to B.',
   reef: 'Rock fields lurk between the islands.',
   current: 'A strong current runs across the middle.',
@@ -78,8 +79,9 @@ export function dailyCandidate(key, attempt) {
   const def = {
     id: dailyId(key),
     daily: key,
-    name: `${rng.pick(FIRST)} ${rng.pick(SECOND)}`,
-    blurb: themes.map((t) => THEMES[t]).join(' '),
+    // Kept in parts too, so the name and blurb can be shown in any language.
+    nameParts: [rng.pick(FIRST), rng.pick(SECOND)],
+    blurbParts: themes.map((t) => THEMES[t]),
     size: [W, H],
     start: { ...start, heading },
     finish,
@@ -93,8 +95,10 @@ export function dailyCandidate(key, attempt) {
     currents: [],
     whirlpools: [],
     storms: [],
-    tips: [{ at: 0, text: 'A new course every day. Same wind, same islands for every sailor today.' }],
+    tips: [{ at: 0, text: N_('A new course every day. Same wind, same islands for every sailor today.') }],
   };
+  def.name = def.nameParts.join(' ');
+  def.blurb = def.blurbParts.join(' ');
 
   const farFromEnds = (x, y, r) => Math.hypot(x - start.x, y - start.y) > r + 230 && Math.hypot(x - finish.x, y - finish.y) > r + 230;
   const circles = []; // islands and hazards, to keep channels open between them
@@ -206,7 +210,9 @@ function dressForFestival(def, fest, key) {
   def.festival = fest.id;
   def.theme = fest.theme;
   def.name = rng.pick(fest.names);
-  def.blurb = `${fest.blurb} ${def.blurb}`;
+  def.nameParts = null;
+  def.blurbParts = [fest.blurb, ...def.blurbParts];
+  def.blurb = def.blurbParts.join(' ');
   // A squall's rain and darkness stay; night falls over them.
   def.weather = { ...(def.weather || {}), ...fest.weather };
   def.tips = [{ at: 0, text: fest.tip }];

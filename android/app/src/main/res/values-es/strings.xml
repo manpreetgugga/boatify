@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminders_channel">Recordatorios</string>
+    <string name="reminders_channel_about">Un aviso del puerto a las 9:00, las 18:00 y las 21:00</string>
+</resources>

@@ -7,6 +7,7 @@ import { dateKey } from '../data/daily.js';
 import { blankWallet, cleanWallet } from '../data/economy.js';
 import { cleanOrders } from '../data/orders.js';
 import { blankCup, cleanCup } from '../data/cup.js';
+import { N_ } from '../i18n/index.js';
 
 const KEY = 'boatify.save.v1';
 const GHOST_KEY = 'boatify.ghosts.v1';
@@ -15,10 +16,10 @@ const DAILY_KEEP = 30; // days of daily results to remember
 
 // How close the camera sits, from the zoom button or Settings.
 export const ZOOMS = [
-  [0.8, 'Far'],
-  [1, 'Normal'],
-  [1.25, 'Close'],
-  [1.55, 'Closer'],
+  [0.8, N_('Far')],
+  [1, N_('Normal')],
+  [1.25, N_('Close')],
+  [1.55, N_('Closer')],
 ];
 
 // The next zoom step in (dir 1) or out (dir -1); tapping the button (dir 0)
@@ -62,6 +63,7 @@ export const DEFAULT_SETTINGS = {
   reduceMotion: null, // null: follow the phone's own setting
   textSize: 1,
   reminders: true, // reminders on the phone at 9 am, 6 pm and 9 pm (Android)
+  lang: 'auto', // 'auto' follows the phone, else one of i18n's LANGS
 };
 
 function blank() {

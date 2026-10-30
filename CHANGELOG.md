@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.40.0] - 2026-10-30
+
+No Paddle speaks Hindi, Spanish, Portuguese and Indonesian.
+
+- **Five languages.** English, हिंदी, Español, Português and Bahasa Indonesia. The game starts in your phone's language when it knows it, and Settings → Language switches it at once, or back to the phone's.
+- **Everything is translated.** Menus, voyage names and briefings, the prologue film, castaways and what they say, messages in bottles, the harbor talk, orders, medals, the Sea Atlas, the harbor, upgrades, festivals, the Regatta Cup, reminders and share texts. Numbers, places and dates follow the language.
+- **The store too.** The Google Play listing and the release notes come in Hindi, Spanish (Spain and Latin America), Portuguese (Brazil) and Indonesian, and CI uploads each language's notes. The phone's reminder channel is named in its language.
+
 ## [0.39.0] - 2026-10-30
 
 The Regatta Cup: four races on four courses, with points, a trophy and a boat to win.

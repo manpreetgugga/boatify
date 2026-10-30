@@ -6,6 +6,7 @@ import { boatSpeed } from '../physics/boat.js';
 import { HAUL_R, HAUL_SPEED, HAUL_TIME } from '../world/castaways.js';
 import { viewBounds } from './camera.js';
 import { C, font } from './palette.js';
+import { t } from '../i18n/index.js';
 
 const SHIRTS = ['#e0503a', '#3a7bd5', '#f2b33d', '#47a86b', '#b45ad1', '#ef8a3a'];
 const SKIN = ['#e8b48c', '#c68a5e', '#8d5a3b', '#f1c9a5'];
@@ -59,7 +60,7 @@ export function drawCastaways(ctx, game, cam, time) {
         ctx.font = font(11, 800);
         ctx.textAlign = 'center';
         ctx.fillStyle = C.warn;
-        ctx.fillText('SLOW DOWN', 0, -HAUL_R - 8);
+        ctx.fillText(t('SLOW DOWN'), 0, -HAUL_R - 8);
       }
     }
 

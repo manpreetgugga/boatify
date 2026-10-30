@@ -13,6 +13,7 @@ import { isClear } from './collision.js';
 import { addSeaLife } from './wildlife.js';
 import { effectiveSpeed } from './autopilot.js';
 import { whirlpoolBlackPearl } from './blackpearls.js';
+import { N_ } from '../i18n/index.js';
 
 export const OPEN_SEA = 'open-sea';
 export const SEA_HEIGHT = 1300;
@@ -24,7 +25,7 @@ const BEHIND = 1400; // and forget it this far behind
 const GATE_R = 44;
 const MISSED_BY = 150; // a gate this far behind the boat is missed
 export const PEARL_TIME = 2;
-export const SEA_BLURB = 'No harbor, no end. Sail east for as long as the clock lasts: every buoy gate puts time back on it, and every pearl a little more. The wind wanders as you go.';
+export const SEA_BLURB = N_('No harbor, no end. Sail east for as long as the clock lasts: every buoy gate puts time back on it, and every pearl a little more. The wind wanders as you go.');
 const WARN_AT = 10; // seconds left when the clock starts to tick
 
 // Gates hand back the time the next leg should take at polar speed, with a
@@ -67,7 +68,7 @@ export function openSeaDef(seed = 1) {
     id: OPEN_SEA,
     endless: true,
     seed,
-    name: 'Open Sea',
+    name: N_('Open Sea'),
     blurb: SEA_BLURB,
     size: [SEA_LENGTH, SEA_HEIGHT],
     start: { x: START_X, y: SEA_HEIGHT / 2, heading: 90 },
@@ -76,8 +77,8 @@ export function openSeaDef(seed = 1) {
     wind: { from, speed: 16, gust: 0.24, shift: 6, period: 40, events },
     par: { gold: 0, silver: 0 },
     tips: [
-      { at: 0.5, text: 'Sail through each buoy gate to put time back on the clock. Miss one and you lose its time.' },
-      { at: 16, text: 'Pearls add a couple of seconds too. How far east can you get?' },
+      { at: 0.5, text: N_('Sail through each buoy gate to put time back on the clock. Miss one and you lose its time.') },
+      { at: 16, text: N_('Pearls add a couple of seconds too. How far east can you get?') },
     ],
   };
 }

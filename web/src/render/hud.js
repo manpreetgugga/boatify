@@ -7,7 +7,7 @@ import { relativeWindAngle, distanceToFinish } from '../world/game.js';
 import { windFromBearing } from '../world/wind.js';
 import { ESCORT_TIME } from '../world/wildlife.js';
 import { chasingShip } from '../world/pirates.js';
-import { ordinal } from '../world/regatta.js';
+import { t, ordinal, nameOf } from '../i18n/index.js';
 import { worldToScreen } from './camera.js';
 import { C, font, FONT, rgba } from './palette.js';
 import { themeOf, MAP_ISLAND, MAP_ROCK, MAP_FLOE } from './themes.js';
@@ -81,7 +81,7 @@ function drawTopLeft(ctx, game, L) {
   const starText = target ? `★ ${formatTime(target)}` : '★';
   ctx.font = font(11, 600, FONT.body);
   const starW = ctx.measureText(starText).width;
-  const name = fitText(ctx, game.level.name.toUpperCase(), 11, w - 22 - starW - 8, 600, FONT.body);
+  const name = fitText(ctx, nameOf(game.level).toUpperCase(), 11, w - 22 - starW - 8, 600, FONT.body);
   text(ctx, name.str, x + 12, y + 13, name.size, C.textDim, 'left', 600, FONT.body);
   text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
   text(ctx, starText, x + w - 10, y + 13, 11, starColor, 'right', 600, FONT.body);
@@ -151,7 +151,7 @@ function drawSeaClock(ctx, game, L, time) {
     else ctx.rect(x, y, w, 44);
     ctx.stroke();
   }
-  text(ctx, 'OPEN SEA', x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
+  text(ctx, t('OPEN SEA'), x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
   text(ctx, `⚑ ${sea.gates}`, x + w - 10, y + 13, 11, C.warn, 'right', 700, FONT.body);
   text(ctx, formatTime(sea.clock), x + 12, y + 30, 21, low ? C.danger : C.text, 'left', 700);
   text(ctx, formatDistance(sea.best), x + w - 10, y + 31, 15, C.text, 'right', 700);
@@ -167,9 +167,9 @@ function drawRaceBox(ctx, game, L, time) {
   const w = L.compact ? 150 : 176;
   panel(ctx, x, y, w, 44, 10);
   const marks = game.level.checkpoints.length;
-  const leg = game.nextCheckpoint < marks ? `MARK ${game.nextCheckpoint + 1}/${marks}` : 'FINISH';
+  const leg = game.nextCheckpoint < marks ? t('MARK {n}/{of}', { n: game.nextCheckpoint + 1, of: marks }) : t('FINISH');
   const cup = game.def.cup;
-  text(ctx, cup ? `CUP ${cup.race}/${cup.of}` : 'REGATTA', x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
+  text(ctx, cup ? t('CUP {n}/{of}', { n: cup.race, of: cup.of }) : t('REGATTA'), x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
   text(ctx, leg, x + w - 10, y + 13, 11, C.warn, 'right', 700, FONT.body);
   text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
   const place = race.place || 1;
@@ -183,7 +183,7 @@ function drawRaceBox(ctx, game, L, time) {
     const cy = y + 50;
     ctx.globalAlpha = clamp(race.dirty * 2.5, 0.5, 1) * (0.8 + 0.2 * Math.sin(time * 6));
     panel(ctx, x, cy, cw, 22, 8);
-    text(ctx, 'DIRTY AIR', x + cw / 2, cy + 11.5, 11, C.warn, 'center', 800, FONT.body);
+    text(ctx, t('DIRTY AIR'), x + cw / 2, cy + 11.5, 11, C.warn, 'center', 800, FONT.body);
     ctx.globalAlpha = 1;
   }
 }
@@ -198,13 +198,14 @@ function drawRivalTags(ctx, game, cam, L) {
     if (sx < L.insets.l || sx > L.w - L.insets.r || ty < 0 || sy > L.h) continue;
     if (under(sx, ty, L.panel) || under(sx, ty, L.minimap)) continue;
     ctx.font = font(11, 800, FONT.body);
-    const tw = ctx.measureText(r.name).width + 12;
+    const label = t(r.name);
+    const tw = ctx.measureText(label).width + 12;
     ctx.fillStyle = 'rgba(6, 22, 34, 0.55)';
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(sx - tw / 2, ty - 8, tw, 16, 8);
     else ctx.rect(sx - tw / 2, ty - 8, tw, 16);
     ctx.fill();
-    text(ctx, r.name, sx, ty + 0.5, 11, r.look.sail, 'center', 800, FONT.body);
+    text(ctx, label, sx, ty + 0.5, 11, r.look.sail, 'center', 800, FONT.body);
   }
 }
 
@@ -214,7 +215,7 @@ function drawGhostInfo(ctx, game, cam, L, ghost) {
   const [sx, sy] = worldToScreen(cam, pose.x, pose.y);
   if (sx > 0 && sx < L.w && sy > 0 && sy < L.h) {
     ctx.globalAlpha = pose.done ? 0.45 : 0.85;
-    text(ctx, 'BEST', sx, sy - 24, 11, '#bfefff', 'center', 700, FONT.display);
+    text(ctx, t('BEST'), sx, sy - 24, 11, '#bfefff', 'center', 700, FONT.display);
     ctx.globalAlpha = 1;
   }
   if (gap === null || game.time < 2) return;
@@ -225,7 +226,7 @@ function drawGhostInfo(ctx, game, cam, L, ghost) {
   ctx.font = font(13, 700, FONT.display);
   const w = ctx.measureText(label).width + 50;
   panel(ctx, x, y, w, 22, 8);
-  text(ctx, 'BEST', x + 9, y + 11.5, 10, '#bfefff', 'left', 700, FONT.display);
+  text(ctx, t('BEST'), x + 9, y + 11.5, 10, '#bfefff', 'left', 700, FONT.display);
   text(ctx, label, x + w - 9, y + 11.5, 13, ahead ? C.ok : C.warn, 'right', 700, FONT.display);
 }
 
@@ -238,7 +239,7 @@ function drawEscort(ctx, game, L, time, belowGhost) {
   const w = L.compact ? 150 : 176;
   panel(ctx, x, y, w, 22, 8);
   const riding = pod.ride > 0.5;
-  const label = riding ? 'DOLPHINS' : 'DOLPHINS…';
+  const label = riding ? t('DOLPHINS') : `${t('DOLPHINS')}…`;
   text(ctx, label, x + 9, y + 11.5, 11, '#bfefff', 'left', 700, FONT.display);
   // Remaining ride, or a pulse while the pod is still catching up.
   const bx = x + 84;
@@ -474,7 +475,7 @@ function drawHull(ctx, game, L) {
   const w = d.w + 10;
   panel(ctx, x, y, w, 26, 8);
   const hull = clamp(game.hull / 100, 0, 1);
-  text(ctx, 'HULL', x + 9, y + 13.5, 11, C.textDim, 'left', 700);
+  text(ctx, t('HULL'), x + 9, y + 13.5, 11, C.textDim, 'left', 700);
   const bx = x + 44;
   const bw = w - 44 - 40;
   ctx.fillStyle = 'rgba(232, 244, 242, 0.12)';
@@ -504,7 +505,7 @@ function drawRescue(ctx, game, L, time) {
     ctx.stroke();
   }
   const hauling = game.castaways.some((c) => c.state !== 'aboard' && c.haul > 0);
-  const label = hauling ? 'HAULING IN' : all ? 'ALL ABOARD' : aboard ? 'ABOARD' : 'CASTAWAY ADRIFT';
+  const label = hauling ? t('HAULING IN') : all ? t('ALL ABOARD') : aboard ? t('ABOARD') : t('CASTAWAY ADRIFT');
   const color = hauling ? rgba(C.ok, 0.7 + 0.3 * Math.sin(time * 10)) : all ? C.ok : C.textDim;
   const fit = fitText(ctx, label, 11, w - 70, 700, FONT.display);
   text(ctx, fit.str, x + 28, y + 13.5, fit.size, color, 'left', 700);
@@ -516,18 +517,18 @@ function drawRescue(ctx, game, L, time) {
 function drawPointers(ctx, game, cam, L, time) {
   const targets = [];
   const ship = chasingShip(game);
-  if (ship) targets.push({ x: ship.x, y: ship.y, color: C.danger, label: 'PIRATE', dist: Math.hypot(ship.x - game.boat.x, ship.y - game.boat.y) });
+  if (ship) targets.push({ x: ship.x, y: ship.y, color: C.danger, label: t('PIRATE'), dist: Math.hypot(ship.x - game.boat.x, ship.y - game.boat.y) });
   const f = game.level.finish;
   const next = game.level.checkpoints[game.nextCheckpoint];
   // A regatta points at B only once every mark is rounded.
   if (!game.sea && !(game.race && next)) targets.push({ x: f.x, y: f.y, color: C.signal, label: 'B', dist: distanceToFinish(game) });
   // Out on the open sea the next gate is the mark to steer for, and in a
   // regatta the next mark.
-  const markLabel = game.sea ? 'GATE' : game.race && next ? `MARK ${next.label}` : '';
+  const markLabel = game.sea ? t('GATE') : game.race && next ? t('MARK {n}', { n: next.label }) : '';
   if (next && !next.reached) targets.push({ x: next.x, y: next.y, color: C.warn, label: markLabel, dist: distanceToFinish(game) });
   for (const c of game.castaways) {
     const d = Math.hypot(c.x - game.boat.x, c.y - game.boat.y);
-    if (c.state !== 'aboard' && d < 900) targets.push({ x: c.x, y: c.y, color: C.foam, label: 'SOS', dist: d });
+    if (c.state !== 'aboard' && d < 900) targets.push({ x: c.x, y: c.y, color: C.foam, label: t('SOS'), dist: d });
   }
   // Pointers ride the edge of the open water between the HUD bands.
   const m = 30;
@@ -538,8 +539,8 @@ function drawPointers(ctx, game, cam, L, time) {
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
   const placed = [];
-  for (const t of targets) {
-    const [sx, sy] = worldToScreen(cam, t.x, t.y);
+  for (const tg of targets) {
+    const [sx, sy] = worldToScreen(cam, tg.x, tg.y);
     if (sx > x0 && sx < x1 && sy > y0 && sy < y1) continue;
     const a = Math.atan2(sy - cy, sx - cx);
     const s = Math.min((x1 - x0) / 2 / Math.abs(Math.cos(a) || 1e-6), (y1 - y0) / 2 / Math.abs(Math.sin(a) || 1e-6));
@@ -568,7 +569,7 @@ function drawPointers(ctx, game, cam, L, time) {
     const pulse = 1 + 0.08 * Math.sin(time * 5);
     ctx.scale(pulse, pulse);
     ctx.rotate(a);
-    ctx.fillStyle = t.color;
+    ctx.fillStyle = tg.color;
     ctx.beginPath();
     ctx.moveTo(14, 0);
     ctx.lineTo(-6, -10);
@@ -577,11 +578,11 @@ function drawPointers(ctx, game, cam, L, time) {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-    if (t.label) {
+    if (tg.label) {
       const lx = px - Math.cos(a) * 26;
       const ly = py - Math.sin(a) * 22;
-      text(ctx, t.label, lx, ly - 7, 15, t.color, 'center', 800, FONT.display, true);
-      text(ctx, `${Math.round(toMeters(t.dist))} m`, lx, ly + 8, 11, C.text, 'center', 600, FONT.body);
+      text(ctx, tg.label, lx, ly - 7, 15, tg.color, 'center', 800, FONT.display, true);
+      text(ctx, `${Math.round(toMeters(tg.dist))} m`, lx, ly + 8, 11, C.text, 'center', 600, FONT.body);
     }
     ctx.restore();
   }
@@ -663,8 +664,8 @@ function drawInstruments(ctx, game, L, controls, time) {
     ctx.textBaseline = 'middle';
     ctx.strokeStyle = 'rgba(6, 20, 29, 0.85)';
     ctx.lineWidth = 3;
-    ctx.strokeText(label, x, y);
-    text(ctx, label, x, y, label === 'N' ? 12 : 10, label === 'N' ? C.signal : C.text, 'center', 800);
+    ctx.strokeText(t(label), x, y);
+    text(ctx, t(label), x, y, label === 'N' ? 12 : 10, label === 'N' ? C.signal : C.text, 'center', 800);
   }
   ctx.restore();
 
@@ -686,9 +687,9 @@ function drawInstruments(ctx, game, L, controls, time) {
     if (sub) text(ctx, sub, x, subY, 12, C.textDim, 'left', 600, FONT.body);
   };
   const heading = toBearing(boat.heading);
-  reading(0, 'WIND', toKnots(game.windHere.speed).toFixed(0), 'kn', `from ${compassPoint(windFromBearing(game.wind))}`);
-  reading(1, 'SPEED', toKnots(boatSpeed(boat)).toFixed(1), 'kn', inIrons ? 'in irons' : null, inIrons ? C.danger : C.text);
-  reading(2, 'HEADING', compassPoint(heading), null, `${String(Math.round(heading) % 360).padStart(3, '0')}°`);
+  reading(0, t('WIND'), toKnots(game.windHere.speed).toFixed(0), 'kn', t('from {dir}', { dir: t(compassPoint(windFromBearing(game.wind))) }));
+  reading(1, t('SPEED'), toKnots(boatSpeed(boat)).toFixed(1), 'kn', inIrons ? t('in irons') : null, inIrons ? C.danger : C.text);
+  reading(2, t('HEADING'), t(compassPoint(heading)), null, `${String(Math.round(heading) % 360).padStart(3, '0')}°`);
 }
 
 function drawTouchControls(ctx, game, L, controls, time) {
@@ -768,7 +769,7 @@ function drawTouchControls(ctx, game, L, controls, time) {
     ctx.globalAlpha = 0.9;
     ctx.shadowColor = 'rgba(6, 20, 29, 0.95)';
     ctx.shadowBlur = 5;
-    text(ctx, 'TOUCH AND SLIDE TO STEER', h.x, h.y + h.r + 14, 12, C.text, 'center', 700);
+    text(ctx, t('TOUCH AND SLIDE TO STEER'), h.x, h.y + h.r + 14, 12, C.text, 'center', 700);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
     ctx.globalAlpha = 1;
@@ -807,7 +808,7 @@ function drawTouchControls(ctx, game, L, controls, time) {
   }
   ctx.stroke();
   ctx.restore();
-  text(ctx, `GUST ×${game.gustJars}`, g.x, g.y + g.r * 0.55, 11, C.text, 'center', 800);
+  text(ctx, `${t('GUST')} ×${game.gustJars}`, g.x, g.y + g.r * 0.55, 11, C.text, 'center', 800);
   ctx.globalAlpha = 1;
 
   // Sheet slider when trimming by hand.
@@ -822,34 +823,34 @@ function drawTouchControls(ctx, game, L, controls, time) {
     ctx.beginPath();
     ctx.arc(s.x, ty, s.w / 2 + 3, 0, Math.PI * 2);
     ctx.fill();
-    text(ctx, 'IN', s.x, s.y - 9, 10, C.textDim, 'center', 700);
-    text(ctx, 'OUT', s.x, s.y + s.h + 10, 10, C.textDim, 'center', 700);
+    text(ctx, t('IN'), s.x, s.y - 9, 10, C.textDim, 'center', 700);
+    text(ctx, t('OUT'), s.x, s.y + s.h + 10, 10, C.textDim, 'center', 700);
   }
 }
 
 function drawKeyHints(ctx, game, L, controls) {
   const y = L.panel.y - 12;
   const hint = controls.manual
-    ? 'A/D steer · W/S sheet in/out · SPACE gust · P pause'
-    : 'A/D or ←/→ steer · SPACE gust jar · T trim by hand · P pause';
+    ? t('A/D steer · W/S sheet in/out · SPACE gust · P pause')
+    : t('A/D or ←/→ steer · SPACE gust jar · T trim by hand · P pause');
   text(ctx, hint, L.w / 2, y, 12, 'rgba(232, 244, 242, 0.5)', 'center', 600, FONT.body);
-  if (game.gustJars > 0) text(ctx, `Gust jars: ${game.gustJars}  (SPACE)`, L.w / 2, y - 18, 13, '#bff3ff', 'center', 700);
+  if (game.gustJars > 0) text(ctx, `${t('Gust jars: {n}', { n: game.gustJars })}  (SPACE)`, L.w / 2, y - 18, 13, '#bff3ff', 'center', 700);
 }
 
 function drawStatus(ctx, game, L, time) {
   let msg = null;
   let color = C.warn;
   if (game.status === 'capsized') {
-    msg = 'CAPSIZED! Righting the boat…';
+    msg = t('CAPSIZED! Righting the boat…');
     color = C.danger;
   } else if (game.status === 'sinking') {
-    msg = game.sea ? 'HULL BREACHED! The run is over…' : 'HULL BREACHED! Back to the last buoy…';
+    msg = game.sea ? t('HULL BREACHED! The run is over…') : t('HULL BREACHED! Back to the last buoy…');
     color = C.danger;
   } else if (Math.abs(game.boat.heel) > HEEL_WARNING && game.status === 'sailing') {
-    msg = 'HEELING HARD: ease the sail or bear away!';
+    msg = t('HEELING HARD: ease the sail or bear away!');
     color = C.danger;
   } else if (game.waterHere.vortex > 0.45 && game.status === 'sailing') {
-    msg = 'WHIRLPOOL! Sail hard out of the swirl';
+    msg = t('WHIRLPOOL! Sail hard out of the swirl');
   }
   if (!msg) return;
   const y = L.insets.t + L.pad + 66;

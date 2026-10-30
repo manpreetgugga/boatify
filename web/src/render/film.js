@@ -11,6 +11,7 @@ import { baseScale } from './camera.js';
 import { homeIsle } from './terrain.js';
 import { VISUAL } from './boat.js';
 import { C, font } from './palette.js';
+import { t } from '../i18n/index.js';
 
 const WIDE = ['chart', 'dangers', 'title'];
 // Shots that open with a cut rather than the camera gliding over.
@@ -192,7 +193,7 @@ function drawWindArrows(ctx, cam, film, fade) {
     ctx.restore();
   }
   ctx.restore();
-  label(ctx, cam, 'WIND', boat.x - dx * 48 - dy * 20, boat.y - dy * 48 + dx * 20, { size: 15, pill: `rgba(4, 22, 34, ${(0.6 * fade).toFixed(3)})`, color: `rgba(232, 244, 242, ${fade.toFixed(3)})` });
+  label(ctx, cam, t('WIND'), boat.x - dx * 48 - dy * 20, boat.y - dy * 48 + dx * 20, { size: 15, pill: `rgba(4, 22, 34, ${(0.6 * fade).toFixed(3)})`, color: `rgba(232, 244, 242, ${fade.toFixed(3)})` });
 }
 
 function wedge(ctx, x, y, r, mid, half, fill, edge) {
@@ -215,9 +216,9 @@ function drawNoGo(ctx, cam, film, fade) {
   ctx.globalAlpha = fade;
   wedge(ctx, boat.x, boat.y, r, up, Math.PI / 4, 'rgba(255, 77, 77, 0.2)', 'rgba(255, 77, 77, 0.65)');
   ctx.restore();
-  label(ctx, cam, 'NO-GO', boat.x + Math.cos(up) * r * 0.72, boat.y + Math.sin(up) * r * 0.72, { size: 14, pill: `rgba(120, 18, 18, ${(0.75 * fade).toFixed(3)})`, color: `rgba(255, 236, 236, ${fade.toFixed(3)})` });
+  label(ctx, cam, t('NO-GO'), boat.x + Math.cos(up) * r * 0.72, boat.y + Math.sin(up) * r * 0.72, { size: 14, pill: `rgba(120, 18, 18, ${(0.75 * fade).toFixed(3)})`, color: `rgba(255, 236, 236, ${fade.toFixed(3)})` });
   if (boat.luffing) {
-    const flap = Math.sin(film.t * 12) > 0 ? 'flap' : 'flap!';
+    const flap = Math.sin(film.t * 12) > 0 ? t('flap') : t('flap!');
     label(ctx, cam, flap, boat.x - Math.cos(up) * 26, boat.y - Math.sin(up) * 26, { size: 13, color: `rgba(255, 200, 87, ${fade.toFixed(3)})`, weight: 700 });
   }
 }
@@ -231,9 +232,9 @@ function drawReach(ctx, cam, film, fade) {
   for (const side of [-1, 1]) wedge(ctx, boat.x, boat.y, r, up + side * Math.PI / 2, 22 * (Math.PI / 180), 'rgba(61, 220, 151, 0.18)', 'rgba(61, 220, 151, 0.6)');
   ctx.restore();
   const h = boat.heading;
-  label(ctx, cam, 'FASTEST', boat.x + Math.cos(h) * r * 0.8, boat.y + Math.sin(h) * r * 0.8, { size: 14, pill: `rgba(8, 70, 46, ${(0.75 * fade).toFixed(3)})`, color: `rgba(230, 255, 242, ${fade.toFixed(3)})` });
+  label(ctx, cam, t('FASTEST'), boat.x + Math.cos(h) * r * 0.8, boat.y + Math.sin(h) * r * 0.8, { size: 14, pill: `rgba(8, 70, 46, ${(0.75 * fade).toFixed(3)})`, color: `rgba(230, 255, 242, ${fade.toFixed(3)})` });
   const kn = Math.round(toKnots(boatSpeed(boat)));
-  label(ctx, cam, `${kn} kn`, boat.x - Math.cos(h) * 30, boat.y - Math.sin(h) * 30 + 12, { size: 18, color: `rgba(232, 244, 242, ${fade.toFixed(3)})` });
+  label(ctx, cam, t('{n} kn', { n: kn }), boat.x - Math.cos(h) * 30, boat.y - Math.sin(h) * 30 + 12, { size: 18, color: `rgba(232, 244, 242, ${fade.toFixed(3)})` });
 }
 
 // The way home, drawn out from the boat a stretch at a time.
@@ -331,7 +332,7 @@ function drawCallouts(ctx, cam, film, time) {
     ctx.stroke();
     ctx.restore();
     const pop = 0.6 + 0.4 * smoothstep(c.at, c.at + 0.3, film.t);
-    label(ctx, cam, c.text.toUpperCase(), c.x, c.y - 56 / cam.scale - 10, { size: 15 * pop, pill: `rgba(4, 22, 34, ${(0.8 * k).toFixed(3)})`, color: `rgba(255, 200, 87, ${k.toFixed(3)})` });
+    label(ctx, cam, t(c.text).toUpperCase(), c.x, c.y - 56 / cam.scale - 10, { size: 15 * pop, pill: `rgba(4, 22, 34, ${(0.8 * k).toFixed(3)})`, color: `rgba(255, 200, 87, ${k.toFixed(3)})` });
   }
 }
 

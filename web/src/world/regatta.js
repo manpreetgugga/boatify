@@ -12,6 +12,7 @@ import { sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
 import { hullContact, bounce, fence } from './contact.js';
 import { createAutopilot, autopilotInput, findPath, lineClear } from './autopilot.js';
+import { N_ } from '../i18n/index.js';
 
 export const REGATTA = 'regatta';
 export const REGATTA_BLURB = 'Three rival boats, three legs: beat up to mark 1, reach across to mark 2, then run for the harbor. Round the marks in order and keep out of the dirty air behind the others.';
@@ -58,10 +59,6 @@ export const RIVALS = [
   { name: 'Marlin', boat: 'skiff', look: { hull: '#22406f', hullDark: '#1a3256', deck: '#c99a62', sail: '#f5c518', sailShade: '#c99f12' } },
   { name: 'Squall', boat: 'junk', look: { hull: '#2b3a36', hullDark: '#17201d', deck: '#9c8a68', sail: '#3b8fe0', sailShade: '#2c6db0' } },
 ];
-
-export function ordinal(n) {
-  return `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
-}
 
 // The courses. A single race is always the Triangle; the Regatta Cup sails
 // all four in turn.
@@ -176,7 +173,10 @@ export function regattaDef(seed = 1, fleet = 0, courseId = 'triangle') {
   const [player] = slots.splice(you, 1);
   const heading = (from + (rng.chance(0.5) ? 50 : -50) + 360) % 360;
   const sea = chart.sea(rng, mid, wing, seed);
-  const first = marks.length === 2 ? 'mark 1, then mark 2' : 'marks 1, 2 and 3 in turn';
+  const first =
+    marks.length === 2
+      ? N_('Race the fleet round mark 1, then mark 2, then into the harbor. Follow the gold line: upwind it zig-zags, so tack where it turns.')
+      : N_('Race the fleet round marks 1, 2 and 3 in turn, then into the harbor. Follow the gold line: upwind it zig-zags, so tack where it turns.');
   return {
     id: REGATTA,
     race: true,
@@ -197,8 +197,8 @@ export function regattaDef(seed = 1, fleet = 0, courseId = 'triangle') {
     checkpoints: marks,
     par: { gold: 0, silver: 0 },
     tips: [
-      { at: 0.5, text: `Race the fleet round ${first}, then into the harbor. Follow the gold line: upwind it zig-zags, so tack where it turns.` },
-      { at: 14, text: 'Every sail leaves dirty air downwind. Keep out of the shadow behind a rival, or it slows you down.' },
+      { at: 0.5, text: first },
+      { at: 14, text: N_('Every sail leaves dirty air downwind. Keep out of the shadow behind a rival, or it slows you down.') },
     ],
   };
 }

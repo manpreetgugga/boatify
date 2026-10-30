@@ -3,24 +3,27 @@
 
 import { formatTime } from '../core/math.js';
 import { formatDistance } from '../physics/sailing.js';
-import { ordinal } from '../world/regatta.js';
+import { t, N_, ordinal } from '../i18n/index.js';
 
 export const PLAY_LINK = 'https://play.google.com/store/apps/details?id=io.github.manpreetgugga.boatify';
 
-const PITCH = 'No Paddle, a sailing game where only the wind can carry you home.';
+const PITCH = N_('No Paddle, a sailing game where only the wind can carry you home.');
 
 // The text for a Share button. kind: 'game' (Settings), 'voyage', 'sea' or 'race'.
 export function shareText(kind, info = {}) {
+  const pitch = t(PITCH);
   let brag = '';
   if (kind === 'voyage') {
-    const stars = info.stars ? ` with ${info.stars} ${info.stars === 1 ? 'star' : 'stars'}` : '';
-    brag = `I sailed ${info.name} in ${formatTime(info.time)}${stars} in ${PITCH} Can you beat it?`;
+    const vars = { name: info.name, time: formatTime(info.time), n: info.stars, pitch };
+    if (info.stars === 1) brag = t('I sailed {name} in {time} with 1 star in {pitch} Can you beat it?', vars);
+    else if (info.stars) brag = t('I sailed {name} in {time} with {n} stars in {pitch} Can you beat it?', vars);
+    else brag = t('I sailed {name} in {time} in {pitch} Can you beat it?', vars);
   } else if (kind === 'sea') {
-    brag = `I sailed ${formatDistance(info.distance)} east on the Open Sea in ${PITCH} How far can you get?`;
+    brag = t('I sailed {distance} east on the Open Sea in {pitch} How far can you get?', { distance: formatDistance(info.distance), pitch });
   } else if (kind === 'race') {
-    brag = `${info.place === 1 ? 'I won a regatta' : `I came ${ordinal(info.place)} in a regatta`} in ${PITCH} Race me!`;
+    brag = info.place === 1 ? t('I won a regatta in {pitch} Race me!', { pitch }) : t('I came {place} in a regatta in {pitch} Race me!', { place: ordinal(info.place), pitch });
   } else {
-    brag = `Try ${PITCH}`;
+    brag = t('Try {pitch}', { pitch });
   }
   return `${brag} ${PLAY_LINK}`;
 }

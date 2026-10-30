@@ -137,9 +137,9 @@ object Reminders {
 
     private fun createChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        if (manager.getNotificationChannel(CHANNEL) != null) return
-        val channel = NotificationChannel(CHANNEL, "Reminders", NotificationManager.IMPORTANCE_DEFAULT)
-        channel.description = "A nudge from the harbor at 9 am, 6 pm and 9 pm"
+        // Created again each time, so the name follows the phone's language.
+        val channel = NotificationChannel(CHANNEL, context.getString(R.string.reminders_channel), NotificationManager.IMPORTANCE_DEFAULT)
+        channel.description = context.getString(R.string.reminders_channel_about)
         manager.createNotificationChannel(channel)
     }
 

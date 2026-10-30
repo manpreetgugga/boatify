@@ -10,6 +10,7 @@
 import { LEVELS } from './levels.js';
 import { CHARTS } from './charts.js';
 import { charterVoyage } from '../world/charter.js';
+import { t } from '../i18n/index.js';
 
 const VOLCANO = {
   id: 'volcano',
@@ -1135,5 +1136,5 @@ export function voyageDef(id) {
 export function voyageLabel(id) {
   const e = CAMPAIGN[campaignIndex(id)];
   if (!e) return '';
-  return e.world === 'home' ? `Voyage ${e.index + 1}` : `${worldById.get(e.world).name} · ${e.index + 1}`;
+  return e.world === 'home' ? t('Voyage {n}', { n: e.index + 1 }) : `${t(worldById.get(e.world).name)} · ${e.index + 1}`;
 }

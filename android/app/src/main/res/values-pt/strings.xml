@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminders_channel">Lembretes</string>
+    <string name="reminders_channel_about">Um lembrete do porto às 9h, 18h e 21h</string>
+</resources>

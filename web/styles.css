@@ -930,6 +930,14 @@ button:focus-visible {
   }
 }
 
+/* On a short wide screen the row of small buttons runs on past the menu,
+   under the harbor, so longer words in other languages still fit in two rows. */
+@media (min-width: 860px) and (max-height: 420px) {
+  .title-buttons + .title-buttons {
+    width: min(860px, calc(100vw - var(--inset-left) - var(--inset-right) - 48px));
+  }
+}
+
 .harbor-preview {
   flex: none;
   width: 250px;
@@ -1091,7 +1099,8 @@ button:focus-visible {
 }
 
 .toast.atlas::before {
-  content: 'ATLAS';
+  content: attr(data-tag);
+  text-transform: uppercase;
   margin-right: 8px;
   font-family: var(--display);
   font-weight: 800;
@@ -2063,6 +2072,24 @@ button:focus-visible {
   color: var(--ink);
 }
 
+/* The language row: its six choices wrap under the label on a narrow phone. */
+.setting.wide {
+  flex-wrap: wrap;
+}
+
+.seg.wrap {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  overflow: visible;
+  border: 0;
+  gap: 6px;
+}
+
+.seg.wrap button {
+  border: 1px solid var(--foam-faint);
+  border-radius: 10px;
+}
+
 /* How to sail */
 
 .howto {
@@ -2171,7 +2198,8 @@ button:focus-visible {
 }
 
 .toast.tip::before {
-  content: 'TIP';
+  content: attr(data-tag);
+  text-transform: uppercase;
   margin-right: 8px;
   font-family: var(--display);
   font-weight: 800;
@@ -2185,7 +2213,8 @@ button:focus-visible {
 }
 
 .toast.alert::before {
-  content: 'DANGER';
+  content: attr(data-tag);
+  text-transform: uppercase;
   margin-right: 8px;
   font-family: var(--display);
   font-weight: 800;
@@ -2202,7 +2231,7 @@ button:focus-visible {
 }
 
 .toast.note::before {
-  content: 'Message in a bottle';
+  content: attr(data-tag);
   display: block;
   font-style: normal;
   font-family: var(--display);
@@ -2219,7 +2248,7 @@ button:focus-visible {
 }
 
 .toast.note.rescue::before {
-  content: 'Hauled aboard';
+  content: attr(data-tag);
   color: #c0412b;
 }
 

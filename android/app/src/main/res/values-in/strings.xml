@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminders_channel">Pengingat</string>
+    <string name="reminders_channel_about">Sapaan dari pelabuhan pukul 09.00, 18.00 dan 21.00</string>
+</resources>

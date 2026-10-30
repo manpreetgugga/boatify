@@ -5,6 +5,7 @@ import { createWake, updateWake, drawWake, drawBoat } from './boat.js';
 import { helmsman } from './skipper.js';
 import { DIRTY_REACH, shadowWidth } from '../world/regatta.js';
 import { C, font, rgba } from './palette.js';
+import { t } from '../i18n/index.js';
 
 const RIVAL_JACKETS = ['#d9473a', '#3f8f5a', '#4a6fb5'];
 
@@ -108,9 +109,9 @@ export function drawRacingLine(ctx, game, cam, time) {
     ctx.textBaseline = 'bottom';
     ctx.lineWidth = 3 * s;
     ctx.strokeStyle = 'rgba(6, 20, 29, 0.6)';
-    ctx.strokeText(turn.toUpperCase(), tx, ty - 14 * s);
+    ctx.strokeText(t(turn === 'tack' ? 'TACK' : 'GYBE'), tx, ty - 14 * s);
     ctx.fillStyle = C.warn;
-    ctx.fillText(turn.toUpperCase(), tx, ty - 14 * s);
+    ctx.fillText(t(turn === 'tack' ? 'TACK' : 'GYBE'), tx, ty - 14 * s);
   }
   ctx.restore();
 }

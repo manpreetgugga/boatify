@@ -10,7 +10,8 @@ import { hullContact, bounce } from '../web/src/world/contact.js';
 import { isClear } from '../web/src/world/collision.js';
 import { angleDiff, fromBearing, DEG } from '../web/src/core/math.js';
 import { createAutopilot, autopilotInput } from '../web/src/world/autopilot.js';
-import { regattaDef, fleetFor, ordinal, dirtyAirAt, shadeWind, giveWay, standings, FLEETS, RIVALS, REGATTA, DIRTY_REACH } from '../web/src/world/regatta.js';
+import { regattaDef, fleetFor, dirtyAirAt, shadeWind, giveWay, standings, FLEETS, RIVALS, REGATTA, DIRTY_REACH } from '../web/src/world/regatta.js';
+import { ordinal } from '../web/src/i18n/index.js';
 
 const idle = () => ({ steer: 0, trimTarget: 0.5, autoTrim: true, boost: false });
 const race = (seed = 3, fleet = 0) => createGame(regattaDef(seed, fleet));

@@ -8,6 +8,7 @@
 // { fleet, race, points: [you, ...rivals], last: [who finished 1st, 2nd...], places }
 
 import { COURSES, FLEETS, RIVALS } from '../world/regatta.js';
+import { N_ } from '../i18n/index.js';
 
 export const CUP_COURSES = COURSES.map((c) => c.id);
 export const CUP_RACES = CUP_COURSES.length;
@@ -106,5 +107,5 @@ export function scoreCupRace(save, result) {
 // The cup's prize as a pay line, once the last race is in. A video on the
 // results doesn't double it.
 export function cupPay(cup) {
-  return cup && cup.done && cup.prize.coins ? [{ label: 'Cup prize', coins: cup.prize.coins }] : [];
+  return cup && cup.done && cup.prize.coins ? [{ label: N_('Cup prize'), coins: cup.prize.coins }] : [];
 }

@@ -6,7 +6,7 @@ import { formatTime, compassPoint, DEG } from '../core/math.js';
 import { beaufort, toKnots, formatDistance } from '../physics/sailing.js';
 import { POLAR } from '../world/autopilot.js';
 import { SEA_BLURB, PEARL_TIME } from '../world/opensea.js';
-import { REGATTA_BLURB, FLEETS, RIVALS, COURSES, fleetFor, ordinal } from '../world/regatta.js';
+import { REGATTA_BLURB, FLEETS, RIVALS, COURSES, fleetFor } from '../world/regatta.js';
 import { CUP_RACES, CUP_POINTS, CUP_PRIZES, CUP_BOAT, cupTable, trophyCount } from '../data/cup.js';
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
@@ -31,13 +31,14 @@ import { LEVELS } from '../data/levels.js';
 import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
 import { reminderTimes } from '../data/reminders.js';
 import { icon } from './icons.js';
+import { t, N_, ordinal, shortDate, nameOf, blurbOf, LANGS, currentLang } from '../i18n/index.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // The purse: coins and black pearls, as shown in a sheet's head or on the title.
 function wallet(save) {
   const w = save.wallet;
-  return `<span class="wallet" aria-label="${formatCoins(w.coins)} coins, ${w.blackPearls} black pearls"><span class="coins">${icon('coin', 17)}<b>${formatCoins(w.coins)}</b></span><span class="gems">${icon('blackPearl', 17)}<b>${w.blackPearls}</b></span></span>`;
+  return `<span class="wallet" aria-label="${t('{coins} coins, {pearls} black pearls', { coins: formatCoins(w.coins), pearls: w.blackPearls })}"><span class="coins">${icon('coin', 17)}<b>${formatCoins(w.coins)}</b></span><span class="gems">${icon('blackPearl', 17)}<b>${w.blackPearls}</b></span></span>`;
 }
 
 // Show the purse again after a purchase.
@@ -51,14 +52,15 @@ const priceTag = (price) => (price.blackPearls ? `${icon('blackPearl', 16)}${pri
 
 function needMore(save, price) {
   const short = shortOf(save, price);
-  if (short.blackPearls) return `You need ${short.blackPearls} more ${short.blackPearls === 1 ? 'black pearl' : 'black pearls'}. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.`;
-  return `You need ${formatCoins(short.coins)} more coins. Every voyage you sail pays some.`;
+  if (short.blackPearls === 1) return t('You need 1 more black pearl. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.');
+  if (short.blackPearls) return t('You need {n} more black pearls. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.', { n: short.blackPearls });
+  return t('You need {n} more coins. Every voyage you sail pays some.', { n: formatCoins(short.coins) });
 }
 
 // The cup's points table, best first. `gained` is this race's points, if shown.
 function cupRows(table) {
   return table
-    .map((e, i) => `<span class="k">${ordinal(i + 1)}</span><span class="v ${e.player ? 'you' : ''}">${e.player ? '<b>You</b>' : esc(e.name)} <small>${e.points} pts${e.gained ? ` · +${e.gained}` : ''}</small></span>`)
+    .map((e, i) => `<span class="k">${ordinal(i + 1)}</span><span class="v ${e.player ? 'you' : ''}">${e.player ? `<b>${t('You')}</b>` : esc(e.name)} <small>${t('{n} pts', { n: e.points })}${e.gained ? ` · +${e.gained}` : ''}</small></span>`)
     .join('');
 }
 
@@ -66,39 +68,52 @@ function cupRows(table) {
 function cupStanding(now) {
   const table = cupTable(now);
   const place = table.findIndex((e) => e.player);
-  const pts = (n) => `${n} point${n === 1 ? '' : 's'}`;
   const gap = place ? table[0].points - table[place].points : table[0].points - table[1].points;
-  const where = place ? (gap ? `You're ${ordinal(place + 1)}, ${pts(gap)} behind ${table[0].name}.` : `You're level on points with ${table[0].name} at the top.`) : gap ? `You lead by ${pts(gap)}.` : `You're level on points with ${table[1].name} at the top.`;
-  return `Race ${now.race + 1} of ${CUP_RACES} next. ${where}`;
+  const vars = { place: ordinal(place + 1), n: gap, name: table[place ? 0 : 1].name };
+  const where = !gap
+    ? t("You're level on points with {name} at the top.", vars)
+    : place
+      ? gap === 1 ? t("You're {place}, 1 point behind {name}.", vars) : t("You're {place}, {n} points behind {name}.", vars)
+      : gap === 1 ? t('You lead by 1 point.') : t('You lead by {n} points.', vars);
+  return `${t('Race {n} of {of} next.', { n: now.race + 1, of: CUP_RACES })} ${where}`;
 }
 
 // What a voyage paid, under its results, with a video to pay its coins twice
 // over (`extra` more) when one is on offer.
 function rewardStrip(pay, extra = 0) {
   if (!pay || (!pay.coins && !pay.blackPearls)) return '';
-  return `<div class="reward">${rewardInner(pay)}${extra > 0 ? `<button class="btn small double-btn" data-act="double" aria-label="Watch a video for ${formatCoins(extra)} more coins">${icon('play', 16)} ×2 <span class="coins">+${formatCoins(extra)}</span></button>` : ''}</div>`;
+  return `<div class="reward">${rewardInner(pay)}${extra > 0 ? `<button class="btn small double-btn" data-act="double" aria-label="${t('Watch a video for {n} more coins', { n: formatCoins(extra) })}">${icon('play', 16)} ×2 <span class="coins">+${formatCoins(extra)}</span></button>` : ''}</div>`;
 }
 
 // Why a pasted backup code couldn't be read.
 const BACKUP_TROUBLE = {
-  empty: 'Paste a backup code in the box first.',
-  'not-a-code': "That isn't a No Paddle backup code.",
-  damaged: 'That code is cut short or has a typo. Copy it again on the other phone.',
-  unsupported: "This phone can't open that code. Update Android System WebView and try again.",
+  empty: N_('Paste a backup code in the box first.'),
+  'not-a-code': N_("That isn't a No Paddle backup code."),
+  damaged: N_('That code is cut short or has a typo. Copy it again on the other phone.'),
+  unsupported: N_("This phone can't open that code. Update Android System WebView and try again."),
 };
 
-const shareButton = () => `<button class="btn icon" data-act="share" aria-label="Share">${icon('share', 18)}</button>`;
+const shareButton = () => `<button class="btn icon" data-act="share" aria-label="${t('Share')}">${icon('share', 18)}</button>`;
+
+// A pay line's label. A streak's carries its length.
+function payLabel(label) {
+  const streak = /^(\d+)-day streak$/.exec(label);
+  return streak ? t('{n}-day streak', { n: streak[1] }) : t(label);
+}
+
+// A Sail Locker reward, "Lifebuoy sail", in the game's language.
+const gearName = (r) => (r.kind === 'sail' ? t('{name} sail', { name: t(r.item.name) }) : t('{name} hull paint', { name: t(r.item.name) }));
 
 function rewardInner(pay) {
-  const lines = pay.lines.map((l) => `${esc(l.label)} <b>${formatCoins(l.coins)}</b>`).join(' · ');
+  const lines = pay.lines.map((l) => `${esc(payLabel(l.label))} <b>${formatCoins(l.coins)}</b>`).join(' · ');
   return `<div class="reward-sum"><span class="coins">${icon('coin', 20)}+${formatCoins(pay.coins)}</span>${pay.blackPearls ? `<span class="gems">${icon('blackPearl', 20)}+${pay.blackPearls}</span>` : ''}${pay.doubled ? '<span class="badge">×2</span>' : ''}</div>
-      <small>${lines}${pay.blackPearls ? ` · Black pearl <b>${pay.blackPearls}</b>` : ''}</small>`;
+      <small>${lines}${pay.blackPearls ? ` · ${t('Black pearl')} <b>${pay.blackPearls}</b>` : ''}</small>`;
 }
 
 function el(html) {
-  const t = document.createElement('template');
-  t.innerHTML = html.trim();
-  return t.content.firstElementChild;
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html.trim();
+  return tpl.content.firstElementChild;
 }
 
 function stars(n, total = 3) {
@@ -108,68 +123,68 @@ function stars(n, total = 3) {
 }
 
 // What each world's rocks, lairs and drifting things are called.
-const ROCK_NAMES = { coral: 'Coral reefs', rock: 'Rocks', basalt: 'Rocks', piling: 'Pilings', container: 'Containers', shard: 'Crystal shards', pod: 'Spore pods', snag: 'Snags', bones: 'Fossil bones', column: 'Columns', statue: 'Statues', mast: 'Sunken masts', berg: 'Ice chunks', ball: 'Beach balls', brick: 'Toy bricks', balloon: 'Balloons', puff: 'Cloud puffs' };
-const LAIR_NAMES = { kraken: 'Kraken', vent: 'Steam vents', crane: 'Cranes', beast: 'Beasts', croc: 'Crocodiles', plesio: 'Plesiosaurs', eel: 'Giant eels', wraith: 'Wraiths', orca: 'Orcas', jack: 'Jack-in-the-boxes', storm: 'Thunderclouds' };
-const DRIFT_NAMES = { ice: 'Drifting ice', pumice: 'Pumice rafts', ferry: 'Ferries', jelly: 'Jellies', hippo: 'Hippos', turtle: 'Giant turtles', galley: 'Galleys', ghostship: 'Ghost ships', berg: 'Icebergs', duck: 'Rubber ducks', airship: 'Airships' };
+const ROCK_NAMES = { coral: N_('Coral reefs'), rock: N_('Rocks'), basalt: N_('Rocks'), piling: N_('Pilings'), container: N_('Containers'), shard: N_('Crystal shards'), pod: N_('Spore pods'), snag: N_('Snags'), bones: N_('Fossil bones'), column: N_('Columns'), statue: N_('Statues'), mast: N_('Sunken masts'), berg: N_('Ice chunks'), ball: N_('Beach balls'), brick: N_('Toy bricks'), balloon: N_('Balloons'), puff: N_('Cloud puffs') };
+const LAIR_NAMES = { kraken: N_('Kraken'), vent: N_('Steam vents'), crane: N_('Cranes'), beast: N_('Beasts'), croc: N_('Crocodiles'), plesio: N_('Plesiosaurs'), eel: N_('Giant eels'), wraith: N_('Wraiths'), orca: N_('Orcas'), jack: N_('Jack-in-the-boxes'), storm: N_('Thunderclouds') };
+const DRIFT_NAMES = { ice: N_('Drifting ice'), pumice: N_('Pumice rafts'), ferry: N_('Ferries'), jelly: N_('Jellies'), hippo: N_('Hippos'), turtle: N_('Giant turtles'), galley: N_('Galleys'), ghostship: N_('Ghost ships'), berg: N_('Icebergs'), duck: N_('Rubber ducks'), airship: N_('Airships') };
 
 function hazardsOf(def) {
   const out = [];
   const once = (names, list, key, fallback, bad) => {
-    for (const n of new Set((list || []).map((x) => names[x[key]] || fallback))) out.push([n, bad]);
+    for (const n of new Set((list || []).map((x) => names[x[key]] || fallback))) out.push([t(n), bad]);
   };
-  if ((def.rocks || []).some((r) => r.material === 'coral')) out.push(['Coral reefs', true]);
-  once(ROCK_NAMES, (def.rocks || []).filter((r) => r.material !== 'coral'), 'material', 'Rocks', true);
-  if ((def.currents || []).length) out.push(['Currents', false]);
-  if ((def.whirlpools || []).length) out.push(['Whirlpools', true]);
-  if ((def.calms || []).length) out.push(['Calm patches', false]);
-  if ((def.storms || []).length) out.push(['Squalls', true]);
-  once(LAIR_NAMES, def.krakens, 'look', 'Kraken', true);
-  once(DRIFT_NAMES, def.floes, 'look', 'Drifting ice', true);
-  if ((def.pirates || []).length) out.push(['Pirates', true]);
+  if ((def.rocks || []).some((r) => r.material === 'coral')) out.push([t('Coral reefs'), true]);
+  once(ROCK_NAMES, (def.rocks || []).filter((r) => r.material !== 'coral'), 'material', N_('Rocks'), true);
+  if ((def.currents || []).length) out.push([t('Currents'), false]);
+  if ((def.whirlpools || []).length) out.push([t('Whirlpools'), true]);
+  if ((def.calms || []).length) out.push([t('Calm patches'), false]);
+  if ((def.storms || []).length) out.push([t('Squalls'), true]);
+  once(LAIR_NAMES, def.krakens, 'look', N_('Kraken'), true);
+  once(DRIFT_NAMES, def.floes, 'look', N_('Drifting ice'), true);
+  if ((def.pirates || []).length) out.push([t('Pirates'), true]);
   const w = def.weather || {};
-  if (w.fog) out.push(['Fog', false]);
-  if (w.night) out.push(['Night', false]);
-  if (w.lightning) out.push(['Lightning', false]);
-  if (w.snow) out.push(['Snow', false]);
-  if (w.ash) out.push(['Ash', false]);
-  if ((def.wind.events || []).length) out.push(['Wind shifts', false]);
+  if (w.fog) out.push([t('Fog'), false]);
+  if (w.night) out.push([t('Night'), false]);
+  if (w.lightning) out.push([t('Lightning'), false]);
+  if (w.snow) out.push([t('Snow'), false]);
+  if (w.ash) out.push([t('Ash'), false]);
+  if ((def.wind.events || []).length) out.push([t('Wind shifts'), false]);
   return out;
 }
 
 function windSentence(def) {
   const kn = toKnots(def.wind.speed);
   const bf = beaufort(kn);
-  return `${Math.round(kn)} kn from the ${compassPoint(def.wind.from)} · ${bf.name}`;
+  return `${t('{kn} kn from the {dir}', { kn: Math.round(kn), dir: t(compassPoint(def.wind.from)) })} · ${t(bf.name)}`;
 }
 
-// "Wed 28 Oct" for a YYYY-MM-DD key, in the phone's language.
+// "Wed 28 Oct" for a YYYY-MM-DD key, in the game's language.
 function dayLabel(key) {
   const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return shortDate(new Date(y, m - 1, d));
 }
 
-const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
+const days = (n) => (n === 1 ? t('1 day') : t('{n} days', { n }));
 
 // Where a voyage ends: a harbor, a lighthouse, or home itself.
-const goalOf = (def) => (def.finish.kind === 'home' ? 'home' : `the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'}`);
-const ARRIVED = { home: 'Home at last', lighthouse: 'Lighthouse reached', harbor: 'Harbor reached' };
+const goalOf = (def) => (def.finish.kind === 'home' ? t('home') : def.finish.kind === 'lighthouse' ? t('the lighthouse') : t('the harbor'));
+const ARRIVED = { home: N_('Home at last'), lighthouse: N_('Lighthouse reached'), harbor: N_('Harbor reached') };
 
 // The Home Waters panel counts down the voyages left on the way home.
 function wayHome(save, levels, at, accent) {
   const done = at.filter((i) => (save.levels[levels[i].id] || {}).best != null).length;
   const left = at.length - done;
-  const line = !left ? 'You made it home. Now the wider seas are calling.' : left === 1 ? 'One more voyage, and you are home.' : done ? `Home is ${left} voyages away.` : `Your oar is lost and home is ${left} voyages away.`;
+  const line = !left ? t('You made it home. Now the wider seas are calling.') : left === 1 ? t('One more voyage, and you are home.') : done ? t('Home is {n} voyages away.', { n: left }) : t('Your oar is lost and home is {n} voyages away.', { n: left });
   const dots = at.map((i, n) => `<i class="${n < done ? 'on' : ''}"></i>`).join('');
   return `<div class="way-home ${left ? '' : 'made-it'}" style="--accent:${accent}"><p>${esc(line)}</p><span class="track" aria-hidden="true">${dots}${icon('home', 16)}</span></div>`;
 }
 
 // Comparison with the previous best, or nothing on a first run.
 const BOAT_STATS = [
-  ['speed', 'Speed'],
-  ['pointing', 'Upwind'],
-  ['stability', 'Stability'],
-  ['agility', 'Agility'],
-  ['toughness', 'Toughness'],
+  ['speed', N_('Speed')],
+  ['pointing', N_('Upwind')],
+  ['stability', N_('Stability')],
+  ['agility', N_('Agility')],
+  ['toughness', N_('Toughness')],
 ];
 
 // `plus` is the boatyard upgrades on top, shown after the bar.
@@ -177,16 +192,16 @@ function statBar(n, plus = 0) {
   let dots = '';
   for (let i = 1; i <= 5; i++) dots += `<i class="${i <= n ? 'on' : ''}"></i>`;
   const more = plus ? `<b class="bar-plus">+${plus}</b>` : '';
-  return `<span class="bar" aria-label="${n} of 5${plus ? `, upgraded ${plus}` : ''}">${dots}${more}</span>`;
+  return `<span class="bar" aria-label="${plus ? t('{n} of 5, upgraded {plus}', { n, plus }) : t('{n} of 5', { n })}">${dots}${more}</span>`;
 }
 
 // A boat's stats, with its upgrades.
-function boatStats(t, levels = {}) {
+function boatStats(bt, levels = {}) {
   const plus = (k) => {
     const part = PARTS.find((p) => p.stat === k);
     return (part && levels[part.id]) || 0;
   };
-  return `<dl class="boat-stats">${BOAT_STATS.map(([k, label]) => `<dt>${label}</dt><dd>${statBar(t.stats[k], plus(k))}</dd>`).join('')}</dl>`;
+  return `<dl class="boat-stats">${BOAT_STATS.map(([k, label]) => `<dt>${t(label)}</dt><dd>${statBar(bt.stats[k], plus(k))}</dd>`).join('')}</dl>`;
 }
 
 // A boat on a reach over a patch of open water, for the Shipyard cards and
@@ -272,28 +287,28 @@ function paintSail(canvas, look) {
 function vsBest(time, prev) {
   if (prev === null || prev === undefined) return '';
   const d = time - prev;
-  const txt = Math.abs(d) < 0.05 ? 'Dead heat' : d < 0 ? `${(-d).toFixed(1)} s faster` : `${d.toFixed(1)} s slower`;
-  return `<span class="k">Vs. best</span><span class="v"${d < 0 ? ' style="color:var(--ok)"' : ''}>${txt}</span>`;
+  const txt = Math.abs(d) < 0.05 ? t('Dead heat') : d < 0 ? t('{n} s faster', { n: (-d).toFixed(1) }) : t('{n} s slower', { n: d.toFixed(1) });
+  return `<span class="k">${t('Vs. best')}</span><span class="v"${d < 0 ? ' style="color:var(--ok)"' : ''}>${txt}</span>`;
 }
 
 // The medals a voyage just earned, for the results card.
 function medalStrip(medals = []) {
   if (!medals.length) return '';
-  const chips = medals.map((m) => `<span class="medal-chip">${icon(m.icon, 18)}${esc(m.name)}</span>`).join('');
+  const chips = medals.map((m) => `<span class="medal-chip">${icon(m.icon, 18)}${esc(t(m.name))}</span>`).join('');
   const gear = medals.map((m) => rewardFor(m.id)).filter(Boolean);
-  const note = gear.length ? `<p class="locker-note">New in the Sail Locker: ${gear.map((r) => esc(r.label)).join(', ')}</p>` : '';
-  return `<div class="medal-strip"><span class="eyebrow">New medal${medals.length > 1 ? 's' : ''}</span>${chips}${note}</div>`;
+  const note = gear.length ? `<p class="locker-note">${t('New in the Sail Locker: {list}', { list: gear.map((r) => esc(gearName(r))).join(', ') })}</p>` : '';
+  return `<div class="medal-strip"><span class="eyebrow">${medals.length > 1 ? t('New medals') : t('New medal')}</span>${chips}${note}</div>`;
 }
 
 // The orders a voyage finished or moved along, for the results card.
 function orderStrip(r) {
   if (!r || (!r.done.length && !r.moved.length)) return '';
-  const chips = r.done.map((o) => `<span class="order-chip">${icon(o.icon, 17)}${esc(o.text)}<b>${icon('coin', 15)}${o.pay}</b></span>`).join('');
-  const chest = r.blackPearls ? `<span class="order-chip chest">${icon('chest', 17)}Harbourmaster's chest<b>${icon('blackPearl', 15)}${r.blackPearls}</b></span>` : '';
-  const notes = r.moved.map((o) => `${esc(o.text)} <b>${Math.floor(o.progress)} / ${o.goal}</b>`);
-  if (r.left) notes.push(`${r.left} more to open the chest`);
+  const chips = r.done.map((o) => `<span class="order-chip">${icon(o.icon, 17)}${esc(t(o.text))}<b>${icon('coin', 15)}${o.pay}</b></span>`).join('');
+  const chest = r.blackPearls ? `<span class="order-chip chest">${icon('chest', 17)}${t("Harbourmaster's chest")}<b>${icon('blackPearl', 15)}${r.blackPearls}</b></span>` : '';
+  const notes = r.moved.map((o) => `${esc(t(o.text))} <b>${Math.floor(o.progress)} / ${o.goal}</b>`);
+  if (r.left) notes.push(t('{n} more to open the chest', { n: r.left }));
   const note = notes.length ? `<small class="order-note">${notes.join(' · ')}</small>` : '';
-  const head = r.done.length ? `Order${r.done.length > 1 ? 's' : ''} done` : 'Orders';
+  const head = r.done.length > 1 ? t('Orders done') : r.done.length ? t('Order done') : t('Orders');
   return `<div class="order-strip"><span class="eyebrow">${head}</span>${chips}${chest}${note}</div>`;
 }
 
@@ -302,7 +317,7 @@ function untilMidnight(now = new Date()) {
   const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const mins = Math.max(1, Math.ceil((next - now) / 60000));
   const h = Math.floor(mins / 60);
-  return h ? `${h} h ${mins % 60} min` : `${mins} min`;
+  return h ? t('{h} h {m} min', { h, m: mins % 60 }) : t('{m} min', { m: mins });
 }
 
 function polarSvg() {
@@ -328,7 +343,7 @@ function polarSvg() {
     const [x, y] = p(deg, r);
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}">${txt}</text>`;
   };
-  return `<svg viewBox="-40 0 300 230" role="img" aria-label="Boat speed for each heading relative to the wind">
+  return `<svg viewBox="-40 0 300 230" role="img" aria-label="${t('Boat speed for each heading relative to the wind')}">
     <g font-family="Barlow Condensed, sans-serif" font-size="12" font-weight="700" fill="#e8f4f2">
     <path d="M${cx} ${cy} L${n1x.toFixed(1)} ${n1y.toFixed(1)} A${R} ${R} 0 0 1 ${n2x.toFixed(1)} ${n2y.toFixed(1)} Z" fill="rgba(255,77,77,0.25)"/>
     <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(232,244,242,0.2)"/>
@@ -336,18 +351,18 @@ function polarSvg() {
     <path d="${d}Z" fill="rgba(214,62,169,0.18)" stroke="#d63ea9" stroke-width="2.5"/>
     <path d="M${cx} 4 L${cx} 24" stroke="#d9a441" stroke-width="3"/>
     <path d="M${cx - 6} 18 L${cx} 28 L${cx + 6} 18 Z" fill="#d9a441"/>
-    <text x="${cx + 8}" y="16" fill="#d9a441">WIND</text>
-    <text x="${cx}" y="${cy - R * 0.55}" text-anchor="middle" fill="#ff9a9a">NO-GO</text>
-    ${label(50, R + 6, 'Close-hauled')}
-    ${label(92, R + 4, 'Beam reach')}
-    ${label(138, R + 10, 'Broad reach')}
-    ${label(180, R + 16, 'Run', 'middle')}
+    <text x="${cx + 8}" y="16" fill="#d9a441">${t('WIND')}</text>
+    <text x="${cx}" y="${cy - R * 0.55}" text-anchor="middle" fill="#ff9a9a">${t('NO-GO')}</text>
+    ${label(50, R + 6, t('Close-hauled'))}
+    ${label(92, R + 4, t('Beam reach'))}
+    ${label(138, R + 10, t('Broad reach'))}
+    ${label(180, R + 16, t('Run'), 'middle')}
     <path d="M${cx} ${cy - 9} Q${cx + 5} ${cy} ${cx + 3} ${cy + 9} L${cx - 3} ${cy + 9} Q${cx - 5} ${cy} ${cx} ${cy - 9} Z" fill="#e8f4f2"/>
     </g></svg>`;
 }
 
 function tackSvg() {
-  return `<svg viewBox="0 0 200 230" role="img" aria-label="Zig-zag course upwind">
+  return `<svg viewBox="0 0 200 230" role="img" aria-label="${t('Zig-zag course upwind')}">
     <g font-family="Barlow Condensed, sans-serif" font-weight="800" font-style="italic">
     <path d="M30 6 L30 30 M24 22 L30 32 L36 22" stroke="#d9a441" stroke-width="3" fill="none"/>
     <circle cx="110" cy="30" r="16" fill="none" stroke="#ff6b35" stroke-width="2.5" stroke-dasharray="6 4"/>
@@ -358,7 +373,7 @@ function tackSvg() {
     <path d="M100 210 L100 60" stroke="rgba(255,77,77,0.35)" stroke-width="2" stroke-dasharray="3 5"/>
     <text x="146" y="160" font-size="12" fill="#ff9a9a">✕</text>
     <g fill="#e8f4f2"><circle cx="60" cy="160" r="4"/><circle cx="150" cy="110" r="4"/><circle cx="70" cy="62" r="4"/></g>
-    <text x="160" y="104" font-size="12" font-style="normal" font-weight="700" fill="#e8f4f2">tack</text>
+    <text x="160" y="104" font-size="12" font-style="normal" font-weight="700" fill="#e8f4f2">${t('tack')}</text>
     </g></svg>`;
 }
 
@@ -371,19 +386,19 @@ function trimSvg() {
       <path d="M${x} ${y - 8} L${bx.toFixed(1)} ${by.toFixed(1)}" stroke="#f5f0e4" stroke-width="5" stroke-linecap="round"/>
       <text x="${x}" y="${y + 52}" text-anchor="middle" font-size="13" fill="#e8f4f2">${label}</text></g>`;
   };
-  return `<svg viewBox="0 0 220 200" role="img" aria-label="Sheet in upwind, ease out downwind">
+  return `<svg viewBox="0 0 220 200" role="img" aria-label="${t('Sheet in upwind, ease out downwind')}">
     <g font-family="Barlow Condensed, sans-serif" font-weight="700">
     <path d="M110 4 L110 22 M104 15 L110 25 L116 15" stroke="#d9a441" stroke-width="3" fill="none"/>
-    ${boat(55, 100, 8, 'Upwind: sheet in')}
-    ${boat(165, 100, 70, 'Downwind: ease out')}
+    ${boat(55, 100, 8, t('Upwind: sheet in'))}
+    ${boat(165, 100, 70, t('Downwind: ease out'))}
     </g></svg>`;
 }
 
 function heelSvg() {
-  return `<svg viewBox="0 0 220 200" role="img" aria-label="Boat heeling in a gust">
+  return `<svg viewBox="0 0 220 200" role="img" aria-label="${t('Boat heeling in a gust')}">
     <g font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="13">
     <path d="M10 70 L60 70 M50 62 L62 70 L50 78" stroke="#d9a441" stroke-width="3" fill="none"/>
-    <text x="10" y="58" fill="#d9a441">GUST</text>
+    <text x="10" y="58" fill="#d9a441">${t('GUST')}</text>
     <rect x="0" y="150" width="220" height="50" fill="rgba(15,76,92,0.8)"/>
     <g transform="rotate(28 120 150)">
       <path d="M90 140 L150 140 L140 165 L100 165 Z" fill="#8b5a3a"/>
@@ -391,12 +406,12 @@ function heelSvg() {
       <path d="M120 45 L120 135 L160 135 Z" fill="#f5f0e4"/>
     </g>
     <path d="M150 30 A90 90 0 0 1 200 110" fill="none" style="stroke: var(--danger)" stroke-width="2.5" stroke-dasharray="5 4"/>
-    <text x="160" y="24" fill="#ff9a9a">capsize!</text>
+    <text x="160" y="24" fill="#ff9a9a">${t('capsize!')}</text>
     </g></svg>`;
 }
 
 function helmSvg() {
-  return `<svg viewBox="0 0 220 200" role="img" aria-label="Put your thumb down anywhere and slide it left or right to steer">
+  return `<svg viewBox="0 0 220 200" role="img" aria-label="${t('Put your thumb down anywhere and slide it left or right to steer')}">
     <g font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="14" fill="#e8f4f2">
     <g transform="translate(110 92)">
       <circle r="56" fill="rgba(4,22,30,0.4)" stroke="rgba(232,244,242,0.55)" stroke-width="2.5"/>
@@ -407,84 +422,84 @@ function helmSvg() {
       <circle cx="30" cy="0" r="17" fill="rgba(232,244,242,0.9)"/>
       <path d="M22 26 q6 -14 8 -26 q4 0 6 4 l6 26 Z" fill="rgba(232,244,242,0.25)"/>
     </g>
-    <text x="30" y="186" text-anchor="middle">port</text><text x="190" y="186" text-anchor="middle">starboard</text>
-    <text x="110" y="186" text-anchor="middle" fill="#9fb8bd">A / D on a keyboard</text>
+    <text x="30" y="186" text-anchor="middle">${t('port')}</text><text x="190" y="186" text-anchor="middle">${t('starboard')}</text>
+    <text x="110" y="186" text-anchor="middle" fill="#9fb8bd">${t('A / D on a keyboard')}</text>
     </g></svg>`;
 }
 
 function hazardsSvg() {
-  return `<svg viewBox="0 0 220 200" role="img" aria-label="Hazards">
+  return `<svg viewBox="0 0 220 200" role="img" aria-label="${t('Hazards')}">
     <g font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="13" fill="#e8f4f2">
     <g transform="translate(45 45)"><circle r="30" fill="rgba(2,10,16,0.6)"/>
       <path d="M0 0 m-4 0 a4 4 0 1 1 8 0 a8 8 0 1 1 -16 0 a12 12 0 1 1 24 0 a16 16 0 1 1 -32 0" fill="none" stroke="#e8f4f2" stroke-width="1.6"/></g>
-    <text x="45" y="92" text-anchor="middle">Whirlpool</text>
+    <text x="45" y="92" text-anchor="middle">${t('Whirlpool')}</text>
     <g transform="translate(160 45)" stroke="#bfeaf0" stroke-width="2.5" fill="none">
       <path d="M-30 -14 l8 8 l-8 8 M-8 -14 l8 8 l-8 8 M14 -14 l8 8 l-8 8"/><path d="M-30 10 l8 8 l-8 8 M-8 10 l8 8 l-8 8 M14 10 l8 8 l-8 8"/></g>
-    <text x="160" y="92" text-anchor="middle">Current</text>
+    <text x="160" y="92" text-anchor="middle">${t('Current')}</text>
     <g transform="translate(45 140)"><circle r="28" fill="rgba(170,222,226,0.3)"/><path d="M-16 -4 h32 M-12 6 h24" stroke="#e8f4f2" stroke-width="2"/></g>
-    <text x="45" y="186" text-anchor="middle">Calm / wind shadow</text>
+    <text x="45" y="186" text-anchor="middle">${t('Calm / wind shadow')}</text>
     <g transform="translate(160 140)"><circle r="28" fill="rgba(4,22,30,0.7)" style="stroke: var(--danger)" stroke-width="2" stroke-dasharray="5 4"/>
       <path d="M-12 8 q-6 -14 4 -20 M2 10 q2 -16 12 -18 M12 12 q10 -6 6 -18" stroke="#a5648c" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-    <text x="160" y="186" text-anchor="middle">Kraken</text>
+    <text x="160" y="186" text-anchor="middle">${t('Kraken')}</text>
     </g></svg>`;
 }
 
 function pickupsSvg() {
-  return `<svg viewBox="0 0 220 200" role="img" aria-label="Pickups">
+  return `<svg viewBox="0 0 220 200" role="img" aria-label="${t('Pickups')}">
     <g font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="13" fill="#e8f4f2" text-anchor="middle">
     <g transform="translate(55 50) scale(2.4)"><path d="M0 5 L-8 4 A8.5 9 0 0 1 8 4 Z" fill="#e9a8b5"/><circle cy="1" r="3.6" fill="#fbf6ee"/></g>
-    <text x="55" y="88">Pearl</text>
+    <text x="55" y="88">${t('Pearl')}</text>
     <g transform="translate(160 48) scale(2.4)"><rect x="-5.5" y="-6" width="11" height="13" rx="3" fill="rgba(120,220,240,0.35)" stroke="#bff3ff" stroke-width="1.2"/><rect x="-3.5" y="-8.5" width="7" height="3" fill="#8a6a3c"/></g>
-    <text x="160" y="88">Gust jar</text>
+    <text x="160" y="88">${t('Gust jar')}</text>
     <g transform="translate(55 140) scale(2.4) rotate(12)"><rect x="-6" y="-6" width="12" height="12" fill="#9b6a3f" stroke="#5e3b25"/><rect x="-1.2" y="-4" width="2.4" height="8" style="fill: var(--ok)"/><rect x="-4" y="-1.2" width="8" height="2.4" style="fill: var(--ok)"/></g>
-    <text x="55" y="180">Repair crate</text>
+    <text x="55" y="180">${t('Repair crate')}</text>
     <g transform="translate(160 140) scale(2.4) rotate(-35)"><rect x="-8" y="-3.5" width="12" height="7" rx="3" fill="rgba(90,170,110,0.9)"/><rect x="4" y="-1.8" width="4" height="3.6" fill="rgba(90,170,110,0.9)"/><rect x="7.5" y="-1.6" width="2.4" height="3.2" fill="#c9a36a"/><rect x="-5.5" y="-1.6" width="7" height="3.2" fill="#f2e6c8"/></g>
-    <text x="160" y="180">Message in a bottle</text>
+    <text x="160" y="180">${t('Message in a bottle')}</text>
     </g></svg>`;
 }
 
 const HOWTO = [
   {
-    title: 'The wind is your engine',
+    title: N_('The wind is your engine'),
     svg: polarSvg,
-    body: `<p>Your oar is gone, so the sail is all you have. The pink curve shows how fast you go on each heading. <b>Wind across the boat (a beam reach) is fastest.</b></p>
-      <p>Pointing straight into the wind is the <b>no-go zone</b>: the sail just flaps and you stop. The shaded wedge on the compass marks it.</p>`,
+    body: N_(`<p>Your oar is gone, so the sail is all you have. The pink curve shows how fast you go on each heading. <b>Wind across the boat (a beam reach) is fastest.</b></p>
+      <p>Pointing straight into the wind is the <b>no-go zone</b>: the sail just flaps and you stop. The shaded wedge on the compass marks it.</p>`),
   },
   {
-    title: 'Steer with your thumb',
+    title: N_('Steer with your thumb'),
     svg: helmSvg,
-    body: `<p><b>Touch:</b> put your thumb down anywhere on the left: a ring appears under it. Slide right to turn right, left to turn left; let go to sail straight. <b>Keyboard:</b> A / D or the arrow keys.</p>
-      <p>The rudder needs water flowing past it, so steering is sluggish when you are slow. The streaks on the water show where the wind blows; dark ruffled patches are gusts, pale glassy water is a lull.</p>`,
+    body: N_(`<p><b>Touch:</b> put your thumb down anywhere on the left: a ring appears under it. Slide right to turn right, left to turn left; let go to sail straight. <b>Keyboard:</b> A / D or the arrow keys.</p>
+      <p>The rudder needs water flowing past it, so steering is sluggish when you are slow. The streaks on the water show where the wind blows; dark ruffled patches are gusts, pale glassy water is a lull.</p>`),
   },
   {
-    title: 'Zig-zag to go upwind',
+    title: N_('Zig-zag to go upwind'),
     svg: tackSvg,
-    body: `<p>If B is upwind, sail about 45° off the wind on one side, then turn through the wind and sail 45° off on the other. That's called <b>tacking</b>.</p>
-      <p>Keep your speed up before you turn, or the boat stalls in the no-go zone (<b>in irons</b>). Downwind, turning your stern through the wind is a <b>gybe</b>: the boom swings hard!</p>`,
+    body: N_(`<p>If B is upwind, sail about 45° off the wind on one side, then turn through the wind and sail 45° off on the other. That's called <b>tacking</b>.</p>
+      <p>Keep your speed up before you turn, or the boat stalls in the no-go zone (<b>in irons</b>). Downwind, turning your stern through the wind is a <b>gybe</b>: the boom swings hard!</p>`),
   },
   {
-    title: 'Trim the sail',
+    title: N_('Trim the sail'),
     svg: trimSvg,
-    body: `<p>By default the sail trims itself. Expert sailors can switch to <b>manual trim</b> in Settings: drag the slider on the right, or use W / S.</p>
-      <p><b>Sheet in</b> (pull the sail tight) when heading upwind; <b>ease out</b> when the wind is behind you. Flapping (<b>luffing</b>) means it's too loose; <b>stalled</b> means it's too tight. Keep the marker in the bright sweet-spot band.</p>`,
+    body: N_(`<p>By default the sail trims itself. Expert sailors can switch to <b>manual trim</b> in Settings: drag the slider on the right, or use W / S.</p>
+      <p><b>Sheet in</b> (pull the sail tight) when heading upwind; <b>ease out</b> when the wind is behind you. Flapping (<b>luffing</b>) means it's too loose; <b>stalled</b> means it's too tight. Keep the marker in the bright sweet-spot band.</p>`),
   },
   {
-    title: 'Heel, gusts and capsizing',
+    title: N_('Heel, gusts and capsizing'),
     svg: heelSvg,
-    body: `<p>Strong wind leans the boat over. Past about 40° the little boat on the compass turns red; push further and you <b>capsize</b>, losing time and hull.</p>
-      <p>To recover, ease the sail out or turn away from the wind. A <b>gust jar</b> gives a burst of bottled wind: great for escaping whirlpools or calms.</p>`,
+    body: N_(`<p>Strong wind leans the boat over. Past about 40° the little boat on the compass turns red; push further and you <b>capsize</b>, losing time and hull.</p>
+      <p>To recover, ease the sail out or turn away from the wind. A <b>gust jar</b> gives a burst of bottled wind: great for escaping whirlpools or calms.</p>`),
   },
   {
-    title: 'Hazards',
+    title: N_('Hazards'),
     svg: hazardsSvg,
-    body: `<p><b>Rocks and reefs</b> crack the hull. <b>Currents</b> carry you along, so aim upstream to cross. <b>Whirlpools</b> drag you to the eye. <b>Calm patches</b> and the lee of islands steal your wind.</p>
-      <p><b>Squalls</b> bring savage gusts. In the fog lives a <b>kraken</b>: when the water boils, get out of the ring. Reach a buoy to save your spot.</p>`,
+    body: N_(`<p><b>Rocks and reefs</b> crack the hull. <b>Currents</b> carry you along, so aim upstream to cross. <b>Whirlpools</b> drag you to the eye. <b>Calm patches</b> and the lee of islands steal your wind.</p>
+      <p><b>Squalls</b> bring savage gusts. In the fog lives a <b>kraken</b>: when the water boils, get out of the ring. Reach a buoy to save your spot.</p>`),
   },
   {
-    title: 'Pickups',
+    title: N_('Pickups'),
     svg: pickupsSvg,
-    body: `<p><b>Pearls</b> are treasure: collect them all on a voyage. <b>Gust jars</b> hold a burst of wind (up to three). <b>Repair crates</b> patch the hull.</p>
-      <p><b>Bottles</b> carry notes from sailors who came before you. They're kept in your Logbook.</p>`,
+    body: N_(`<p><b>Pearls</b> are treasure: collect them all on a voyage. <b>Gust jars</b> hold a burst of wind (up to three). <b>Repair crates</b> patch the hull.</p>
+      <p><b>Bottles</b> carry notes from sailors who came before you. They're kept in your Logbook.</p>`),
   },
 ];
 
@@ -516,22 +531,25 @@ export function createUI(root, levels, handlers) {
   function festivalHint(save, g) {
     const f = festivalById(g.festival);
     const today = dateKey();
-    const first = isDailyUnlocked(save, levels) ? '' : `Finish the first ${DAILY_UNLOCK} voyages to open the daily voyage, then s`;
-    if (festivalOn(today) === f) return `It's ${f.name} week! ${first || 'S'}ail today's ${f.name} voyage home to win the ${g.name} sail.`;
+    const open = isDailyUnlocked(save, levels);
+    const vars = { fest: t(f.name), sail: t(g.name), n: DAILY_UNLOCK };
+    if (festivalOn(today) === f) return open ? t("It's {fest} week! Sail today's {fest} voyage home to win the {sail} sail.", vars) : t("It's {fest} week! Finish the first {n} voyages to open the daily voyage, then sail today's {fest} voyage home to win the {sail} sail.", vars);
     const w = nextWeek(f, today);
-    return `${first || 'S'}ail the daily voyage in ${f.name} week${w ? ` (${dayLabel(w[0])} to ${dayLabel(w[1])})` : ''} to win the ${g.name} sail.`;
+    const when = w ? { ...vars, from: dayLabel(w[0]), to: dayLabel(w[1]) } : vars;
+    if (open) return w ? t('Sail the daily voyage in {fest} week ({from} to {to}) to win the {sail} sail.', when) : t('Sail the daily voyage in {fest} week to win the {sail} sail.', vars);
+    return w ? t('Finish the first {n} voyages to open the daily voyage, then sail it in {fest} week ({from} to {to}) to win the {sail} sail.', when) : t('Finish the first {n} voyages to open the daily voyage, then sail it in {fest} week to win the {sail} sail.', vars);
   }
 
   // Charting today's course can take a moment on a slow phone, so the button
   // says so until the briefing is ready.
   function openDaily(save, button, busyLabel) {
     if (!isDailyUnlocked(save, levels)) {
-      ui.toast(`Finish the first ${DAILY_UNLOCK} voyages to unlock the daily voyage.`);
+      ui.toast(t('Finish the first {n} voyages to unlock the daily voyage.', { n: DAILY_UNLOCK }));
       return;
     }
     const label = busyLabel.textContent;
     const screen = current;
-    busyLabel.textContent = "Charting today's course…";
+    busyLabel.textContent = t("Charting today's course…");
     button.disabled = true;
     handlers.chartDaily((def) => {
       if (current !== screen) return; // the player moved on meanwhile
@@ -541,27 +559,27 @@ export function createUI(root, levels, handlers) {
       }
       busyLabel.textContent = label;
       button.disabled = false;
-      ui.toast("Today's course couldn't be charted. Try again later.", 'warn');
+      ui.toast(t("Today's course couldn't be charted. Try again later."), 'warn');
     });
   }
 
   // Unlock a boat with black pearls, after asking. `after` redraws the screen.
   function unlockBoat(save, id, after) {
-    const t = BOAT_TYPES[id];
+    const bt = BOAT_TYPES[id];
     const price = { blackPearls: BOAT_PRICES[id] };
     if (!canAfford(save, price)) {
       ui.toast(needMore(save, price));
       return;
     }
     ui.confirm({
-      title: `Unlock the ${t.name}?`,
-      text: `She is yours for good, without waiting for the ${t.unlock} stars.`,
-      ok: `Unlock ${priceTag(price)}`,
+      title: t('Unlock the {boat}?', { boat: t(bt.name) }),
+      text: t('She is yours for good, without waiting for the {n} stars.', { n: bt.unlock }),
+      ok: `${t('Unlock')} ${priceTag(price)}`,
       onOk: () => {
         if (!buyBoat(save, id)) return;
         handlers.onBoat(id);
         handlers.onWallet();
-        ui.toast(`The ${t.name} is yours. She's waiting at the quay.`, 'good');
+        ui.toast(t("The {boat} is yours. She's waiting at the quay.", { boat: t(bt.name) }), 'good');
         after();
       },
     });
@@ -633,8 +651,8 @@ export function createUI(root, levels, handlers) {
   // A Share button: the phone's share sheet, or the clipboard in a browser.
   async function shareOut(text) {
     const r = await handlers.onShare(text);
-    if (r === 'copied') ui.toast('Copied. Paste it to a friend.');
-    else if (r === 'failed') ui.toast("Sharing didn't work here.");
+    if (r === 'copied') ui.toast(t('Copied. Paste it to a friend.'));
+    else if (r === 'failed') ui.toast(t("Sharing didn't work here."));
   }
 
   // The results' Share button, and the video that doubles the coins.
@@ -646,7 +664,7 @@ export function createUI(root, levels, handlers) {
       if (!b.isConnected) return;
       if (!ok) {
         b.disabled = false;
-        ui.toast('No video right now.');
+        ui.toast(t('No video right now.'));
         return;
       }
       const strip = b.closest('.reward');
@@ -696,39 +714,39 @@ export function createUI(root, levels, handlers) {
       const fest = festivalOn(today);
       const sail = fest && SAILS.find((g) => g.id === fest.sail);
       const talk = fest && dailyOpen && !isGearUnlocked(save, sail)
-        ? `<p class="rumor festive"><span>${esc(fest.name)} week</span> Sail today's ${esc(fest.name)} voyage home to win the ${esc(sail.name)} sail.</p>`
-        : `<p class="rumor"><span>Harbor talk</span> ${esc(pickRumor(save, levels))}</p>`;
+        ? `<p class="rumor festive"><span>${esc(t('{fest} week', { fest: t(fest.name) }))}</span> ${esc(t("Sail today's {fest} voyage home to win the {sail} sail.", { fest: t(fest.name), sail: t(sail.name) }))}</p>`
+        : `<p class="rumor"><span>${t('Harbor talk')}</span> ${esc(pickRumor(save, levels))}</p>`;
       // Your harbor, once the daily voyage opens; a dot when coins cover the next piece.
       const next = dailyOpen && nextPiece(save);
       const builtCount = harborBuilt(save).length;
       const harbor = dailyOpen
-        ? `<button class="harbor-view ${next && save.wallet.coins >= next.price ? 'fresh' : ''}" data-act="harbor" aria-label="Your harbor, ${builtCount} of ${HARBOR_TOTAL} built"><canvas aria-hidden="true"></canvas><span class="harbor-tag">Your harbor <b>${builtCount}/${HARBOR_TOTAL}</b></span></button>`
+        ? `<button class="harbor-view ${next && save.wallet.coins >= next.price ? 'fresh' : ''}" data-act="harbor" aria-label="${t('Your harbor, {n} of {of} built', { n: builtCount, of: HARBOR_TOTAL })}"><canvas aria-hidden="true"></canvas><span class="harbor-tag">${t('Your harbor')} <b>${builtCount}/${HARBOR_TOTAL}</b></span></button>`
         : '';
-      const node = el(`<section class="screen scrim title ${fest ? `festive ${fest.id}` : ''}" aria-label="Title">
+      const node = el(`<section class="screen scrim title ${fest ? `festive ${fest.id}` : ''}" aria-label="${t('Title')}">
         <div class="title-wrap">
-          <div class="eyebrow">${fest ? `${esc(fest.name)} week` : 'A sailing voyage'}</div>
+          <div class="eyebrow">${fest ? esc(t('{fest} week', { fest: t(fest.name) })) : t('A sailing voyage')}</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
-          <p class="tagline">A squall took your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it. Ride it. Don't capsize.</p>
+          <p class="tagline">${t("A squall took your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it. Ride it. Don't capsize.")}</p>
           ${talk}
           <div class="title-buttons">
-            <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? 'Set sail' : 'Start voyage'}</button>
-            <button class="btn" data-act="voyages">Voyages</button>
-            <button class="btn" data-act="howto">How to sail</button>
+            <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? t('Set sail') : t('Start voyage')}</button>
+            <button class="btn" data-act="voyages">${t('Voyages')}</button>
+            <button class="btn" data-act="howto">${t('How to sail')}</button>
           </div>
           <div class="title-buttons">
-            ${orders ? `<button class="btn small ${orders.seen || orders.done.length === orders.picks.length ? '' : 'fresh'}" data-act="orders" aria-label="Orders, ${orders.done.length} of ${orders.picks.length} done">Orders <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span></button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">${fest ? `${esc(fest.name)} voyage` : 'Daily voyage'}</button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">Open Sea</button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">Regatta</button>` : ''}
-            <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
-            <button class="btn small ${save.wallet.blackPearls && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">Shop</button>
-            <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
-            <button class="btn small ${atlasCount(save) > save.atlasSeen ? 'fresh' : ''}" data-act="atlas" aria-label="Sea Atlas, ${atlasCount(save)} of ${ATLAS_TOTAL}">Atlas</button>
-            <button class="btn small" data-act="logbook">Logbook</button>
-            <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">Prologue</button>
-            <button class="btn small" data-act="settings">Settings</button>
+            ${orders ? `<button class="btn small ${orders.seen || orders.done.length === orders.picks.length ? '' : 'fresh'}" data-act="orders" aria-label="${t('Orders, {n} of {of} done', { n: orders.done.length, of: orders.picks.length })}">${t('Orders')} <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span></button>` : ''}
+            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">${fest ? esc(t('{fest} voyage', { fest: t(fest.name) })) : t('Daily voyage')}</button>` : ''}
+            ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">${t('Open Sea')}</button>` : ''}
+            ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">${t('Regatta')}</button>` : ''}
+            <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">${t('Shipyard')}</button>
+            <button class="btn small ${save.wallet.blackPearls && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">${t('Shop')}</button>
+            <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">${t('Medals')}</button>
+            <button class="btn small ${atlasCount(save) > save.atlasSeen ? 'fresh' : ''}" data-act="atlas" aria-label="${t('Sea Atlas, {n} of {of}', { n: atlasCount(save), of: ATLAS_TOTAL })}">${t('Atlas')}</button>
+            <button class="btn small" data-act="logbook">${t('Logbook')}</button>
+            <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">${t('Prologue')}</button>
+            <button class="btn small" data-act="settings">${t('Settings')}</button>
           </div>
-          <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>${esc(voyageLabel(levels[resume].id) || `Voyage ${resume + 1}`)}</span><span>Medals <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>Streak <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
+          <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>${esc(voyageLabel(levels[resume].id) || t('Voyage {n}', { n: resume + 1 }))}</span><span>${t('Medals')} <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>${t('Streak')} <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
           ${harbor}
         </div>
       </section>`);
@@ -758,24 +776,24 @@ export function createUI(root, levels, handlers) {
       const card = (p) => {
         const done = isBuilt(save, p.id);
         const wait = waitingOn(save, p);
-        const sub = wait.length && !done ? `Needs the ${wait.map((w) => esc(w.name.toLowerCase())).join(' and the ')} first` : esc(p.text);
+        const sub = wait.length && !done ? esc(wait.length > 1 ? t('Needs the {a} and the {b} first', { a: t(wait[0].name), b: t(wait[1].name) }) : t('Needs the {a} first', { a: t(wait[0].name) })) : esc(t(p.text));
         const button = done
-          ? '<button class="btn small" disabled>Built</button>'
+          ? `<button class="btn small" disabled>${t('Built')}</button>`
           : wait.length
-            ? `<button class="btn small" disabled aria-label="Locked">${icon('lock', 14)}</button>`
-            : `<button class="btn small" data-build="${p.id}" aria-label="Build the ${esc(p.name.toLowerCase())} for ${formatCoins(p.price)} coins">${priceTag({ coins: p.price })}</button>`;
-        return `<div class="shop-item ${done ? 'built' : ''}"><span class="shop-art">${icon(ROWS.find((r) => r.id === p.row).icon, 28)}</span><span class="shop-text"><b>${esc(p.name)}</b><small>${sub}</small></span>${button}</div>`;
+            ? `<button class="btn small" disabled aria-label="${t('Locked')}">${icon('lock', 14)}</button>`
+            : `<button class="btn small" data-build="${p.id}" aria-label="${esc(t('Build the {piece} for {n} coins', { piece: t(p.name), n: formatCoins(p.price) }))}">${priceTag({ coins: p.price })}</button>`;
+        return `<div class="shop-item ${done ? 'built' : ''}"><span class="shop-art">${icon(ROWS.find((r) => r.id === p.row).icon, 28)}</span><span class="shop-text"><b>${esc(t(p.name))}</b><small>${sub}</small></span>${button}</div>`;
       };
       const rows = ROWS.map(
-        (r) => `<h3 class="setting-group">${esc(r.name)}${rowDone(save, r.id) ? ' · done' : ''}</h3>
+        (r) => `<h3 class="setting-group">${esc(t(r.name))}${rowDone(save, r.id) ? ` · ${t('done')}` : ''}</h3>
             <div class="shop-grid">${PIECES.filter((p) => p.row === r.id).map(card).join('')}</div>`,
       ).join('');
-      const node = el(`<section class="screen dim" aria-label="Your harbor">
+      const node = el(`<section class="screen dim" aria-label="${t('Your harbor')}">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Your harbor</h2><span class="eyebrow">${built} / ${HARBOR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Your harbor')}</h2><span class="eyebrow">${built} / ${HARBOR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
             <div class="locker-top"><canvas class="harbor-preview" aria-hidden="true"></canvas>
-              <div><b class="locker-fit">${built === HARBOR_TOTAL ? 'Every piece is built' : built ? `${built} of ${HARBOR_TOTAL} built` : 'An empty island'}</b><p class="locker-blurb">Coins from your voyages build the harbor up piece by piece, and the title screen shows it growing. Finish a row and the harbor folk bring you ${ROW_PEARLS === 1 ? 'a black pearl' : `${ROW_PEARLS} black pearls`}.</p></div></div>
+              <div><b class="locker-fit">${built === HARBOR_TOTAL ? t('Every piece is built') : built ? t('{n} of {of} built', { n: built, of: HARBOR_TOTAL }) : t('An empty island')}</b><p class="locker-blurb">${ROW_PEARLS === 1 ? t('Coins from your voyages build the harbor up piece by piece, and the title screen shows it growing. Finish a row and the harbor folk bring you a black pearl.') : t('Coins from your voyages build the harbor up piece by piece, and the title screen shows it growing. Finish a row and the harbor folk bring you {n} black pearls.', { n: ROW_PEARLS })}</p></div></div>
             ${rows}
           </div>
         </div></section>`);
@@ -787,14 +805,14 @@ export function createUI(root, levels, handlers) {
           return;
         }
         ui.confirm({
-          title: `Build the ${p.name.toLowerCase()}?`,
-          text: p.text,
-          ok: `Build ${priceTag(price)}`,
+          title: t('Build the {piece}?', { piece: t(p.name) }),
+          text: t(p.text),
+          ok: `${t('Build')} ${priceTag(price)}`,
           onOk: () => {
             const r = buildPiece(save, p.id);
             if (!r) return;
             handlers.onWallet();
-            ui.toast(r.row ? `That finishes the ${r.row.name.toLowerCase()}! The harbor folk bring you a black pearl.` : `The ${p.name.toLowerCase()} is built.`, 'good', 3000);
+            ui.toast(r.row ? t('That finishes the {row}! The harbor folk bring you a black pearl.', { row: t(r.row.name) }) : t('The {piece} is built.', { piece: t(p.name) }), 'good', 3000);
             ui.harbor(save, true);
           },
         });
@@ -807,13 +825,13 @@ export function createUI(root, levels, handlers) {
     // The prologue's frame: letterbox bars, the caption under the picture, a
     // way out, and the title card it ends on. Returns the film's controls.
     film() {
-      const node = el(`<section class="screen film" aria-label="Prologue">
-        <div class="film-bar top"><button class="btn small film-skip" data-act="skip">Skip</button></div>
+      const node = el(`<section class="screen film" aria-label="${t('Prologue')}">
+        <div class="film-bar top"><button class="btn small film-skip" data-act="skip">${t('Skip')}</button></div>
         <div class="film-card" hidden>
-          <div class="eyebrow">A sailing voyage</div>
+          <div class="eyebrow">${t('A sailing voyage')}</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
-          <p class="tagline">Only the wind, and the way home.</p>
-          <button class="btn primary" data-act="helm">Take the helm</button>
+          <p class="tagline">${t('Only the wind, and the way home.')}</p>
+          <button class="btn primary" data-act="helm">${t('Take the helm')}</button>
         </div>
         <div class="film-bar bottom"><p class="film-caption" aria-live="polite"></p></div>
       </section>`);
@@ -829,7 +847,7 @@ export function createUI(root, levels, handlers) {
           clearTimeout(fade);
           caption.classList.add('out');
           fade = setTimeout(() => {
-            caption.textContent = text;
+            caption.textContent = t(text);
             caption.classList.toggle('out', !text);
           }, 320);
         },
@@ -852,9 +870,9 @@ export function createUI(root, levels, handlers) {
         const isNext = open && (!rec || rec.best === null);
         return `<button class="voyage ${open ? '' : 'locked'} ${isNext ? 'next' : ''}" data-i="${i}" ${open ? '' : 'aria-disabled="true"'}>
             <span class="num">${String((l.index ?? i) + 1).padStart(2, '0')}</span>
-            <span class="name">${esc(l.name)}</span>
+            <span class="name">${esc(t(l.name))}</span>
             <span class="stars">${stars(rec ? rec.stars : 0)}</span>
-            <span class="best">${rec && rec.best !== null ? `Best ${formatTime(rec.best)} · ${icon('pearl', 13)}${rec.pearls}/${rec.pearlsTotal ?? '?'}${save.wallet.found[l.id] ? ` · ${icon('blackPearl', 13)}` : ''}` : `<em class="teaser">${esc(l.teaser)}</em>`}</span>
+            <span class="best">${rec && rec.best !== null ? `${t('Best')} ${formatTime(rec.best)} · ${icon('pearl', 13)}${rec.pearls}/${rec.pearlsTotal ?? '?'}${save.wallet.found[l.id] ? ` · ${icon('blackPearl', 13)}` : ''}` : `<em class="teaser">${esc(t(l.teaser))}</em>`}</span>
           </button>`;
       };
       // Each world's voyages, in campaign order, with its first one's index.
@@ -868,46 +886,47 @@ export function createUI(root, levels, handlers) {
       const dailyRec = save.daily[dailyId(today)];
       const charted = handlers.dailyPeek();
       const streak = currentStreak(save, today);
+      const locked = t('Finish voyage {n} to unlock', { n: DAILY_UNLOCK });
       const dailyLine = !dailyOpen
-        ? `Finish voyage ${DAILY_UNLOCK} to unlock`
+        ? locked
         : dailyRec
-          ? `Best ${formatTime(dailyRec.best)}${streak ? ` · Streak ${streak}` : ''}`
+          ? `${t('Best')} ${formatTime(dailyRec.best)}${streak ? ` · ${t('Streak')} ${streak}` : ''}`
           : streak
-            ? `Streak ${streak} · keep it going`
-            : 'A new course every day';
+            ? t('Streak {n} · keep it going', { n: streak })
+            : t('A new course every day');
       const dailyCard = `<button class="voyage daily ${dailyOpen ? '' : 'locked'}" data-act="daily" ${dailyOpen ? '' : 'aria-disabled="true"'}>
-            <span class="num">Daily</span>
-            <span class="name">${esc(charted ? charted.name : dayLabel(today))}</span>
+            <span class="num">${t('Daily')}</span>
+            <span class="name">${esc(charted ? nameOf(charted) : dayLabel(today))}</span>
             <span class="stars">${stars(dailyRec ? dailyRec.stars : 0)}</span>
             <span class="best">${dailyLine}</span>
           </button>`;
       const sea = save.openSea;
       const seaCard = `<button class="voyage sea ${dailyOpen ? '' : 'locked'}" data-act="sea" ${dailyOpen ? '' : 'aria-disabled="true"'}>
-            <span class="num">Endless</span>
-            <span class="name">Open Sea</span>
+            <span class="num">${t('Endless')}</span>
+            <span class="name">${t('Open Sea')}</span>
             <span class="stars">${sea.runs ? `⚑ ${sea.gates}` : ''}</span>
-            <span class="best">${!dailyOpen ? `Finish voyage ${DAILY_UNLOCK} to unlock` : sea.runs ? `Furthest ${formatDistance(sea.best)}` : 'How far east can you sail?'}</span>
+            <span class="best">${!dailyOpen ? locked : sea.runs ? t('Furthest {d}', { d: formatDistance(sea.best) }) : t('How far east can you sail?')}</span>
           </button>`;
       const race = save.regatta;
       const raceCard = `<button class="voyage regatta ${dailyOpen ? '' : 'locked'}" data-act="regatta" ${dailyOpen ? '' : 'aria-disabled="true"'}>
-            <span class="num">Race</span>
-            <span class="name">Regatta</span>
+            <span class="num">${t('Race')}</span>
+            <span class="name">${t('Regatta')}</span>
             <span class="stars">${race.wins ? `🏆 ${race.wins}` : ''}</span>
-            <span class="best">${!dailyOpen ? `Finish voyage ${DAILY_UNLOCK} to unlock` : race.races ? `${FLEETS[fleetFor(race.wins)].name} fleet · ${race.races} raced` : 'Race three rival boats'}</span>
+            <span class="best">${!dailyOpen ? locked : race.races ? t('{fleet} fleet · {n} raced', { fleet: t(FLEETS[fleetFor(race.wins)].name), n: race.races }) : t('Race three rival boats')}</span>
           </button>`;
       const tabs = worlds
-        .map(({ w, at, have, open }) => `<button class="world-tab ${open ? '' : 'locked'}" role="tab" data-world="${w.id}" aria-selected="${w.id === tab}" style="--accent:${w.accent}"><b>${esc(w.name)}</b><small>${open ? `★ ${have} / ${at.length * 3}` : `🔒 ${at.length} voyages`}</small></button>`)
+        .map(({ w, at, have, open }) => `<button class="world-tab ${open ? '' : 'locked'}" role="tab" data-world="${w.id}" aria-selected="${w.id === tab}" style="--accent:${w.accent}"><b>${esc(t(w.name))}</b><small>${open ? `★ ${have} / ${at.length * 3}` : `🔒 ${t('{n} voyages', { n: at.length })}`}</small></button>`)
         .join('');
       const panels = worlds
         .map(({ w, at }) => `<div class="world-panel" role="tabpanel" data-world="${w.id}" ${w.id === tab ? '' : 'hidden'}>
-            ${w.id === 'home' ? wayHome(save, levels, at, w.accent) : `<p class="world-blurb" style="--accent:${w.accent}">${esc(w.blurb)}</p>`}
+            ${w.id === 'home' ? wayHome(save, levels, at, w.accent) : `<p class="world-blurb" style="--accent:${w.accent}">${esc(t(w.blurb))}</p>`}
             <div class="voyage-grid">${w.id === 'home' ? dailyCard + seaCard + raceCard : ''}${at.map((i) => card(levels[i], i)).join('')}</div>
           </div>`)
         .join('');
-      const node = el(`<section class="screen dim" aria-label="Voyages">
+      const node = el(`<section class="screen dim" aria-label="${t('Voyages')}">
         <div class="sheet">
-          <div class="sheet-head"><h2>Voyages</h2><span class="eyebrow">★ ${totalStars(save)} / ${levels.length * 3}</span><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><div class="world-tabs" role="tablist" aria-label="Worlds">${tabs}</div>${panels}</div>
+          <div class="sheet-head"><h2>${t('Voyages')}</h2><span class="eyebrow">★ ${totalStars(save)} / ${levels.length * 3}</span><button class="btn small" data-act="back">${t('Back')}</button></div>
+          <div class="sheet-body"><div class="world-tabs" role="tablist" aria-label="${t('Worlds')}">${tabs}</div>${panels}</div>
         </div></section>`);
       click(node, '.world-tab', (e, b) => {
         worldTab = b.dataset.world;
@@ -919,19 +938,19 @@ export function createUI(root, levels, handlers) {
         const i = Number(b.dataset.i);
         if (!isUnlocked(save, levels, i)) {
           const w = getWorld(worldAt(i));
-          if (worldAt(i - 1) !== worldAt(i)) ui.toast(`Finish ${levels[i - 1].name} to reach ${w.name}.`);
-          else ui.toast(`Finish ${levels[i - 1].name} to sail on to ${levels[i].name}.`);
+          if (worldAt(i - 1) !== worldAt(i)) ui.toast(t('Finish {a} to reach {b}.', { a: t(levels[i - 1].name), b: t(w.name) }));
+          else ui.toast(t('Finish {a} to sail on to {b}.', { a: t(levels[i - 1].name), b: t(levels[i].name) }));
           return;
         }
         ui.briefing(i, save);
       });
       click(node, '.voyage.daily', (e, b) => openDaily(save, b, b.querySelector('.best')));
       click(node, '.voyage.sea', () => {
-        if (!isDailyUnlocked(save, levels)) ui.toast(`Finish the first ${DAILY_UNLOCK} voyages to unlock the Open Sea.`);
+        if (!isDailyUnlocked(save, levels)) ui.toast(t('Finish the first {n} voyages to unlock the Open Sea.', { n: DAILY_UNLOCK }));
         else ui.seaBriefing(save, 'push');
       });
       click(node, '.voyage.regatta', () => {
-        if (!isDailyUnlocked(save, levels)) ui.toast(`Finish the first ${DAILY_UNLOCK} voyages to unlock the Regatta.`);
+        if (!isDailyUnlocked(save, levels)) ui.toast(t('Finish the first {n} voyages to unlock the Regatta.', { n: DAILY_UNLOCK }));
         else ui.regattaBriefing(save, 'push');
       });
       click(node, '[data-act=back]', () => ui.back());
@@ -960,35 +979,35 @@ export function createUI(root, levels, handlers) {
         .map(([name, bad]) => `<span class="chip ${bad ? 'danger' : ''}">${name}</span>`)
         .join('');
       const pearls = (def.pickups || []).filter((p) => p.kind === 'pearl').length;
-      const node = el(`<section class="screen dim" aria-label="Voyage briefing">
+      const node = el(`<section class="screen dim" aria-label="${t('Voyage briefing')}">
         <div class="sheet">
-          <div class="sheet-head"><span class="eyebrow">${def.daily ? `${def.festival ? `${esc(festivalById(def.festival).name)} voyage` : 'Daily voyage'} · ${esc(dayLabel(def.daily))}` : esc(voyageLabel(levels[index].id) || `Voyage ${index + 1}`)}</span><h2>${esc(def.name)}</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${def.daily ? `${def.festival ? esc(t('{fest} voyage', { fest: t(festivalById(def.festival).name) })) : t('Daily voyage')} · ${esc(dayLabel(def.daily))}` : esc(voyageLabel(levels[index].id) || t('Voyage {n}', { n: index + 1 }))}</span><h2>${esc(nameOf(def))}</h2></div>
           <div class="sheet-body"><div class="brief">
-            <p class="lead">${esc(def.blurb)}</p>
+            <p class="lead">${esc(blurbOf(def))}</p>
             <div>
-              <div class="eyebrow">Conditions</div>
+              <div class="eyebrow">${t('Conditions')}</div>
               <dl class="facts">
-                <dt>Wind</dt><dd>${windSentence(def)}</dd>
-                <dt>Goal</dt><dd>Reach ${goalOf(def)} at <b style="color:var(--signal)">B</b></dd>
-                <dt>Pearls</dt><dd>${pearls}</dd>
-                ${holdsBlackPearl(def) ? `<dt>Black pearl</dt><dd>${save.wallet.found[def.id] ? '<span style="color:var(--gem)">brought home ✓</span>' : 'One lies near the danger'}</dd>` : ''}
-                ${save.wallet.jars ? `<dt>Gust jars</dt><dd>${save.wallet.jars} from the hold</dd>` : ''}
-                ${(def.castaways || []).map((c) => `<dt>Castaway</dt><dd>${esc(c.name)} ${rec && rec.rescued ? '<span style="color:var(--ok)">rescued ✓</span>' : 'is adrift. Stop alongside'}</dd>`).join('')}
-                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
+                <dt>${t('Wind')}</dt><dd>${windSentence(def)}</dd>
+                <dt>${t('Goal')}</dt><dd>${t('Reach {goal} at <b style="color:var(--signal)">B</b>', { goal: goalOf(def) })}</dd>
+                <dt>${t('Pearls')}</dt><dd>${pearls}</dd>
+                ${holdsBlackPearl(def) ? `<dt>${t('Black pearl')}</dt><dd>${save.wallet.found[def.id] ? `<span style="color:var(--gem)">${t('brought home ✓')}</span>` : t('One lies near the danger')}</dd>` : ''}
+                ${save.wallet.jars ? `<dt>${t('Gust jars')}</dt><dd>${t('{n} from the hold', { n: save.wallet.jars })}</dd>` : ''}
+                ${(def.castaways || []).map((c) => `<dt>${t('Castaway')}</dt><dd>${rec && rec.rescued ? t('{name} <span style="color:var(--ok)">rescued ✓</span>', { name: esc(t(c.name)) }) : t('{name} is adrift. Stop alongside', { name: esc(t(c.name)) })}</dd>`).join('')}
+                <dt>${t('Boat')}</dt><dd>${esc(t(BOAT_TYPES[selectedBoat(save)].name))} <button class="link" data-act="shipyard">${t('Change')}</button></dd>
               </dl>
               <div class="chips">${chips}</div>
             </div>
             <div>
-              <div class="eyebrow">Times</div>
+              <div class="eyebrow">${t('Times')}</div>
               <dl class="facts">
-                <dt style="color:var(--brass)">★★★</dt><dd>under ${formatTime(def.par.gold)}</dd>
-                <dt>★★</dt><dd>under ${formatTime(def.par.silver)}</dd>
-                <dt>Best</dt><dd>${rec && rec.best !== null ? `${formatTime(rec.best)} <span style="color:var(--brass)">${'★'.repeat(rec.stars)}</span>` : '—'}</dd>
-                ${def.daily ? `<dt>Streak</dt><dd>${streak ? days(streak) : 'Finish today to start one'}</dd>` : ''}
+                <dt style="color:var(--brass)">★★★</dt><dd>${t('under {time}', { time: formatTime(def.par.gold) })}</dd>
+                <dt>★★</dt><dd>${t('under {time}', { time: formatTime(def.par.silver) })}</dd>
+                <dt>${t('Best')}</dt><dd>${rec && rec.best !== null ? `${formatTime(rec.best)} <span style="color:var(--brass)">${'★'.repeat(rec.stars)}</span>` : '—'}</dd>
+                ${def.daily ? `<dt>${t('Streak')}</dt><dd>${streak ? days(streak) : t('Finish today to start one')}</dd>` : ''}
               </dl>
             </div>
           </div></div>
-          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn primary" data-act="go" data-autofocus>Set sail</button></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">${t('Back')}</button><button class="btn primary" data-act="go" data-autofocus>${t('Set sail')}</button></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       click(node, '[data-act=go]', () => handlers.onPlay(index));
@@ -1002,32 +1021,32 @@ export function createUI(root, levels, handlers) {
       const rec = save.openSea;
       const medal = MEDALS.find((m) => m.id === 'far-horizon');
       const [have, need] = medalProgress(medal, save, LEVELS);
-      const node = el(`<section class="screen dim" aria-label="Open Sea briefing">
+      const node = el(`<section class="screen dim" aria-label="${t('Open Sea briefing')}">
         <div class="sheet">
-          <div class="sheet-head"><span class="eyebrow">Endless</span><h2>Open Sea</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${t('Endless')}</span><h2>${t('Open Sea')}</h2></div>
           <div class="sheet-body"><div class="brief">
-            <p class="lead">${esc(SEA_BLURB)}</p>
+            <p class="lead">${esc(t(SEA_BLURB))}</p>
             <div>
-              <div class="eyebrow">How it works</div>
+              <div class="eyebrow">${t('How it works')}</div>
               <dl class="facts">
-                <dt>Clock</dt><dd>Counts down from about a minute</dd>
-                <dt>Gates</dt><dd>Sail between the two buoys to add the next leg's time</dd>
-                <dt>Pearls</dt><dd>+${PEARL_TIME} s each</dd>
-                <dt>Hull</dt><dd>If she sinks, the run is over</dd>
-                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
+                <dt>${t('Clock')}</dt><dd>${t('Counts down from about a minute')}</dd>
+                <dt>${t('Gates')}</dt><dd>${t("Sail between the two buoys to add the next leg's time")}</dd>
+                <dt>${t('Pearls')}</dt><dd>${t('+{n} s each', { n: PEARL_TIME })}</dd>
+                <dt>${t('Hull')}</dt><dd>${t('If she sinks, the run is over')}</dd>
+                <dt>${t('Boat')}</dt><dd>${esc(t(BOAT_TYPES[selectedBoat(save)].name))} <button class="link" data-act="shipyard">${t('Change')}</button></dd>
               </dl>
             </div>
             <div>
-              <div class="eyebrow">Records</div>
+              <div class="eyebrow">${t('Records')}</div>
               <dl class="facts">
-                <dt>Furthest</dt><dd>${rec.runs ? formatDistance(rec.best) : '—'}</dd>
-                <dt>Most gates</dt><dd>${rec.runs ? rec.gates : '—'}</dd>
-                <dt>Runs</dt><dd>${rec.runs}</dd>
-                <dt>Medal</dt><dd>${isEarned(save, medal.id) ? `${esc(medal.name)} <span style="color:var(--brass)">earned</span>` : `${esc(medal.name)}: ${have} / ${need} km`}</dd>
+                <dt>${t('Furthest')}</dt><dd>${rec.runs ? formatDistance(rec.best) : '—'}</dd>
+                <dt>${t('Most gates')}</dt><dd>${rec.runs ? rec.gates : '—'}</dd>
+                <dt>${t('Runs')}</dt><dd>${rec.runs}</dd>
+                <dt>${t('Medal')}</dt><dd>${isEarned(save, medal.id) ? `${esc(t(medal.name))} <span style="color:var(--brass)">${t('earned')}</span>` : `${esc(t(medal.name))}: ${have} / ${need} km`}</dd>
               </dl>
             </div>
           </div></div>
-          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn primary" data-act="go" data-autofocus>Set sail</button></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">${t('Back')}</button><button class="btn primary" data-act="go" data-autofocus>${t('Set sail')}</button></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       click(node, '[data-act=go]', () => handlers.onPlay('sea'));
@@ -1040,33 +1059,34 @@ export function createUI(root, levels, handlers) {
       const rec = save.regatta;
       const fleet = FLEETS[fleetFor(rec.wins)];
       const medal = MEDALS.find((m) => m.id === 'line-honours');
-      const rivals = RIVALS.map((r) => `<span class="chip" style="color:${r.look.sail}">${esc(r.name)} · ${esc(BOAT_TYPES[r.boat].name)}</span>`).join('');
-      const node = el(`<section class="screen dim" aria-label="Regatta briefing">
+      const rivals = RIVALS.map((r) => `<span class="chip" style="color:${r.look.sail}">${esc(r.name)} · ${esc(t(BOAT_TYPES[r.boat].name))}</span>`).join('');
+      const fleetName = esc(t('{fleet} fleet', { fleet: t(fleet.name) }));
+      const node = el(`<section class="screen dim" aria-label="${t('Regatta briefing')}">
         <div class="sheet">
-          <div class="sheet-head"><span class="eyebrow">${esc(fleet.name)} fleet</span><h2>Regatta</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${fleetName}</span><h2>${t('Regatta')}</h2></div>
           <div class="sheet-body"><div class="brief">
-            <p class="lead">${esc(REGATTA_BLURB)}</p>
+            <p class="lead">${esc(t(REGATTA_BLURB))}</p>
             <div>
-              <div class="eyebrow">The course</div>
+              <div class="eyebrow">${t('The course')}</div>
               <dl class="facts">
-                <dt>Legs</dt><dd>Mark <b style="color:var(--warn)">1</b>, mark <b style="color:var(--warn)">2</b>, then the harbor at <b style="color:var(--signal)">B</b></dd>
-                <dt>Fleet</dt><dd>${esc(fleet.name)}${fleet.id === 'championship' ? '' : `: win ${fleet.id === 'club' ? 1 : 3 - rec.wins} more to step up`}</dd>
-                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
+                <dt>${t('Legs')}</dt><dd>${t('Mark <b style="color:var(--warn)">1</b>, mark <b style="color:var(--warn)">2</b>, then the harbor at <b style="color:var(--signal)">B</b>')}</dd>
+                <dt>${t('Fleet')}</dt><dd>${esc(t(fleet.name))}${fleet.id === 'championship' ? '' : `: ${t('win {n} more to step up', { n: fleet.id === 'club' ? 1 : 3 - rec.wins })}`}</dd>
+                <dt>${t('Boat')}</dt><dd>${esc(t(BOAT_TYPES[selectedBoat(save)].name))} <button class="link" data-act="shipyard">${t('Change')}</button></dd>
               </dl>
               <div class="chips">${rivals}</div>
             </div>
             <div>
-              <div class="eyebrow">Records</div>
+              <div class="eyebrow">${t('Records')}</div>
               <dl class="facts">
-                <dt>Wins</dt><dd>${rec.wins} of ${rec.races}</dd>
-                <dt>Podiums</dt><dd>${rec.podiums}</dd>
-                <dt>Best win</dt><dd>${rec.best !== null ? formatTime(rec.best) : '—'}</dd>
-                <dt>Medal</dt><dd>${esc(medal.name)}${isEarned(save, medal.id) ? ' <span style="color:var(--brass)">earned</span>' : ': win a race'}</dd>
-                <dt>Cup</dt><dd>${save.cup.now ? `Race ${save.cup.now.race + 1} of ${CUP_RACES} next` : trophyCount(save) ? `${icon('trophy', 14)} ${trophyCount(save)} won` : `${CUP_RACES} races, one trophy`}</dd>
+                <dt>${t('Wins')}</dt><dd>${t('{n} of {of}', { n: rec.wins, of: rec.races })}</dd>
+                <dt>${t('Podiums')}</dt><dd>${rec.podiums}</dd>
+                <dt>${t('Best win')}</dt><dd>${rec.best !== null ? formatTime(rec.best) : '—'}</dd>
+                <dt>${t('Medal')}</dt><dd>${esc(t(medal.name))}${isEarned(save, medal.id) ? ` <span style="color:var(--brass)">${t('earned')}</span>` : `: ${t('win a race')}`}</dd>
+                <dt>${t('Cup')}</dt><dd>${save.cup.now ? t('Race {n} of {of} next', { n: save.cup.now.race + 1, of: CUP_RACES }) : trophyCount(save) ? `${icon('trophy', 14)} ${t('{n} won', { n: trophyCount(save) })}` : t('{n} races, one trophy', { n: CUP_RACES })}</dd>
               </dl>
             </div>
           </div></div>
-          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn ${save.cup.sailed || save.cup.now ? '' : 'fresh'}" data-act="cup">${icon('trophy', 16)} Cup</button><button class="btn primary" data-act="go" data-autofocus>Race</button></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">${t('Back')}</button><button class="btn ${save.cup.sailed || save.cup.now ? '' : 'fresh'}" data-act="cup">${icon('trophy', 16)} ${t('Cup')}</button><button class="btn primary" data-act="go" data-autofocus>${t('Race')}</button></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       click(node, '[data-act=go]', () => handlers.onPlay('regatta'));
@@ -1083,37 +1103,38 @@ export function createUI(root, levels, handlers) {
       const next = now ? now.race : 0;
       const races = COURSES.map((c, i) => {
         const state = i < next ? 'done' : i === next ? 'next' : '';
-        const note = i < next ? ordinal(now.places[i]) : i === next ? 'Next' : '';
-        return `<li class="${state}"><b>${i + 1}</b><span>${esc(c.name)}</span>${note ? `<small>${note}</small>` : ''}</li>`;
+        const note = i < next ? ordinal(now.places[i]) : i === next ? t('Next') : '';
+        return `<li class="${state}"><b>${i + 1}</b><span>${esc(t(c.name))}</span>${note ? `<small>${note}</small>` : ''}</li>`;
       }).join('');
-      const table = now && next ? `<div class="eyebrow">Points</div><div class="stat-rows standings cup-table">${cupRows(cupTable(now))}</div>` : '';
+      const table = now && next ? `<div class="eyebrow">${t('Points')}</div><div class="stat-rows standings cup-table">${cupRows(cupTable(now))}</div>` : '';
       const shelf = FLEETS.map((f) => {
         const n = save.cup.trophies[f.id];
-        return `<div class="trophy ${n ? 'won' : ''} ${f.id}" role="img" aria-label="${esc(f.name)} cup${n ? `, won ${n === 1 ? 'once' : `${n} times`}` : ', not won yet'}">${icon('trophy', 30)}<span>${esc(f.name)}</span><small>${n ? `× ${n}` : '—'}</small></div>`;
+        const label = !n ? t('{fleet} cup, not won yet', { fleet: t(f.name) }) : n === 1 ? t('{fleet} cup, won once', { fleet: t(f.name) }) : t('{fleet} cup, won {n} times', { fleet: t(f.name), n });
+        return `<div class="trophy ${n ? 'won' : ''} ${f.id}" role="img" aria-label="${esc(label)}">${icon('trophy', 30)}<span>${esc(t(f.name))}</span><small>${n ? `× ${n}` : '—'}</small></div>`;
       }).join('');
       const boat = BOAT_TYPES[CUP_BOAT];
       const prize = CUP_PRIZES[0];
-      const go = now ? `Race ${next + 1}: ${COURSES[next].name}` : 'Start the cup';
-      const node = el(`<section class="screen dim" aria-label="Regatta Cup">
+      const go = now ? t('Race {n}: {course}', { n: next + 1, course: t(COURSES[next].name) }) : t('Start the cup');
+      const node = el(`<section class="screen dim" aria-label="${t('Regatta Cup')}">
         <div class="sheet cup-sheet">
-          <div class="sheet-head"><span class="eyebrow">${esc(fleet.name)} fleet</span><h2>Regatta Cup</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${esc(t('{fleet} fleet', { fleet: t(fleet.name) }))}</span><h2>${t('Regatta Cup')}</h2></div>
           <div class="sheet-body"><div class="brief">
-            <p class="lead">${now && next ? cupStanding(now) : `${CUP_RACES} races on ${CUP_RACES} courses against the same three rivals. Each race scores ${CUP_POINTS.join(', ').replace(/, (\d+)$/, ' and $1')} points from first to fourth, and the most points after the last race takes the cup.`}</p>
+            <p class="lead">${now && next ? cupStanding(now) : t('{n} races on {n} courses against the same three rivals. Each race scores {a}, {b}, {c} and {d} points from first to fourth, and the most points after the last race takes the cup.', { n: CUP_RACES, a: CUP_POINTS[0], b: CUP_POINTS[1], c: CUP_POINTS[2], d: CUP_POINTS[3] })}</p>
             <div>
-              <div class="eyebrow">The races</div>
+              <div class="eyebrow">${t('The races')}</div>
               <ol class="cup-races">${races}</ol>
             </div>
             <div>
-              <div class="eyebrow shelf-label">Trophies</div>
+              <div class="eyebrow shelf-label">${t('Trophies')}</div>
               <div class="trophy-shelf">${shelf}</div>
               <dl class="facts">
-                <dt>Prize</dt><dd>${formatCoins(prize.coins)} coins and ${prize.blackPearls} black pearls${isBoatUnlocked(save, CUP_BOAT) ? '' : `, and your first cup wins the <b>${esc(boat.name)}</b>`}</dd>
-                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
+                <dt>${t('Prize')}</dt><dd>${isBoatUnlocked(save, CUP_BOAT) ? t('{coins} coins and {n} black pearls', { coins: formatCoins(prize.coins), n: prize.blackPearls }) : t('{coins} coins and {n} black pearls, and your first cup wins the <b>{boat}</b>', { coins: formatCoins(prize.coins), n: prize.blackPearls, boat: esc(t(boat.name)) })}</dd>
+                <dt>${t('Boat')}</dt><dd>${esc(t(BOAT_TYPES[selectedBoat(save)].name))} <button class="link" data-act="shipyard">${t('Change')}</button></dd>
               </dl>
               ${table}
             </div>
-          </div><p class="sheet-note">A race counts once you cross the line, so a restart sails it again.</p></div>
-          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn primary" data-act="go" data-autofocus>${esc(go)}</button></div>
+          </div><p class="sheet-note">${t('A race counts once you cross the line, so a restart sails it again.')}</p></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">${t('Back')}</button><button class="btn primary" data-act="go" data-autofocus>${esc(go)}</button></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       click(node, '[data-act=go]', () => handlers.onPlay('cup'));
@@ -1127,36 +1148,36 @@ export function createUI(root, levels, handlers) {
       const race = game.race;
       const marks = game.level.checkpoints.length;
       const rows = sea
-        ? `<span class="k">Clock</span><span class="v">${formatTime(sea.clock)}</span>
-              <span class="k">Distance</span><span class="v">${formatDistance(sea.best)} · ⚑ ${sea.gates}</span>`
+        ? `<span class="k">${t('Clock')}</span><span class="v">${formatTime(sea.clock)}</span>
+              <span class="k">${t('Distance')}</span><span class="v">${formatDistance(sea.best)} · ⚑ ${sea.gates}</span>`
         : race
-          ? `<span class="k">Time</span><span class="v">${formatTime(game.time)}</span>
-              <span class="k">Place</span><span class="v">${ordinal(race.place || 1)} of ${race.rivals.length + 1}</span>
-              <span class="k">Leg</span><span class="v">${game.nextCheckpoint < marks ? `To mark ${game.nextCheckpoint + 1}` : 'To the harbor'}</span>`
-          : `<span class="k">Time</span><span class="v">${formatTime(game.time)}</span>
-              <span class="k">Pearls</span><span class="v">${game.pearls} / ${game.pearlsTotal}</span>
-              ${game.castaways.map((c) => `<span class="k">${esc(c.name)}</span><span class="v">${c.state === 'aboard' ? 'Aboard' : 'Adrift'}</span>`).join('')}`;
-      const node = el(`<section class="screen dim" aria-label="Paused">
+          ? `<span class="k">${t('Time')}</span><span class="v">${formatTime(game.time)}</span>
+              <span class="k">${t('Place')}</span><span class="v">${t('{place} of {n}', { place: ordinal(race.place || 1), n: race.rivals.length + 1 })}</span>
+              <span class="k">${t('Leg')}</span><span class="v">${game.nextCheckpoint < marks ? t('To mark {n}', { n: game.nextCheckpoint + 1 }) : t('To the harbor')}</span>`
+          : `<span class="k">${t('Time')}</span><span class="v">${formatTime(game.time)}</span>
+              <span class="k">${t('Pearls')}</span><span class="v">${game.pearls} / ${game.pearlsTotal}</span>
+              ${game.castaways.map((c) => `<span class="k">${esc(t(c.name))}</span><span class="v">${c.state === 'aboard' ? t('Aboard') : t('Adrift')}</span>`).join('')}`;
+      const node = el(`<section class="screen dim" aria-label="${t('Paused')}">
         <div class="sheet narrow">
-          <div class="sheet-head"><h2>Paused</h2><span class="eyebrow">${esc(game.level.name)}</span></div>
+          <div class="sheet-head"><h2>${t('Paused')}</h2><span class="eyebrow">${esc(nameOf(game.level))}</span></div>
           <div class="sheet-body">
             <div class="stat-rows">
               ${rows}
-              <span class="k">Hull</span><span class="v">${Math.ceil(game.hull)}%</span>
+              <span class="k">${t('Hull')}</span><span class="v">${Math.ceil(game.hull)}%</span>
             </div>
             <div class="setting" style="margin-top:8px">
-              <span class="label"><b>Trim the sail by hand</b><small>Off: the sail trims itself</small></span>
-              <button class="toggle" role="switch" data-set="manual" aria-checked="${!save.settings.autoTrim}" aria-label="Manual trim"></button>
+              <span class="label"><b>${t('Trim the sail by hand')}</b><small>${t('Off: the sail trims itself')}</small></span>
+              <button class="toggle" role="switch" data-set="manual" aria-checked="${!save.settings.autoTrim}" aria-label="${t('Manual trim')}"></button>
             </div>
             <div class="setting">
-              <span class="label"><b>Sound</b></span>
-              <button class="toggle" role="switch" data-set="sound" aria-checked="${save.settings.sound}" aria-label="Sound"></button>
+              <span class="label"><b>${t('Sound')}</b></span>
+              <button class="toggle" role="switch" data-set="sound" aria-checked="${save.settings.sound}" aria-label="${t('Sound')}"></button>
             </div>
           </div>
           <div class="sheet-foot">
-            <button class="btn small" data-act="quit">Voyages</button>
-            <button class="btn small" data-act="restart">Restart</button>
-            <button class="btn primary" data-act="resume" data-autofocus>Resume</button>
+            <button class="btn small" data-act="quit">${t('Voyages')}</button>
+            <button class="btn small" data-act="restart">${t('Restart')}</button>
+            <button class="btn primary" data-act="resume" data-autofocus>${t('Resume')}</button>
           </div>
         </div></section>`);
       click(node, '[data-set=manual]', (e, b) => {
@@ -1183,23 +1204,23 @@ export function createUI(root, levels, handlers) {
       const nextWorld = hasNext && worldAt(index + 1) !== worldAt(index) ? getWorld(worldAt(index + 1)) : null;
       const rec = recordOf(save, def);
       const streak = def.daily ? currentStreak(save, def.daily) : 0;
-      const node = el(`<section class="screen dim" aria-label="Voyage complete">
+      const node = el(`<section class="screen dim" aria-label="${t('Voyage complete')}">
         <div class="sheet narrow results-sheet">
-          <div class="sheet-head">${def.finish.kind === 'home' ? `<div class="arrived"><h2>${ARRIVED.home}</h2><p class="homecoming">The lamp was lit all along, and someone was waiting.</p></div>` : `<h2>${ARRIVED[def.finish.kind] || ARRIVED.harbor}</h2>`}</div>
+          <div class="sheet-head">${def.finish.kind === 'home' ? `<div class="arrived"><h2>${t(ARRIVED.home)}</h2><p class="homecoming">${t('The lamp was lit all along, and someone was waiting.')}</p></div>` : `<h2>${t(ARRIVED[def.finish.kind] || ARRIVED.harbor)}</h2>`}</div>
           <div class="sheet-body">
             <div class="result-stars">${stars(0)}</div>
             <div class="stat-rows">
-              <span class="k">Time</span><span class="v">${formatTime(result.time)}${improved.time && !improved.first ? '<span class="badge">NEW BEST</span>' : ''}</span>
-              <span class="k">Best</span><span class="v">${formatTime(rec.best)}</span>
+              <span class="k">${t('Time')}</span><span class="v">${formatTime(result.time)}${improved.time && !improved.first ? `<span class="badge">${t('NEW BEST')}</span>` : ''}</span>
+              <span class="k">${t('Best')}</span><span class="v">${formatTime(rec.best)}</span>
               ${vsBest(result.time, improved.prevBest)}
-              <span class="k">Pearls</span><span class="v">${result.pearls} / ${result.pearlsTotal}${result.pearls === result.pearlsTotal && result.pearlsTotal ? '<span class="badge">ALL</span>' : ''}</span>
-              ${result.castaways ? `<span class="k">Rescued</span><span class="v">${result.rescued.length ? `${esc(result.rescued.map((c) => c.name).join(', '))}<span class="badge">SAFE</span>` : 'Left adrift'}</span>` : ''}
-              <span class="k">Hull</span><span class="v">${Math.ceil(result.hull)}%</span>
-              <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
-              <span class="k">Next star</span><span class="v">${result.stars >= 3 ? 'Got them all' : `under ${formatTime(result.stars === 2 ? def.par.gold : def.par.silver)}`}</span>
-              ${(improved.newBoats || []).map((name) => `<span class="k">Shipyard</span><span class="v">${esc(name)}<span class="badge">NEW BOAT</span></span>`).join('')}
-              ${improved.festivalSail ? `<span class="k">Sail Locker</span><span class="v">${esc(SAILS.find((g) => g.id === improved.festivalSail.sail).name)} sail<span class="badge">${esc(improved.festivalSail.name.toUpperCase())}</span></span>` : ''}
-              ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
+              <span class="k">${t('Pearls')}</span><span class="v">${result.pearls} / ${result.pearlsTotal}${result.pearls === result.pearlsTotal && result.pearlsTotal ? `<span class="badge">${t('ALL')}</span>` : ''}</span>
+              ${result.castaways ? `<span class="k">${t('Rescued')}</span><span class="v">${result.rescued.length ? `${esc(result.rescued.map((c) => t(c.name)).join(', '))}<span class="badge">${t('SAFE')}</span>` : t('Left adrift')}</span>` : ''}
+              <span class="k">${t('Hull')}</span><span class="v">${Math.ceil(result.hull)}%</span>
+              <span class="k">${t('Capsizes')}</span><span class="v">${result.capsizes}</span>
+              <span class="k">${t('Next star')}</span><span class="v">${result.stars >= 3 ? t('Got them all') : t('under {time}', { time: formatTime(result.stars === 2 ? def.par.gold : def.par.silver) })}</span>
+              ${(improved.newBoats || []).map((name) => `<span class="k">${t('Shipyard')}</span><span class="v">${esc(t(name))}<span class="badge">${t('NEW BOAT')}</span></span>`).join('')}
+              ${improved.festivalSail ? `<span class="k">${t('Sail Locker')}</span><span class="v">${esc(t('{name} sail', { name: t(SAILS.find((g) => g.id === improved.festivalSail.sail).name) }))}<span class="badge">${esc(t(improved.festivalSail.name).toUpperCase())}</span></span>` : ''}
+              ${def.daily ? `<span class="k">${t('Streak')}</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
             ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
             ${orderStrip(improved.orders)}
@@ -1207,15 +1228,15 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="sheet-foot">
             ${shareButton()}
-            ${hasNext ? '<button class="btn small" data-act="voyages">Voyages</button>' : ''}
-            <button class="btn small" data-act="retry">Retry</button>
-            ${hasNext ? `<button class="btn primary" data-act="next" data-autofocus>${nextWorld ? `Sail to ${esc(nextWorld.name)}` : 'Next voyage'}</button>` : '<button class="btn primary" data-act="voyages" data-autofocus>Done</button>'}
+            ${hasNext ? `<button class="btn small" data-act="voyages">${t('Voyages')}</button>` : ''}
+            <button class="btn small" data-act="retry">${t('Retry')}</button>
+            ${hasNext ? `<button class="btn primary" data-act="next" data-autofocus>${nextWorld ? esc(t('Sail to {world}', { world: t(nextWorld.name) })) : t('Next voyage')}</button>` : `<button class="btn primary" data-act="voyages" data-autofocus>${t('Done')}</button>`}
           </div>
         </div></section>`);
       click(node, '[data-act=retry]', () => handlers.onRestart());
       click(node, '[data-act=next]', () => handlers.onPlay(index + 1));
       click(node, '[data-act=voyages]', () => handlers.onQuit());
-      wireResults(node, improved.pay, shareText('voyage', { name: def.name, time: result.time, stars: result.stars }));
+      wireResults(node, improved.pay, shareText('voyage', { name: nameOf(def), time: result.time, stars: result.stars }));
       show('results', node);
       const starEls = node.querySelectorAll('.result-stars span');
       starEls.forEach((s, i) => {
@@ -1242,17 +1263,17 @@ export function createUI(root, levels, handlers) {
     seaResults(result, improved, save) {
       tipQueue = [];
       const rec = save.openSea;
-      const node = el(`<section class="screen dim" aria-label="Run over">
+      const node = el(`<section class="screen dim" aria-label="${t('Run over')}">
         <div class="sheet narrow results-sheet">
-          <div class="sheet-head"><span class="eyebrow">Open Sea</span><h2>${result.reason === 'sunk' ? 'The hull gave out' : 'Out of time'}</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${t('Open Sea')}</span><h2>${result.reason === 'sunk' ? t('The hull gave out') : t('Out of time')}</h2></div>
           <div class="sheet-body">
-            <div class="sea-distance">${formatDistance(result.distance)} <small>east</small>${improved.best && !improved.first ? '<span class="badge">NEW BEST</span>' : ''}</div>
+            <div class="sea-distance">${formatDistance(result.distance)} <small>${t('east')}</small>${improved.best && !improved.first ? `<span class="badge">${t('NEW BEST')}</span>` : ''}</div>
             <div class="stat-rows">
-              <span class="k">Furthest</span><span class="v">${formatDistance(rec.best)}</span>
-              <span class="k">Gates</span><span class="v">${result.gates}${result.missed ? ` (${result.missed} missed)` : ''}${improved.gates && !improved.first ? '<span class="badge">MOST</span>' : ''}</span>
-              <span class="k">Pearls</span><span class="v">${result.pearls}</span>
-              <span class="k">Time at sea</span><span class="v">${formatTime(result.time)}</span>
-              <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
+              <span class="k">${t('Furthest')}</span><span class="v">${formatDistance(rec.best)}</span>
+              <span class="k">${t('Gates')}</span><span class="v">${result.gates}${result.missed ? ` (${t('{n} missed', { n: result.missed })})` : ''}${improved.gates && !improved.first ? `<span class="badge">${t('MOST')}</span>` : ''}</span>
+              <span class="k">${t('Pearls')}</span><span class="v">${result.pearls}</span>
+              <span class="k">${t('Time at sea')}</span><span class="v">${formatTime(result.time)}</span>
+              <span class="k">${t('Capsizes')}</span><span class="v">${result.capsizes}</span>
             </div>
             ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
             ${orderStrip(improved.orders)}
@@ -1260,8 +1281,8 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="sheet-foot">
             ${shareButton()}
-            <button class="btn small" data-act="voyages">Voyages</button>
-            <button class="btn primary" data-act="retry" data-autofocus>Sail again</button>
+            <button class="btn small" data-act="voyages">${t('Voyages')}</button>
+            <button class="btn primary" data-act="retry" data-autofocus>${t('Sail again')}</button>
           </div>
         </div></section>`);
       click(node, '[data-act=retry]', () => handlers.onRestart());
@@ -1285,24 +1306,24 @@ export function createUI(root, levels, handlers) {
       const rec = save.regatta;
       const cup = improved.cup;
       const fleet = FLEETS.find((f) => f.id === result.fleet) || FLEETS[0];
-      const head = cup && cup.done ? (cup.place === 1 ? 'You won the cup!' : `${ordinal(cup.place)} in the cup`) : result.place === 1 ? 'You won!' : `${ordinal(result.place)} place`;
+      const head = cup && cup.done ? (cup.place === 1 ? t('You won the cup!') : t('{place} in the cup', { place: ordinal(cup.place) })) : result.place === 1 ? t('You won!') : t('{place} place', { place: ordinal(result.place) });
       const marks = result.marks || 2;
       const rows = result.standings
         .map((e, i) => {
-          const time = e.time !== null ? formatTime(e.time) : e.marks < marks ? `mark ${e.marks + 1}` : 'sailing';
-          return `<span class="k">${ordinal(i + 1)}</span><span class="v ${e.player ? 'you' : ''}">${e.player ? '<b>You</b>' : esc(e.name)} <small>${time}</small></span>`;
+          const time = e.time !== null ? formatTime(e.time) : e.marks < marks ? t('mark {n}', { n: e.marks + 1 }) : t('sailing');
+          return `<span class="k">${ordinal(i + 1)}</span><span class="v ${e.player ? 'you' : ''}">${e.player ? `<b>${t('You')}</b>` : esc(e.name)} <small>${time}</small></span>`;
         })
         .join('');
       const stepUp = fleetFor(rec.wins) > fleetFor(rec.wins - (improved.won ? 1 : 0));
-      const eyebrow = cup ? `Regatta Cup · Race ${cup.race} of ${cup.of}` : `Regatta · ${esc(fleet.name)} fleet`;
-      const trophy = cup && cup.done && cup.trophy ? `<div class="cup-won ${cup.trophy}">${icon('trophy', 56)}<span>${esc(fleet.name)} Cup</span>${cup.boat ? `<small>The ${esc(BOAT_TYPES[cup.boat].name)} is yours. She's waiting in the Shipyard.</small>` : ''}</div>` : '';
-      const table = cup ? `<div class="eyebrow">${cup.done ? 'Final points' : 'Cup points'}</div><div class="stat-rows standings cup-table">${cupRows(cup.table)}</div>` : '';
+      const eyebrow = cup ? `${t('Regatta Cup')} · ${t('Race {n} of {of}', { n: cup.race, of: cup.of })}` : `${t('Regatta')} · ${esc(t('{fleet} fleet', { fleet: t(fleet.name) }))}`;
+      const trophy = cup && cup.done && cup.trophy ? `<div class="cup-won ${cup.trophy}">${icon('trophy', 56)}<span>${esc(t('{fleet} Cup', { fleet: t(fleet.name) }))}</span>${cup.boat ? `<small>${esc(t("The {boat} is yours. She's waiting in the Shipyard.", { boat: t(BOAT_TYPES[cup.boat].name) }))}</small>` : ''}</div>` : '';
+      const table = cup ? `<div class="eyebrow">${cup.done ? t('Final points') : t('Cup points')}</div><div class="stat-rows standings cup-table">${cupRows(cup.table)}</div>` : '';
       const foot = !cup
-        ? '<button class="btn primary" data-act="retry" data-autofocus>Race again</button>'
+        ? `<button class="btn primary" data-act="retry" data-autofocus>${t('Race again')}</button>`
         : cup.done
-          ? '<button class="btn primary" data-act="cup" data-autofocus>Regatta Cup</button>'
-          : `<button class="btn primary" data-act="next" data-autofocus>Race ${cup.race + 1}: ${esc(COURSES[cup.race].name)}</button>`;
-      const node = el(`<section class="screen dim" aria-label="${cup && cup.done ? 'Cup over' : 'Race over'}">
+          ? `<button class="btn primary" data-act="cup" data-autofocus>${t('Regatta Cup')}</button>`
+          : `<button class="btn primary" data-act="next" data-autofocus>${esc(t('Race {n}: {course}', { n: cup.race + 1, course: t(COURSES[cup.race].name) }))}</button>`;
+      const node = el(`<section class="screen dim" aria-label="${cup && cup.done ? t('Cup over') : t('Race over')}">
         <div class="sheet narrow results-sheet">
           <div class="sheet-head"><span class="eyebrow">${eyebrow}</span><h2>${head}</h2></div>
           <div class="sheet-body">
@@ -1310,10 +1331,10 @@ export function createUI(root, levels, handlers) {
             ${cup ? '' : `<div class="stat-rows standings">${rows}</div>`}
             ${table}
             <div class="stat-rows">
-              <span class="k">Time</span><span class="v">${formatTime(result.time)}${improved.time && !improved.firstWin ? '<span class="badge">BEST WIN</span>' : ''}</span>
-              <span class="k">Bumps</span><span class="v">${result.bumps}</span>
-              <span class="k">Wins</span><span class="v">${rec.wins} of ${rec.races}</span>
-              ${stepUp ? `<span class="k">Next race</span><span class="v">${esc(FLEETS[fleetFor(rec.wins)].name)} fleet<span class="badge">STEP UP</span></span>` : ''}
+              <span class="k">${t('Time')}</span><span class="v">${formatTime(result.time)}${improved.time && !improved.firstWin ? `<span class="badge">${t('BEST WIN')}</span>` : ''}</span>
+              <span class="k">${t('Bumps')}</span><span class="v">${result.bumps}</span>
+              <span class="k">${t('Wins')}</span><span class="v">${t('{n} of {of}', { n: rec.wins, of: rec.races })}</span>
+              ${stepUp ? `<span class="k">${t('Next race')}</span><span class="v">${esc(t('{fleet} fleet', { fleet: t(FLEETS[fleetFor(rec.wins)].name) }))}<span class="badge">${t('STEP UP')}</span></span>` : ''}
             </div>
             ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
             ${orderStrip(improved.orders)}
@@ -1321,7 +1342,7 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="sheet-foot">
             ${shareButton()}
-            <button class="btn small" data-act="voyages">Voyages</button>
+            <button class="btn small" data-act="voyages">${t('Voyages')}</button>
             ${foot}
           </div>
         </div></section>`);
@@ -1357,38 +1378,38 @@ export function createUI(root, levels, handlers) {
       const have = totalStars(save);
       const gear = fittedGear(save);
       const cards = BOAT_ORDER.map((id) => {
-        const t = BOAT_TYPES[id];
+        const bt = BOAT_TYPES[id];
         const open = isBoatUnlocked(save, id);
         const picked = id === chosen;
         const ups = upgradeCount(save, id);
-        const upgrade = `<button class="btn small" data-upgrade="${id}" aria-label="Upgrade the ${esc(t.name)}, ${ups} of ${PARTS.length * UPGRADE_STEPS}">${icon('hammer', 14)} ${ups}/${PARTS.length * UPGRADE_STEPS}</button>`;
+        const upgrade = `<button class="btn small" data-upgrade="${id}" aria-label="${esc(t('Upgrade the {boat}, {n} of {of}', { boat: t(bt.name), n: ups, of: PARTS.length * UPGRADE_STEPS }))}">${icon('hammer', 14)} ${ups}/${PARTS.length * UPGRADE_STEPS}</button>`;
         const action = picked
-          ? `<div class="boat-buy"><button class="btn small" disabled>Sailing</button>${upgrade}</div>`
+          ? `<div class="boat-buy"><button class="btn small" disabled>${t('Sailing')}</button>${upgrade}</div>`
           : open
-            ? `<div class="boat-buy"><button class="btn small primary" data-boat="${id}">Choose</button>${upgrade}</div>`
-            : t.prize
-              ? `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">${icon('trophy', 14)} Win the Regatta Cup</button></div>`
-              : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })} Now</button></div>`;
+            ? `<div class="boat-buy"><button class="btn small primary" data-boat="${id}">${t('Choose')}</button>${upgrade}</div>`
+            : bt.prize
+              ? `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">${icon('trophy', 14)} ${t('Win the Regatta Cup')}</button></div>`
+              : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t('{n} to unlock', { n: bt.unlock })}</button><button class="btn small gem-btn" data-buy="${id}" aria-label="${t('Unlock now for {n} black pearls', { n: BOAT_PRICES[id] })}">${priceTag({ blackPearls: BOAT_PRICES[id] })} ${t('Now')}</button></div>`;
         return `<div class="boat-card ${open ? '' : 'locked'} ${picked ? 'picked' : ''}">
             <canvas class="boat-art" data-type="${id}" aria-hidden="true"></canvas>
-            <div class="boat-head"><h3>${esc(t.name)}</h3><span class="tag">${esc(t.tag)}</span></div>
-            <p class="boat-blurb">${esc(t.blurb)}</p>
-            ${boatStats(t, open ? upgradeLevels(save, id) : {})}
+            <div class="boat-head"><h3>${esc(t(bt.name))}</h3><span class="tag">${esc(t(bt.tag))}</span></div>
+            <p class="boat-blurb">${esc(t(bt.blurb))}</p>
+            ${boatStats(bt, open ? upgradeLevels(save, id) : {})}
             ${action}
           </div>`;
       }).join('');
-      const node = el(`<section class="screen dim" aria-label="Shipyard">
+      const node = el(`<section class="screen dim" aria-label="${t('Shipyard')}">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="locker">Sail Locker</button><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats, or unlock one now with black pearls. Each one handles the wind its own way, and coins upgrade her sails, keel and hull.</p><div class="boat-grid">${cards}</div></div>
+          <div class="sheet-head"><h2>${t('Shipyard')}</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="locker">${t('Sail Locker')}</button><button class="btn small" data-act="back">${t('Back')}</button></div>
+          <div class="sheet-body"><p class="sheet-note">${t('Earn stars on the voyages to unlock new boats, or unlock one now with black pearls. Each one handles the wind its own way, and coins upgrade her sails, keel and hull.')}</p><div class="boat-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-boat]', (e, b) => {
-        const t = BOAT_TYPES[b.dataset.boat];
-        if (!isBoatUnlocked(save, t.id)) {
-          ui.toast(t.prize ? `Win the Regatta Cup to sail the ${t.name}.` : `Earn ${t.unlock - have} more ★ to unlock the ${t.name}.`);
+        const bt = BOAT_TYPES[b.dataset.boat];
+        if (!isBoatUnlocked(save, bt.id)) {
+          ui.toast(bt.prize ? t('Win the Regatta Cup to sail the {boat}.', { boat: t(bt.name) }) : t('Earn {n} more ★ to unlock the {boat}.', { n: bt.unlock - have, boat: t(bt.name) }));
           return;
         }
-        handlers.onBoat(t.id);
+        handlers.onBoat(bt.id);
         ui.back();
       });
       click(node, '[data-buy]', (e, b) => unlockBoat(save, b.dataset.buy, () => ui.shipyard(save, true)));
@@ -1404,7 +1425,7 @@ export function createUI(root, levels, handlers) {
 
     // The boatyard: coins for one boat's sails, keel and hull.
     upgrades(save, id, restore = false) {
-      const t = BOAT_TYPES[id];
+      const bt = BOAT_TYPES[id];
       const levels = upgradeLevels(save, id);
       const all = PARTS.length * UPGRADE_STEPS;
       const done = upgradeCount(save, id);
@@ -1414,19 +1435,19 @@ export function createUI(root, levels, handlers) {
         const price = nextPrice(save, id, p.id);
         const button =
           price === null
-            ? '<button class="btn small" disabled>Done</button>'
-            : `<button class="btn small" data-part="${p.id}" aria-label="Upgrade the ${p.name.toLowerCase()} to step ${n + 1} for ${formatCoins(price)} coins">${priceTag({ coins: price })}</button>`;
-        const sub = price === null ? `${esc(p.label)} +${n}, fully upgraded` : `${esc(p.text)} Next: ${esc(p.step)}.`;
-        return `<div class="shop-item ${price === null ? 'built' : ''}"><span class="shop-art">${icon(p.icon, 28)}</span><span class="shop-text"><b>${esc(p.name)} ${pips(n)}</b><small>${sub}</small></span>${button}</div>`;
+            ? `<button class="btn small" disabled>${t('Done')}</button>`
+            : `<button class="btn small" data-part="${p.id}" aria-label="${esc(t('Upgrade the {part} to step {n} for {coins} coins', { part: t(p.name).toLowerCase(), n: n + 1, coins: formatCoins(price) }))}">${priceTag({ coins: price })}</button>`;
+        const sub = price === null ? esc(t('{stat} +{n}, fully upgraded', { stat: t(p.label), n })) : `${esc(t(p.text))} ${esc(t('Next: {step}.', { step: t(p.step) }))}`;
+        return `<div class="shop-item ${price === null ? 'built' : ''}"><span class="shop-art">${icon(p.icon, 28)}</span><span class="shop-text"><b>${esc(t(p.name))} ${pips(n)}</b><small>${sub}</small></span>${button}</div>`;
       };
-      const node = el(`<section class="screen dim" aria-label="Boatyard">
+      const node = el(`<section class="screen dim" aria-label="${t('Boatyard')}">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Boatyard</h2><span class="eyebrow">${done} / ${all}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Boatyard')}</h2><span class="eyebrow">${done} / ${all}</span>${wallet(save)}<button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
             <div class="locker-top"><canvas class="locker-preview" aria-hidden="true"></canvas>
-              <div><b class="locker-fit">${esc(t.name)}</b>${boatStats(t, levels)}</div></div>
+              <div><b class="locker-fit">${esc(t(bt.name))}</b>${boatStats(bt, levels)}</div></div>
             <div class="shop-grid">${PARTS.map(card).join('')}</div>
-            <p class="sheet-note">Each boat keeps her own upgrades, three steps for each part. They help on every voyage, the Open Sea and the regatta.</p>
+            <p class="sheet-note">${t('Each boat keeps her own upgrades, three steps for each part. They help on every voyage, the Open Sea and the regatta.')}</p>
           </div>
         </div></section>`);
       click(node, '[data-part]', (e, b) => {
@@ -1437,21 +1458,21 @@ export function createUI(root, levels, handlers) {
           return;
         }
         ui.confirm({
-          title: `Upgrade the ${p.name.toLowerCase()}?`,
-          text: `${p.text} Step ${upgradeLevel(save, id, p.id) + 1} of ${UPGRADE_STEPS}: ${p.step}.`,
-          ok: `Upgrade ${priceTag(price)}`,
+          title: t('Upgrade the {part}?', { part: t(p.name).toLowerCase() }),
+          text: `${t(p.text)} ${t('Step {n} of {of}: {step}.', { n: upgradeLevel(save, id, p.id) + 1, of: UPGRADE_STEPS, step: t(p.step) })}`,
+          ok: `${t('Upgrade')} ${priceTag(price)}`,
           onOk: () => {
             const r = buyUpgrade(save, id, p.id);
             if (!r) return;
             handlers.onWallet();
-            ui.toast(r.level === UPGRADE_STEPS ? `${p.name} fully upgraded on the ${t.name}.` : `New ${p.name.toLowerCase()} fitted: ${p.label.toLowerCase()} +${r.level}.`, 'good', 2600);
+            ui.toast(r.level === UPGRADE_STEPS ? t('{part} fully upgraded on the {boat}.', { part: t(p.name), boat: t(bt.name) }) : t('New {part} fitted: {stat} +{n}.', { part: t(p.name).toLowerCase(), stat: t(p.label).toLowerCase(), n: r.level }), 'good', 2600);
             ui.upgrades(save, id, true);
           },
         });
       });
       click(node, '[data-act=back]', () => ui.back());
       show('upgrades', node, restore ? { keep: true } : { push: true });
-      paintBoat(node.querySelector('.locker-preview'), t, boatLook(t, fittedGear(save)));
+      paintBoat(node.querySelector('.locker-preview'), bt, boatLook(bt, fittedGear(save)));
     },
 
     locker(save) {
@@ -1459,22 +1480,22 @@ export function createUI(root, levels, handlers) {
       const card = (kind, g) => {
         const open = isGearUnlocked(save, g);
         const medal = medalFor(g);
-        const name = medal && isSealed(medal, save, LEVELS) ? 'A secret medal' : medal && esc(medal.name);
+        const name = medal && isSealed(medal, save, LEVELS) ? t('A secret medal') : medal && esc(t(medal.name));
         const fest = g.festival && festivalById(g.festival);
-        const sub = fest ? `${open ? '' : icon('lock', 13)}${esc(fest.name)} week` : g.price ? (open ? 'From the Shop' : priceTag({ coins: g.price })) : !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
-        const state = open ? '' : g.price ? `, ${formatCoins(g.price)} coins` : ', locked';
-        return `<button class="gear ${open ? '' : g.price ? 'for-sale' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${state}">
-            <canvas class="gear-art" aria-hidden="true"></canvas><b>${esc(g.name)}</b><small>${sub}</small></button>`;
+        const sub = fest ? `${open ? '' : icon('lock', 13)}${esc(t('{fest} week', { fest: t(fest.name) }))}` : g.price ? (open ? t('From the Shop') : priceTag({ coins: g.price })) : !medal ? t("The boat's own") : open ? name : `${icon('lock', 13)}${name}`;
+        const state = open ? '' : g.price ? `, ${t('{coins} coins', { coins: formatCoins(g.price) })}` : `, ${t('locked')}`;
+        return `<button class="gear ${open ? '' : g.price ? 'for-sale' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(t(g.name))}${state}">
+            <canvas class="gear-art" aria-hidden="true"></canvas><b>${esc(t(g.name))}</b><small>${sub}</small></button>`;
       };
-      const node = el(`<section class="screen dim" aria-label="Sail Locker">
+      const node = el(`<section class="screen dim" aria-label="${t('Sail Locker')}">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Sail Locker</h2><span class="eyebrow">${gearCount(save)} / ${GEAR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Sail Locker')}</h2><span class="eyebrow">${gearCount(save)} / ${GEAR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
             <div class="locker-top"><canvas class="locker-preview" aria-hidden="true"></canvas>
-              <div><b class="locker-fit"></b><p class="locker-blurb">Every medal puts a new sail or hull paint in the locker, a few more are for sale, and each festival week brings a sail of its own. They change how your boat looks, never how it sails.</p></div></div>
-            <h3 class="setting-group">Sails</h3>
+              <div><b class="locker-fit"></b><p class="locker-blurb">${t('Every medal puts a new sail or hull paint in the locker, a few more are for sale, and each festival week brings a sail of its own. They change how your boat looks, never how it sails.')}</p></div></div>
+            <h3 class="setting-group">${t('Sails')}</h3>
             <div class="gear-grid">${SAILS.map((g) => card('sail', g)).join('')}</div>
-            <h3 class="setting-group">Hull paint</h3>
+            <h3 class="setting-group">${t('Hull paint')}</h3>
             <div class="gear-grid">${HULLS.map((g) => card('hull', g)).join('')}</div>
           </div>
         </div></section>`);
@@ -1483,7 +1504,7 @@ export function createUI(root, levels, handlers) {
         paintBoat(node.querySelector('.locker-preview'), type, boatLook(type, fitted));
         const sail = SAILS.find((g) => g.id === fitted.sail);
         const hull = HULLS.find((g) => g.id === fitted.hull);
-        node.querySelector('.locker-fit').textContent = `${sail.name} · ${hull.name}`;
+        node.querySelector('.locker-fit').textContent = `${t(sail.name)} · ${t(hull.name)}`;
         node.querySelectorAll('.gear').forEach((b) => {
           const { kind, id } = b.dataset;
           const picked = fitted[kind] === id;
@@ -1499,22 +1520,21 @@ export function createUI(root, levels, handlers) {
         const g = (kind === 'sail' ? SAILS : HULLS).find((x) => x.id === id);
         if (!isGearUnlocked(save, g) && g.price) {
           const price = { coins: g.price };
-          const what = `${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}`;
           if (!canAfford(save, price)) {
             ui.toast(needMore(save, price));
             return;
           }
           ui.confirm({
-            title: `Buy the ${what}?`,
-            text: 'Every boat in the Shipyard can wear it. It changes how she looks, never how she sails.',
-            ok: `Buy ${priceTag(price)}`,
+            title: kind === 'sail' ? t('Buy the {name} sail?', { name: t(g.name) }) : t('Buy the {name} hull paint?', { name: t(g.name) }),
+            text: t('Every boat in the Shipyard can wear it. It changes how she looks, never how she sails.'),
+            ok: `${t('Buy')} ${priceTag(price)}`,
             onOk: () => {
               if (!buyGear(save, g)) return;
               handlers.onWallet();
               handlers.onGear(kind, id);
               b.classList.remove('for-sale');
-              b.setAttribute('aria-label', g.name);
-              b.querySelector('small').textContent = 'From the Shop';
+              b.setAttribute('aria-label', t(g.name));
+              b.querySelector('small').textContent = t('From the Shop');
               refreshWallet(node, save);
               paint();
             },
@@ -1527,9 +1547,9 @@ export function createUI(root, levels, handlers) {
         }
         if (!isGearUnlocked(save, g)) {
           const medal = medalFor(g);
-          const what = `the ${g.name} ${kind === 'sail' ? 'sail' : 'hull paint'}`;
-          if (isSealed(medal, save, LEVELS)) ui.toast(`A secret medal unlocks ${what}. “${medal.riddle}”`);
-          else ui.toast(`Earn the ${medal.name} medal for ${what}. ${medal.text}`);
+          const vars = { name: t(g.name), medal: t(medal.name) };
+          if (isSealed(medal, save, LEVELS)) ui.toast(`${kind === 'sail' ? t('A secret medal unlocks the {name} sail.', vars) : t('A secret medal unlocks the {name} hull paint.', vars)} “${t(medal.riddle)}”`);
+          else ui.toast(`${kind === 'sail' ? t('Earn the {medal} medal for the {name} sail.', vars) : t('Earn the {medal} medal for the {name} hull paint.', vars)} ${t(medal.text)}`);
           return;
         }
         handlers.onGear(kind, id);
@@ -1544,7 +1564,8 @@ export function createUI(root, levels, handlers) {
       }
     },
 
-    settings(save) {
+    // `restore` redraws it in place, as after a change of language.
+    settings(save, restore = false) {
       const s = save.settings;
       // Reduced motion may still be following the phone's own setting, and
       // reminders are only on if the phone allows them too.
@@ -1552,42 +1573,46 @@ export function createUI(root, levels, handlers) {
       const toggle = (key, label, sub, invert = false) => `<div class="setting">
         <span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
         <button class="toggle" role="switch" data-key="${key}" data-invert="${invert}" aria-checked="${invert ? !value(key) : value(key)}" aria-label="${label}"></button></div>`;
-      const seg = (key, label, sub, options) => `<div class="setting"><span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
-              <div class="seg" data-key="${key}" role="group" aria-label="${label}">
+      const seg = (key, label, sub, options, wide = false) => `<div class="setting ${wide ? 'wide' : ''}"><span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
+              <div class="seg ${wide ? 'wrap' : ''}" data-key="${key}" role="group" aria-label="${label}">
                 ${options.map(([v, name]) => `<button data-v="${v}" aria-pressed="${s[key] === v}">${name}</button>`).join('')}
               </div></div>`;
-      const node = el(`<section class="screen dim" aria-label="Settings">
+      const sizes = [t('Normal'), t('Large'), t('Largest')];
+      // The word "Language" stays in English too, for anyone who picked one they can't read.
+      const langLabel = currentLang() === 'en' ? t('Language') : `${t('Language')} · Language`;
+      const node = el(`<section class="screen dim" aria-label="${t('Settings')}">
         <div class="sheet narrow">
-          <div class="sheet-head"><h2>Settings</h2><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Settings')}</h2><button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
-            <h3 class="setting-group">Sound and feel</h3>
-            ${toggle('sound', 'Sound effects', '')}
-            ${toggle('music', 'Music', 'A quiet sea shanty-ish tune')}
-            ${toggle('vibration', 'Vibration', 'Bumps, capsizes and pickups')}
-            ${handlers.canRemind ? toggle('reminders', 'Reminders', `A nudge from the harbor at ${reminderTimes()}`) : ''}
-            <h3 class="setting-group">Sailing</h3>
-            ${toggle('autoTrim', 'Trim the sail by hand', 'For experienced sailors: W / S or the right-hand slider', true)}
-            ${toggle('leftHanded', 'Left-handed controls', 'Steer on the right, gust button on the left')}
-            ${seg('steerSensitivity', 'Steering', 'How hard a small thumb movement turns', [[0.75, 'Gentle'], [1, 'Normal'], [1.35, 'Sharp']])}
-            ${seg('zoom', 'View', 'How close the camera sits. The magnifier button changes it while you sail', ZOOMS)}
-            ${toggle('ghost', 'Race your best run', 'A pale ghost boat replays your fastest voyage')}
-            ${toggle('hints', 'Dolphin hints', 'Stuck or lost? Dolphins show you which way to turn')}
-            <h3 class="setting-group">Seeing and reading</h3>
-            ${toggle('colorblind', 'Colour-blind friendly', 'Blue for good and orange for danger, instead of green and red')}
-            ${toggle('reduceMotion', 'Reduce motion', 'No screen shake or lightning flashes, lighter rain and snow')}
-            ${seg('textSize', 'Text size', 'Menus, tips and messages in bottles', TEXT_SIZES.map((v, i) => [v, ['Normal', 'Large', 'Largest'][i]]))}
-            ${seg('quality', 'Graphics', 'Lower is easier on older phones', [['low', 'Low'], ['high', 'High']])}
-            ${ads().privacyRequired() ? `<h3 class="setting-group">Privacy</h3>
-            <div class="setting"><span class="label"><b>Ad privacy</b><small>Change what you agreed to for ads</small></span>
-              <button class="btn small" data-act="privacy">Options</button></div>` : ''}
-            <h3 class="setting-group">Friends</h3>
-            <div class="setting"><span class="label"><b>Tell a friend</b><small>Send them the link to No Paddle</small></span>
-              <button class="btn small" data-act="share">${icon('share', 16)} Share</button></div>
-            <h3 class="setting-group">Progress</h3>
-            <div class="setting"><span class="label"><b>Backup code</b><small>Move your progress to another phone</small></span>
-              <button class="btn small" data-act="backup">Open</button></div>
-            <div class="setting"><span class="label"><b>Reset progress</b><small>Clears times, stars, medals and the logbook</small></span>
-              <button class="btn small" data-act="reset">Reset</button></div>
+            <h3 class="setting-group">${t('Sound and feel')}</h3>
+            ${toggle('sound', t('Sound effects'), '')}
+            ${toggle('music', t('Music'), t('A quiet sea shanty-ish tune'))}
+            ${toggle('vibration', t('Vibration'), t('Bumps, capsizes and pickups'))}
+            ${handlers.canRemind ? toggle('reminders', t('Reminders'), t('A nudge from the harbor at {times}', { times: reminderTimes() })) : ''}
+            <h3 class="setting-group">${t('Sailing')}</h3>
+            ${toggle('autoTrim', t('Trim the sail by hand'), t('For experienced sailors: W / S or the right-hand slider'), true)}
+            ${toggle('leftHanded', t('Left-handed controls'), t('Steer on the right, gust button on the left'))}
+            ${seg('steerSensitivity', t('Steering'), t('How hard a small thumb movement turns'), [[0.75, t('Gentle')], [1, t('Normal')], [1.35, t('Sharp')]])}
+            ${seg('zoom', t('View'), t('How close the camera sits. The magnifier button changes it while you sail'), ZOOMS.map(([v, name]) => [v, t(name)]))}
+            ${toggle('ghost', t('Race your best run'), t('A pale ghost boat replays your fastest voyage'))}
+            ${toggle('hints', t('Dolphin hints'), t('Stuck or lost? Dolphins show you which way to turn'))}
+            <h3 class="setting-group">${t('Seeing and reading')}</h3>
+            ${seg('lang', langLabel, '', [['auto', t("Phone's")], ...LANGS.map((l) => [l.id, l.name])], true)}
+            ${toggle('colorblind', t('Colour-blind friendly'), t('Blue for good and orange for danger, instead of green and red'))}
+            ${toggle('reduceMotion', t('Reduce motion'), t('No screen shake or lightning flashes, lighter rain and snow'))}
+            ${seg('textSize', t('Text size'), t('Menus, tips and messages in bottles'), TEXT_SIZES.map((v, i) => [v, sizes[i]]))}
+            ${seg('quality', t('Graphics'), t('Lower is easier on older phones'), [['low', t('Low')], ['high', t('High')]])}
+            ${ads().privacyRequired() ? `<h3 class="setting-group">${t('Privacy')}</h3>
+            <div class="setting"><span class="label"><b>${t('Ad privacy')}</b><small>${t('Change what you agreed to for ads')}</small></span>
+              <button class="btn small" data-act="privacy">${t('Options')}</button></div>` : ''}
+            <h3 class="setting-group">${t('Friends')}</h3>
+            <div class="setting"><span class="label"><b>${t('Tell a friend')}</b><small>${t('Send them the link to No Paddle')}</small></span>
+              <button class="btn small" data-act="share">${icon('share', 16)} ${t('Share')}</button></div>
+            <h3 class="setting-group">${t('Progress')}</h3>
+            <div class="setting"><span class="label"><b>${t('Backup code')}</b><small>${t('Move your progress to another phone')}</small></span>
+              <button class="btn small" data-act="backup">${t('Open')}</button></div>
+            <div class="setting"><span class="label"><b>${t('Reset progress')}</b><small>${t('Clears times, stars, medals and the logbook')}</small></span>
+              <button class="btn small" data-act="reset">${t('Reset')}</button></div>
           </div>
         </div></section>`);
       click(node, '.toggle', (e, b) => {
@@ -1601,46 +1626,51 @@ export function createUI(root, levels, handlers) {
         const seg = b.parentElement;
         const key = seg.dataset.key;
         const raw = b.dataset.v;
-        s[key] = key === 'quality' ? raw : Number(raw);
+        s[key] = key === 'quality' || key === 'lang' ? raw : Number(raw);
         seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-        handlers.onSettings(s);
+        handlers.onSettings(s, key);
+        if (key === 'lang') {
+          const scroll = node.querySelector('.sheet-body').scrollTop;
+          ui.settings(save, true).querySelector('.sheet-body').scrollTop = scroll;
+        }
       });
       click(node, '[data-act=reset]', (e, b) => {
         if (b.dataset.confirm) {
           handlers.onReset();
-          ui.toast('Progress cleared.');
-          b.textContent = 'Done';
+          ui.toast(t('Progress cleared.'));
+          b.textContent = t('Done');
           b.disabled = true;
         } else {
           b.dataset.confirm = '1';
-          b.textContent = 'Tap again';
+          b.textContent = t('Tap again');
         }
       });
       click(node, '[data-act=share]', () => shareOut(shareText('game')));
       click(node, '[data-act=backup]', () => ui.backup(save));
       click(node, '[data-act=privacy]', async () => {
         const r = await ads().privacyOptions();
-        if (!r.ok) ui.toast("The privacy options couldn't open. Try again later.");
+        if (!r.ok) ui.toast(t("The privacy options couldn't open. Try again later."));
       });
       click(node, '[data-act=back]', () => ui.back());
-      show('settings', node, { push: true });
+      show('settings', node, restore ? { keep: true } : { push: true });
+      return node;
     },
 
     // Backup code: this phone's progress as a code to copy, and a box to paste
     // one from another phone.
     backup(save) {
-      const node = el(`<section class="screen dim" aria-label="Backup code">
+      const node = el(`<section class="screen dim" aria-label="${t('Backup code')}">
         <div class="sheet narrow">
-          <div class="sheet-head"><h2>Backup code</h2><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Backup code')}</h2><button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body backup">
-            <h3 class="setting-group">This phone's progress</h3>
-            <p class="sheet-note backup-note">Copy the code and keep it somewhere safe, like a note or a message to yourself.</p>
-            <textarea class="backup-code" readonly rows="3" spellcheck="false" aria-label="This phone's backup code">…</textarea>
-            <div class="backup-foot"><button class="btn small primary" data-act="copy" disabled>${icon('copy', 16)} Copy code</button></div>
-            <h3 class="setting-group">Bring progress here</h3>
-            <p class="sheet-note backup-note">Paste the code from your other phone. It takes the place of the progress on this one.</p>
-            <textarea class="backup-paste" rows="3" spellcheck="false" autocomplete="off" placeholder="NP1.…" aria-label="Paste a backup code"></textarea>
-            <div class="backup-foot">${handlers.canPaste ? '<button class="btn small" data-act="paste">Paste</button>' : ''}<button class="btn small primary" data-act="restore">Restore</button></div>
+            <h3 class="setting-group">${t("This phone's progress")}</h3>
+            <p class="sheet-note backup-note">${t('Copy the code and keep it somewhere safe, like a note or a message to yourself.')}</p>
+            <textarea class="backup-code" readonly rows="3" spellcheck="false" aria-label="${t("This phone's backup code")}">…</textarea>
+            <div class="backup-foot"><button class="btn small primary" data-act="copy" disabled>${icon('copy', 16)} ${t('Copy code')}</button></div>
+            <h3 class="setting-group">${t('Bring progress here')}</h3>
+            <p class="sheet-note backup-note">${t('Paste the code from your other phone. It takes the place of the progress on this one.')}</p>
+            <textarea class="backup-paste" rows="3" spellcheck="false" autocomplete="off" placeholder="NP1.…" aria-label="${t('Paste a backup code')}"></textarea>
+            <div class="backup-foot">${handlers.canPaste ? `<button class="btn small" data-act="paste">${t('Paste')}</button>` : ''}<button class="btn small primary" data-act="restore">${t('Restore')}</button></div>
           </div>
         </div></section>`);
       const mine = node.querySelector('.backup-code');
@@ -1652,12 +1682,12 @@ export function createUI(root, levels, handlers) {
       mine.addEventListener('focus', () => mine.select());
       click(node, '[data-act=copy]', async (e, b) => {
         if (await handlers.onCopy(mine.value)) {
-          ui.toast('Copied. Keep it somewhere safe.', 'good');
-          b.lastChild.textContent = ' Copied';
+          ui.toast(t('Copied. Keep it somewhere safe.'), 'good');
+          b.lastChild.textContent = ` ${t('Copied')}`;
         } else {
           mine.focus();
           mine.select();
-          ui.toast('Hold the code and choose Copy.');
+          ui.toast(t('Hold the code and choose Copy.'));
         }
       });
       click(node, '[data-act=paste]', async () => {
@@ -1665,7 +1695,7 @@ export function createUI(root, levels, handlers) {
         if (text) box.value = text.trim();
         else {
           box.focus();
-          ui.toast('Hold the box and choose Paste.');
+          ui.toast(t('Hold the box and choose Paste.'));
         }
       });
       click(node, '[data-act=restore]', async (e, b) => {
@@ -1673,15 +1703,21 @@ export function createUI(root, levels, handlers) {
         const r = await readBackup(box.value);
         b.disabled = false;
         if (!r.ok) {
-          ui.toast(BACKUP_TROUBLE[r.reason], 'warn', 5000);
+          ui.toast(t(BACKUP_TROUBLE[r.reason]), 'warn', 5000);
           return;
         }
-        const t = r.summary;
-        const holds = [`★ ${t.stars}`, `${t.voyages} ${t.voyages === 1 ? 'voyage' : 'voyages'} home`, `${formatCoins(t.coins)} coins`, `${t.blackPearls} black ${t.blackPearls === 1 ? 'pearl' : 'pearls'}`, `${t.medals} ${t.medals === 1 ? 'medal' : 'medals'}`];
+        const sum = r.summary;
+        const holds = [
+          `★ ${sum.stars}`,
+          sum.voyages === 1 ? t('1 voyage home') : t('{n} voyages home', { n: sum.voyages }),
+          t('{coins} coins', { coins: formatCoins(sum.coins) }),
+          sum.blackPearls === 1 ? t('1 black pearl') : t('{n} black pearls', { n: sum.blackPearls }),
+          sum.medals === 1 ? t('1 medal') : t('{n} medals', { n: sum.medals }),
+        ];
         ui.confirm({
-          title: "Replace this phone's progress?",
-          text: `The code holds ${holds.slice(0, -1).join(', ')} and ${holds.at(-1)}. What's on this phone now will be gone.`,
-          ok: 'Restore',
+          title: t("Replace this phone's progress?"),
+          text: t("The code holds {list} and {last}. What's on this phone now will be gone.", { list: holds.slice(0, -1).join(', '), last: holds.at(-1) }),
+          ok: t('Restore'),
           onOk: () => handlers.onRestore(r.save),
         });
       });
@@ -1691,22 +1727,22 @@ export function createUI(root, levels, handlers) {
 
     howto(save, thenPlay = false, playIndex = 0) {
       howtoPage = 0;
-      const node = el(`<section class="screen dim" aria-label="How to sail">
+      const node = el(`<section class="screen dim" aria-label="${t('How to sail')}">
         <div class="sheet">
-          <div class="sheet-head"><h2>How to sail</h2><button class="btn small" data-act="skip">${thenPlay ? 'Skip' : 'Close'}</button></div>
+          <div class="sheet-head"><h2>${t('How to sail')}</h2><button class="btn small" data-act="skip">${thenPlay ? t('Skip') : t('Close')}</button></div>
           <div class="sheet-body"><div class="howto"><div class="fig"></div><div class="txt"></div></div></div>
           <div class="sheet-foot"><div class="dots">${HOWTO.map(() => '<i></i>').join('')}</div>
-            <button class="btn small" data-act="prev">Back</button>
-            <button class="btn primary" data-act="next" data-autofocus>Next</button></div>
+            <button class="btn small" data-act="prev">${t('Back')}</button>
+            <button class="btn primary" data-act="next" data-autofocus>${t('Next')}</button></div>
         </div></section>`);
       const render = () => {
         const page = HOWTO[howtoPage];
         node.querySelector('.fig').innerHTML = page.svg();
-        node.querySelector('.txt').innerHTML = `<h3>${page.title}</h3>${page.body}`;
+        node.querySelector('.txt').innerHTML = `<h3>${t(page.title)}</h3>${t(page.body)}`;
         node.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i === howtoPage));
         node.querySelector('[data-act=prev]').disabled = howtoPage === 0;
         const last = howtoPage === HOWTO.length - 1;
-        node.querySelector('[data-act=next]').textContent = last ? (thenPlay ? 'Set sail' : 'Done') : 'Next';
+        node.querySelector('[data-act=next]').textContent = last ? (thenPlay ? t('Set sail') : t('Done')) : t('Next');
         node.querySelector('.sheet-body').scrollTop = 0;
       };
       const finish = () => {
@@ -1737,31 +1773,31 @@ export function createUI(root, levels, handlers) {
       const cards = MEDALS.map((m) => {
         const earned = isEarned(save, m.id);
         const gear = rewardFor(m.id);
-        const reward = gear ? `<span class="medal-reward">Sail Locker: ${esc(gear.label)}</span>` : '';
+        const reward = gear ? `<span class="medal-reward">${esc(t('Sail Locker: {gear}', { gear: gearName(gear) }))}</span>` : '';
         if (isSealed(m, save, LEVELS)) {
           // A secret: only its riddle, until you reach the waters it's won in.
           sealed += 1;
           return `<div class="medal sealed">
             <span class="medal-disc" aria-hidden="true">?</span>
-            <span class="medal-text"><b><span aria-hidden="true">???</span><span class="sr-only">Secret medal</span></b><small class="riddle">“${esc(m.riddle)}”</small>${reward}</span>
+            <span class="medal-text"><b><span aria-hidden="true">???</span><span class="sr-only">${t('Secret medal')}</span></b><small class="riddle">“${esc(t(m.riddle))}”</small>${reward}</span>
           </div>`;
         }
         const p = earned ? null : medalProgress(m, save, LEVELS);
         const meter =
           p && p[1] > 1
-            ? `<span class="medal-meter"><i style="width:${Math.round((100 * Math.min(p[0], p[1])) / p[1])}%"></i></span><span class="medal-count">${p[0]} / ${p[1]}${m.unit ? ` ${m.unit}` : ''}</span>`
+            ? `<span class="medal-meter"><i style="width:${Math.round((100 * Math.min(p[0], p[1])) / p[1])}%"></i></span><span class="medal-count">${p[0]} / ${p[1]}${m.unit ? ` ${esc(t(m.unit))}` : ''}</span>`
             : '';
         const day = save.medals[m.id];
         const when = earned && /^\d{4}-\d\d-\d\d$/.test(day) ? `<span class="medal-count">${esc(dayLabel(day))}</span>` : '';
         return `<div class="medal ${earned ? 'earned' : ''}">
             <span class="medal-disc">${icon(m.icon, 26)}</span>
-            <span class="medal-text"><b>${esc(m.name)}</b><small>${esc(m.text)}</small>${reward}${meter}${when}</span>
+            <span class="medal-text"><b>${esc(t(m.name))}</b><small>${esc(t(m.text))}</small>${reward}${meter}${when}</span>
           </div>`;
       }).join('');
-      const node = el(`<section class="screen dim" aria-label="Medals">
+      const node = el(`<section class="screen dim" aria-label="${t('Medals')}">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Medals</h2><span class="eyebrow">${got} / ${MEDALS.length}${sealed ? ` · ${sealed} secret` : ''}</span><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body">${sealed ? `<p class="sheet-note">${sealed} medal${sealed > 1 ? 's are' : ' is'} still a secret. Each one breaks its seal when you reach the waters it's won in.</p>` : ''}<div class="medal-grid">${cards}</div></div>
+          <div class="sheet-head"><h2>${t('Medals')}</h2><span class="eyebrow">${got} / ${MEDALS.length}${sealed ? ` · ${t('{n} secret', { n: sealed })}` : ''}</span><button class="btn small" data-act="back">${t('Back')}</button></div>
+          <div class="sheet-body">${sealed ? `<p class="sheet-note">${sealed > 1 ? t("{n} medals are still a secret. Each one breaks its seal when you reach the waters it's won in.", { n: sealed }) : t("1 medal is still a secret. It breaks its seal when you reach the waters it's won in.")}</p>` : ''}<div class="medal-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       show('medals', node, { push: true });
@@ -1784,27 +1820,27 @@ export function createUI(root, levels, handlers) {
       const tabs = PAGES.map((p) => {
         const n = atlasCount(save, p.id);
         const full = n === p.entries.length;
-        return `<button class="atlas-tab ${p.id === page.id ? 'on' : ''} ${full ? 'full' : ''}" data-page="${p.id}" style="--page:${p.color}" aria-pressed="${p.id === page.id}" aria-label="${esc(p.name)}, ${n} of ${p.entries.length}">${esc(p.name)} <small>${full ? '✓' : `${n}/${p.entries.length}`}</small></button>`;
+        return `<button class="atlas-tab ${p.id === page.id ? 'on' : ''} ${full ? 'full' : ''}" data-page="${p.id}" style="--page:${p.color}" aria-pressed="${p.id === page.id}" aria-label="${esc(t('{page}, {n} of {of}', { page: t(p.name), n, of: p.entries.length }))}">${esc(t(p.name))} <small>${full ? '✓' : `${n}/${p.entries.length}`}</small></button>`;
       }).join('');
       const cards = page.entries
         .map((e) =>
           hasMet(save, e.id)
-            ? `<div class="atlas-card met"><span class="atlas-art">${icon(e.icon, 30)}</span><span class="atlas-text"><b>${esc(e.name)}</b><small>${esc(e.text)}</small></span></div>`
-            : `<div class="atlas-card"><span class="atlas-art" aria-hidden="true">${icon(e.icon, 30)}<i>?</i></span><span class="atlas-text"><b><span aria-hidden="true">???</span><span class="sr-only">Not met yet</span></b><small>${page.id === 'weather' ? 'Out in the weather somewhere.' : `Somewhere in ${esc(page.name)}.`}</small></span></div>`,
+            ? `<div class="atlas-card met"><span class="atlas-art">${icon(e.icon, 30)}</span><span class="atlas-text"><b>${esc(t(e.name))}</b><small>${esc(t(e.text))}</small></span></div>`
+            : `<div class="atlas-card"><span class="atlas-art" aria-hidden="true">${icon(e.icon, 30)}<i>?</i></span><span class="atlas-text"><b><span aria-hidden="true">???</span><span class="sr-only">${t('Not met yet')}</span></b><small>${page.id === 'weather' ? t('Out in the weather somewhere.') : esc(t('Somewhere in {page}.', { page: t(page.name) }))}</small></span></div>`,
         )
         .join('');
       const n = atlasCount(save, page.id);
-      const prize = `${PAGE_REWARD.coins} coins and ${PAGE_REWARD.blackPearls} black pearl`;
+      const prize = t('{coins} coins and {n} black pearl', { coins: PAGE_REWARD.coins, n: PAGE_REWARD.blackPearls });
       const foot = pageRewarded(save, page.id)
-        ? `<p class="atlas-foot done">${icon('star', 16)} Page filled. Reward collected: ${prize}.</p>`
-        : `<p class="atlas-foot"><span class="medal-meter"><i style="width:${Math.round((100 * n) / page.entries.length)}%"></i></span> Fill this page for ${prize}.</p>`;
-      const node = el(`<section class="screen dim" aria-label="Sea Atlas">
+        ? `<p class="atlas-foot done">${icon('star', 16)} ${t('Page filled. Reward collected: {prize}.', { prize })}</p>`
+        : `<p class="atlas-foot"><span class="medal-meter"><i style="width:${Math.round((100 * n) / page.entries.length)}%"></i></span> ${t('Fill this page for {prize}.', { prize })}</p>`;
+      const node = el(`<section class="screen dim" aria-label="${t('Sea Atlas')}">
         <div class="sheet wide atlas" style="--page:${page.color}">
-          <div class="sheet-head"><h2>Sea Atlas</h2><span class="eyebrow">${met} / ${ATLAS_TOTAL}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Sea Atlas')}</h2><span class="eyebrow">${met} / ${ATLAS_TOTAL}</span><button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
-            <p class="sheet-note">Sail near a creature or a sight and it's written in. Every page you fill pays ${prize}.</p>
-            <div class="atlas-tabs" role="group" aria-label="Pages">${tabs}</div>
-            <h3 class="atlas-title">${esc(page.name)} <small>${n} / ${page.entries.length}</small></h3>
+            <p class="sheet-note">${t("Sail near a creature or a sight and it's written in. Every page you fill pays {prize}.", { prize })}</p>
+            <div class="atlas-tabs" role="group" aria-label="${t('Pages')}">${tabs}</div>
+            <h3 class="atlas-title">${esc(t(page.name))} <small>${n} / ${page.entries.length}</small></h3>
             <div class="atlas-grid">${cards}</div>
             ${foot}
           </div>
@@ -1828,25 +1864,25 @@ export function createUI(root, levels, handlers) {
 
     logbook(save) {
       const notes = save.notes.length
-        ? save.notes.map((n) => `<p class="note-card">“${esc(n)}”</p>`).join('')
-        : '<p class="empty">No bottles found yet. Keep an eye on the water.</p>';
+        ? save.notes.map((n) => `<p class="note-card">“${esc(t(n))}”</p>`).join('')
+        : `<p class="empty">${t('No bottles found yet. Keep an eye on the water.')}</p>`;
       const crew = save.crew.length
-        ? save.crew.map((c) => `<p class="note-card crew"><b>${esc(c.name)}</b> “${esc(c.line)}”</p>`).join('')
-        : '<p class="empty">Nobody hauled from the water yet. Listen for shouts.</p>';
+        ? save.crew.map((c) => `<p class="note-card crew"><b>${esc(t(c.name))}</b> “${esc(t(c.line))}”</p>`).join('')
+        : `<p class="empty">${t('Nobody hauled from the water yet. Listen for shouts.')}</p>`;
       const s = save.stats;
-      const node = el(`<section class="screen dim" aria-label="Logbook">
+      const node = el(`<section class="screen dim" aria-label="${t('Logbook')}">
         <div class="sheet narrow">
-          <div class="sheet-head"><h2>Logbook</h2><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Logbook')}</h2><button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
             <div class="stat-rows" style="margin-bottom:14px">
-              <span class="k">Voyages finished</span><span class="v">${s.voyages}</span>
-              <span class="k">Distance sailed</span><span class="v">${(s.distance * 0.000309).toFixed(2)} km</span>
-              <span class="k">Capsizes</span><span class="v">${s.capsizes}</span>
-              <span class="k">Castaways rescued</span><span class="v">${s.rescued}</span>
+              <span class="k">${t('Voyages finished')}</span><span class="v">${s.voyages}</span>
+              <span class="k">${t('Distance sailed')}</span><span class="v">${(s.distance * 0.000309).toFixed(2)} km</span>
+              <span class="k">${t('Capsizes')}</span><span class="v">${s.capsizes}</span>
+              <span class="k">${t('Castaways rescued')}</span><span class="v">${s.rescued}</span>
             </div>
-            <div class="eyebrow" style="margin-bottom:8px">Messages in bottles · ${save.notes.length}</div>
+            <div class="eyebrow" style="margin-bottom:8px">${t('Messages in bottles')} · ${save.notes.length}</div>
             ${notes}
-            <div class="eyebrow" style="margin:16px 0 8px">Sailors you brought home · ${save.crew.length}</div>
+            <div class="eyebrow" style="margin:16px 0 8px">${t('Sailors you brought home')} · ${save.crew.length}</div>
             ${crew}
           </div>
         </div></section>`);
@@ -1864,41 +1900,41 @@ export function createUI(root, levels, handlers) {
       const row = (d) => {
         const p = Math.floor(d.progress);
         const side = d.done
-          ? `<span class="order-pay done">Done</span>`
-          : `<span class="order-pay">${icon('coin', 16)}${d.pay}</span>${o.swapped ? '' : `<button class="btn small" data-swap="${d.id}" aria-label="Swap ${esc(d.text)}">Swap</button>`}`;
+          ? `<span class="order-pay done">${t('Done')}</span>`
+          : `<span class="order-pay">${icon('coin', 16)}${d.pay}</span>${o.swapped ? '' : `<button class="btn small" data-swap="${d.id}" aria-label="${esc(t('Swap: {order}', { order: t(d.text) }))}">${t('Swap')}</button>`}`;
         return `<div class="shop-item order ${d.done ? 'done' : ''}">
             <span class="shop-art">${icon(d.icon, 28)}</span>
-            <span class="shop-text"><b>${esc(d.text)}</b><small>${esc(d.note)}</small><span class="order-meter"><span class="medal-meter"><i style="width:${Math.round((100 * p) / d.goal)}%"></i></span><span class="medal-count">${p} / ${d.goal}</span></span></span>
+            <span class="shop-text"><b>${esc(t(d.text))}</b><small>${esc(t(d.note))}</small><span class="order-meter"><span class="medal-meter"><i style="width:${Math.round((100 * p) / d.goal)}%"></i></span><span class="medal-count">${p} / ${d.goal}</span></span></span>
             <span class="order-side">${side}</span>
           </div>`;
       };
       const chest = `<div class="shop-item order chest ${o.chest ? 'done' : ''}">
           <span class="shop-art">${icon('chest', 28)}</span>
-          <span class="shop-text"><b>Harbourmaster's chest</b><small>${o.chest ? 'Opened today. Another waits tomorrow.' : 'Finish all three orders today to open it.'}</small></span>
-          <span class="order-side">${o.chest ? '<span class="order-pay done">Opened</span>' : `<span class="order-pay gem">${icon('blackPearl', 16)}${CHEST}</span>`}</span>
+          <span class="shop-text"><b>${t("Harbourmaster's chest")}</b><small>${o.chest ? t('Opened today. Another waits tomorrow.') : t('Finish all three orders today to open it.')}</small></span>
+          <span class="order-side">${o.chest ? `<span class="order-pay done">${t('Opened')}</span>` : `<span class="order-pay gem">${icon('blackPearl', 16)}${CHEST}</span>`}</span>
         </div>`;
-      const node = el(`<section class="screen dim" aria-label="Orders">
+      const node = el(`<section class="screen dim" aria-label="${t('Orders')}">
         <div class="sheet">
-          <div class="sheet-head"><h2>Orders</h2><span class="eyebrow">${done} / ${list.length} done</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Orders')}</h2><span class="eyebrow">${t('{n} / {of} done', { n: done, of: list.length })}</span><button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
-            <p class="sheet-note">Three jobs from the harbourmaster, new every day. Each one pays the moment it's done, and all three open the chest.</p>
+            <p class="sheet-note">${t("Three jobs from the harbourmaster, new every day. Each one pays the moment it's done, and all three open the chest.")}</p>
             <div class="order-list">${list.map(row).join('')}${chest}</div>
-            <p class="order-foot">${o.swapped ? "You've swapped an order today." : 'You can swap one order a day.'} New orders in ${untilMidnight()}.</p>
+            <p class="order-foot">${o.swapped ? t("You've swapped an order today.") : t('You can swap one order a day.')} ${t('New orders in {time}.', { time: untilMidnight() })}</p>
           </div>
         </div></section>`);
       click(node, '[data-swap]', (e, b) => {
         const order = list.find((d) => d.id === b.dataset.swap);
         ui.confirm({
-          title: 'Swap this order?',
-          text: `“${order.text}” goes back and another order of its kind takes its place.${order.progress ? ' Its progress is lost.' : ''} You can swap one order a day.`,
-          ok: 'Swap',
+          title: t('Swap this order?'),
+          text: `${t('“{order}” goes back and another order of its kind takes its place.', { order: t(order.text) })}${order.progress ? ` ${t('Its progress is lost.')}` : ''} ${t('You can swap one order a day.')}`,
+          ok: t('Swap'),
           onOk: () => {
             const next = swapOrder(save, dateKey(), order.id);
             if (!next) return;
             handlers.onSeen();
             if (current !== 'orders') return;
             ui.orders(save, true);
-            ui.toast(`New order: ${next.text}.`, 'good', 2400);
+            ui.toast(t('New order: {order}.', { order: t(next.text) }), 'good', 2400);
           },
         });
       });
@@ -1919,38 +1955,38 @@ export function createUI(root, levels, handlers) {
         `<div class="shop-item"><span class="shop-art">${art}</span><span class="shop-text"><b>${name}</b><small>${sub}</small></span>${button}</div>`;
       const video = item(
         icon('play', 28),
-        'Watch a video',
-        `One black pearl · <span data-left>${videosLeft(save, REWARDS.blackPearl, today)}</span> left today`,
-        `<button class="btn small" data-video ${videos ? '' : 'disabled'}>${videos ? 'Watch' : 'Coming soon'}</button>`,
+        t('Watch a video'),
+        t('One black pearl · {n} left today', { n: `<span data-left>${videosLeft(save, REWARDS.blackPearl, today)}</span>` }),
+        `<button class="btn small" data-video ${videos ? '' : 'disabled'}>${videos ? t('Watch') : t('Coming soon')}</button>`,
       );
       const boats = BOAT_ORDER.filter((id) => BOAT_PRICES[id] && !isBoatUnlocked(save, id));
-      const node = el(`<section class="screen dim" aria-label="Shop">
+      const node = el(`<section class="screen dim" aria-label="${t('Shop')}">
         <div class="sheet wide">
-          <div class="sheet-head"><h2>Shop</h2>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-head"><h2>${t('Shop')}</h2>${wallet(save)}<button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
-            <h3 class="setting-group">Black pearls</h3>
-            <p class="sheet-note">Black pearls are rare, far rarer than the white ones. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.</p>
+            <h3 class="setting-group">${t('Black pearls')}</h3>
+            <p class="sheet-note">${t("Black pearls are rare, far rarer than the white ones. On some voyages one lies where the sea is most dangerous: in a whirlpool's pull, over a kraken's lair, off a pirate cove. Bring it home to keep it.")}</p>
             <div class="shop-grid">${video}</div>
-            <h3 class="setting-group">Supplies</h3>
+            <h3 class="setting-group">${t('Supplies')}</h3>
             <div class="shop-grid">
-              ${item(icon('wind', 28), 'Gust jar', `Goes aboard on your next voyage. In the hold: <b data-jars>${save.wallet.jars}</b> / ${JAR_HOLD}`, `<button class="btn small" data-buy="jar">${priceTag({ coins: JAR_PRICE })}</button>`)}
-              ${item(icon('coin', 28), 'Trade a black pearl', `${formatCoins(TRADE_COINS)} coins for one black pearl`, `<button class="btn small" data-buy="trade">${priceTag({ blackPearls: 1 })}</button>`)}
+              ${item(icon('wind', 28), t('Gust jar'), t('Goes aboard on your next voyage. In the hold: {n} / {of}', { n: `<b data-jars>${save.wallet.jars}</b>`, of: JAR_HOLD }), `<button class="btn small" data-buy="jar">${priceTag({ coins: JAR_PRICE })}</button>`)}
+              ${item(icon('coin', 28), t('Trade a black pearl'), t('{coins} coins for one black pearl', { coins: formatCoins(TRADE_COINS) }), `<button class="btn small" data-buy="trade">${priceTag({ blackPearls: 1 })}</button>`)}
             </div>
-            <h3 class="setting-group">Boats</h3>
+            <h3 class="setting-group">${t('Boats')}</h3>
             <div class="shop-grid">${
               boats.length
                 ? boats
                     .map((id) => {
-                      const t = BOAT_TYPES[id];
-                      return item(`<canvas class="shop-boat" data-type="${id}" aria-hidden="true"></canvas>`, esc(t.name), `${esc(t.tag)} · or ★ ${t.unlock}`, `<button class="btn small gem-btn" data-boat="${id}" aria-label="Unlock the ${esc(t.name)} for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })}</button>`);
+                      const bt = BOAT_TYPES[id];
+                      return item(`<canvas class="shop-boat" data-type="${id}" aria-hidden="true"></canvas>`, esc(t(bt.name)), `${esc(t(bt.tag))} · ${t('or ★ {n}', { n: bt.unlock })}`, `<button class="btn small gem-btn" data-boat="${id}" aria-label="${esc(t('Unlock the {boat} for {n} black pearls', { boat: t(bt.name), n: BOAT_PRICES[id] }))}">${priceTag({ blackPearls: BOAT_PRICES[id] })}</button>`);
                     })
                     .join('')
-                : '<p class="shop-empty">Every boat in the Shipyard is yours.</p>'
+                : `<p class="shop-empty">${t('Every boat in the Shipyard is yours.')}</p>`
             }</div>
-            <h3 class="setting-group">Your harbor</h3>
-            <div class="shop-grid">${item(icon('anchor', 28), 'Your harbor', `A lighthouse, docks, houses and boats, built with coins. ${harborBuilt(save).length} / ${HARBOR_TOTAL} built.`, '<button class="btn small" data-act="harbor">Open</button>')}</div>
-            <h3 class="setting-group">Sails and paints</h3>
-            <div class="shop-grid">${item(icon('crown', 28), 'Sail Locker', 'Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.', '<button class="btn small" data-act="locker">Open</button>')}</div>
+            <h3 class="setting-group">${t('Your harbor')}</h3>
+            <div class="shop-grid">${item(icon('anchor', 28), t('Your harbor'), t('A lighthouse, docks, houses and boats, built with coins. {n} / {of} built.', { n: harborBuilt(save).length, of: HARBOR_TOTAL }), `<button class="btn small" data-act="harbor">${t('Open')}</button>`)}</div>
+            <h3 class="setting-group">${t('Sails and paints')}</h3>
+            <div class="shop-grid">${item(icon('crown', 28), t('Sail Locker'), t('Royal purple, sunset and diamond-dust sails, and new hull paints, for coins.'), `<button class="btn small" data-act="locker">${t('Open')}</button>`)}</div>
           </div>
         </div></section>`);
       const redraw = () => {
@@ -1961,7 +1997,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=harbor]', () => ui.harbor(save));
       click(node, '[data-buy=jar]', () => {
         if (save.wallet.jars >= JAR_HOLD) {
-          ui.toast(`The hold is full: ${JAR_HOLD} jars is all a voyage carries.`);
+          ui.toast(t('The hold is full: {n} jars is all a voyage carries.', { n: JAR_HOLD }));
           return;
         }
         if (!buyJar(save)) {
@@ -1969,7 +2005,7 @@ export function createUI(root, levels, handlers) {
           return;
         }
         handlers.onWallet();
-        ui.toast('A gust jar is stowed for your next voyage.', 'good', 2400);
+        ui.toast(t('A gust jar is stowed for your next voyage.'), 'good', 2400);
         redraw();
       });
       click(node, '[data-buy=trade]', () => {
@@ -1978,9 +2014,9 @@ export function createUI(root, levels, handlers) {
           return;
         }
         ui.confirm({
-          title: 'Trade a black pearl?',
-          text: `One black pearl for ${formatCoins(TRADE_COINS)} coins.`,
-          ok: `Trade ${priceTag({ blackPearls: 1 })}`,
+          title: t('Trade a black pearl?'),
+          text: t('One black pearl for {coins} coins.', { coins: formatCoins(TRADE_COINS) }),
+          ok: `${t('Trade')} ${priceTag({ blackPearls: 1 })}`,
           onOk: () => {
             if (!tradeBlackPearl(save)) return;
             handlers.onWallet();
@@ -1991,7 +2027,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-boat]', (e, b) => unlockBoat(save, b.dataset.boat, () => ui.shop(save, true)));
       click(node, '[data-video]', async (e, b) => {
         if (!videosLeft(save, REWARDS.blackPearl, today)) {
-          ui.toast('That is all the videos for today. More tomorrow!');
+          ui.toast(t('That is all the videos for today. More tomorrow!'));
           return;
         }
         b.disabled = true;
@@ -1999,8 +2035,8 @@ export function createUI(root, levels, handlers) {
         b.disabled = false;
         if (r.ok) handlers.onWallet();
         if (current !== 'shop') return;
-        if (r.ok) ui.toast('+1 black pearl. Thanks for watching!', 'good');
-        else if (r.reason !== 'cancelled') ui.toast('No video right now. Try again later.');
+        if (r.ok) ui.toast(t('+1 black pearl. Thanks for watching!'), 'good');
+        else if (r.reason !== 'cancelled') ui.toast(t('No video right now. Try again later.'));
         redraw();
       });
       click(node, '[data-act=locker]', () => ui.locker(save));
@@ -2017,13 +2053,13 @@ export function createUI(root, levels, handlers) {
     },
 
     // Ask before spending. `ok` is the confirm button's label (may hold an icon).
-    confirm({ title, text, ok = 'OK', onOk }) {
+    confirm({ title, text, ok = t('OK'), onOk }) {
       ui.closeConfirm();
       const node = el(`<div class="confirm" role="dialog" aria-modal="true" aria-label="${esc(title)}">
         <div class="confirm-box">
           <h3>${esc(title)}</h3>
           <p>${esc(text)}</p>
-          <div class="confirm-foot"><button class="btn small" data-act="no">Not now</button><button class="btn small primary" data-act="yes">${ok}</button></div>
+          <div class="confirm-foot"><button class="btn small" data-act="no">${t('Not now')}</button><button class="btn small primary" data-act="yes">${ok}</button></div>
         </div></div>`);
       click(node, '[data-act=no]', () => ui.closeConfirm());
       click(node, '[data-act=yes]', () => {
@@ -2052,16 +2088,16 @@ export function createUI(root, levels, handlers) {
       tipQueue = [];
       const price = { blackPearls: SECOND_WIND };
       const video = ads().adsReady() && videosLeft(save, REWARDS.secondWind, dateKey()) > 0;
-      const node = el(`<section class="screen dim" aria-label="Second wind">
+      const node = el(`<section class="screen dim" aria-label="${t('Second wind')}">
         <div class="sheet narrow results-sheet">
-          <div class="sheet-head"><span class="eyebrow">Open Sea · ${formatDistance(result.distance)} east</span><h2>${result.reason === 'sunk' ? 'The hull gave out' : 'Out of time'}</h2>${wallet(save)}</div>
+          <div class="sheet-head"><span class="eyebrow">${t('Open Sea')} · ${formatDistance(result.distance)} ${t('east')}</span><h2>${result.reason === 'sunk' ? t('The hull gave out') : t('Out of time')}</h2>${wallet(save)}</div>
           <div class="sheet-body">
-            <p class="second-wind">${icon('wind', 30)}<span>Take a <b>second wind</b>: ${SECOND_WIND_TIME} more seconds on the clock and the hull patched up, right where you are.</span></p>
+            <p class="second-wind">${icon('wind', 30)}<span>${t('Take a <b>second wind</b>: {n} more seconds on the clock and the hull patched up, right where you are.', { n: SECOND_WIND_TIME })}</span></p>
           </div>
           <div class="sheet-foot">
-            <button class="btn small" data-act="end">End run</button>
-            ${video ? `<button class="btn small" data-act="video">${icon('play', 16)} Watch a video</button>` : ''}
-            <button class="btn primary" data-act="take" data-autofocus ${canAfford(save, price) ? '' : 'disabled'}>Sail on ${priceTag(price)}</button>
+            <button class="btn small" data-act="end">${t('End run')}</button>
+            ${video ? `<button class="btn small" data-act="video">${icon('play', 16)} ${t('Watch a video')}</button>` : ''}
+            <button class="btn primary" data-act="take" data-autofocus ${canAfford(save, price) ? '' : 'disabled'}>${t('Sail on')} ${priceTag(price)}</button>
           </div>
         </div></section>`);
       click(node, '[data-act=end]', () => onEnd());
@@ -2071,7 +2107,7 @@ export function createUI(root, levels, handlers) {
         const ok = await onVideo();
         if (!ok && current === 'secondwind') {
           b.disabled = false;
-          ui.toast('No video right now.');
+          ui.toast(t('No video right now.'));
         }
       });
       show('secondwind', node);
@@ -2094,15 +2130,15 @@ export function createUI(root, levels, handlers) {
     // 'alert' (danger right now, never waits).
     // `soon` puts a tip at the head of the queue, for news that can't wait.
     toast(text, kind = '', ms = 3200, soon = false) {
-      const live = [...toasts.children].filter((t) => !t.classList.contains('out'));
+      const live = [...toasts.children].filter((n) => !n.classList.contains('out'));
       // The same message again just stays up longer.
-      const same = live.find((t) => t.textContent === text);
+      const same = live.find((n) => n.textContent === text);
       if (same) {
         hold(same, ms);
         return;
       }
       if (kind === 'tip') {
-        const shown = live.find((t) => t.classList.contains('tip'));
+        const shown = live.find((n) => n.classList.contains('tip'));
         if (shown) {
           if (!tipQueue.some((q) => q.text === text)) tipQueue[soon ? 'unshift' : 'push']({ text, ms });
           if (tipQueue.length > 3) tipQueue.splice(soon ? 3 : 0, 1);
@@ -2113,6 +2149,9 @@ export function createUI(root, levels, handlers) {
       }
       const node = el(`<div class="toast ${kind}"></div>`);
       node.textContent = text;
+      // The label drawn before the text, in the game's language.
+      const tag = /\brescue\b/.test(kind) ? t('Hauled aboard') : /\bnote\b/.test(kind) ? t('Message in a bottle') : /\btip\b/.test(kind) ? t('Tip') : /\balert\b/.test(kind) ? t('Danger') : /\batlas\b/.test(kind) ? t('Atlas') : '';
+      if (tag) node.dataset.tag = tag;
       toasts.appendChild(node);
       if (live.length >= 2) dismiss(live[0]);
       hold(node, ms);
@@ -2126,7 +2165,7 @@ export function createUI(root, levels, handlers) {
     countdown(onDone) {
       const node = el('<div class="countdown" aria-live="polite"></div>');
       root.appendChild(node);
-      const steps = ['3', '2', '1', 'Sail!'];
+      const steps = ['3', '2', '1', t('Sail!')];
       let i = 0;
       const tick = () => {
         if (i >= steps.length) {

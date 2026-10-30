@@ -7,7 +7,8 @@ import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from '.
 import { festivalOn, awardFestivalSail } from './data/festivals.js';
 import { createGame, stepGame, drainEvents, speedOf, PACE } from './world/game.js';
 import { openSeaDef, reviveRun } from './world/opensea.js';
-import { regattaDef, fleetFor, ordinal } from './world/regatta.js';
+import { regattaDef, fleetFor } from './world/regatta.js';
+import { t, N_, ordinal, setLang } from './i18n/index.js';
 import { startCup, cupCourse, scoreCupRace, cupPay, CUP_RACES } from './data/cup.js';
 import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
@@ -42,17 +43,17 @@ const SOFT = new Set(['sand', 'spore', 'pod', 'jelly', 'pumice', 'jungle', 'mang
 
 // What a lair's ring means, in each world.
 const LAIR_WARNINGS = {
-  kraken: 'The water is boiling! Get out of the ring!',
-  vent: 'The vent is about to blow! Get out of the ring!',
-  crane: 'A container is coming down! Get out of the ring!',
-  beast: 'Something is rising! Get out of the ring!',
-  croc: 'Crocodile! Get out of the ring!',
-  plesio: 'Something huge is rising! Get out of the ring!',
-  eel: 'The eel is about to lunge! Get out of the ring!',
-  wraith: 'The wraith is coming! Get out of the ring!',
-  orca: 'Orca! Get out of the ring!',
-  jack: 'Pop goes the box! Get out of the ring!',
-  storm: 'Lightning is about to strike! Get out of the ring!',
+  kraken: N_('The water is boiling! Get out of the ring!'),
+  vent: N_('The vent is about to blow! Get out of the ring!'),
+  crane: N_('A container is coming down! Get out of the ring!'),
+  beast: N_('Something is rising! Get out of the ring!'),
+  croc: N_('Crocodile! Get out of the ring!'),
+  plesio: N_('Something huge is rising! Get out of the ring!'),
+  eel: N_('The eel is about to lunge! Get out of the ring!'),
+  wraith: N_('The wraith is coming! Get out of the ring!'),
+  orca: N_('Orca! Get out of the ring!'),
+  jack: N_('Pop goes the box! Get out of the ring!'),
+  storm: N_('Lightning is about to strike! Get out of the ring!'),
 };
 
 const root = document.getElementById('boatify');
@@ -130,6 +131,7 @@ function motionReduced() {
 
 function applySettings() {
   const s = save.settings;
+  setLang(s.lang);
   audio.configure({ sound: s.sound, music: s.music });
   const calm = motionReduced();
   renderer.cam.still = calm;
@@ -164,28 +166,28 @@ const input = createInput(canvas, {
     save.settings.music = save.settings.sound;
     applySettings();
     writeSave(save);
-    ui.toast(save.settings.sound ? 'Sound on' : 'Sound off');
+    ui.toast(save.settings.sound ? t('Sound on') : t('Sound off'));
   },
   onToggleTrim: () => {
     save.settings.autoTrim = !save.settings.autoTrim;
     writeSave(save);
     layout = null;
     if (game) input.reset(game.boat.trim);
-    ui.toast(save.settings.autoTrim ? 'Sail trims itself' : 'Manual trim: W / S to sheet in and out');
+    ui.toast(save.settings.autoTrim ? t('Sail trims itself') : t('Manual trim: W / S to sheet in and out'));
   },
   onZoom: (dir) => {
     const z = nextZoom(save.settings.zoom, dir);
     if (z === save.settings.zoom) return;
     save.settings.zoom = z;
     writeSave(save);
-    ui.toast(`View: ${zoomName(z)}`);
+    ui.toast(t('View: {zoom}', { zoom: t(zoomName(z)) }));
   },
   onPinchEnd: (zoom) => {
     const z = nearestZoom(zoom);
     if (z === save.settings.zoom) return;
     save.settings.zoom = z;
     writeSave(save);
-    ui.toast(`View: ${zoomName(z)}`);
+    ui.toast(t('View: {zoom}', { zoom: t(zoomName(z)) }));
   },
 });
 
@@ -235,6 +237,8 @@ const ui = createUI(root, CAMPAIGN, {
       if (save.settings.reminders && !remindersAllowed()) askReminders(true);
       syncReminders();
     }
+    // The phone's reminders are written out ahead, so they're redone in the new language.
+    if (key === 'lang') syncReminders();
   },
   canRemind,
   remindersAllowed,
@@ -304,7 +308,7 @@ function startDemo() {
   const def = fest ? { ...plain, festival: fest.id, weather: { ...plain.weather, ...fest.weather } } : plain;
   demoIndex += 1;
   game = createGame(def, { seed: demoIndex * 7, boat: selectedBoat(save), upgrades: upgradeLevels(save, selectedBoat(save)) });
-  game.tipsShown = new Set(def.tips.map((t, i) => i));
+  game.tipsShown = new Set(def.tips.map((tip, i) => i));
   autopilot = createAutopilot(game);
   demoTimer = 70;
   resetView(renderer, game);
@@ -362,7 +366,7 @@ function startLevel(ref) {
     mode = 'playing';
     input.setEnabled(true);
   });
-  if (carried) setTimeout(() => mode === 'playing' || mode === 'countdown' ? ui.toast(`${carried} gust ${carried === 1 ? 'jar' : 'jars'} from the hold aboard. Tap the wind button for a burst.`, 'good', 3200) : null, 2700);
+  if (carried) setTimeout(() => mode === 'playing' || mode === 'countdown' ? ui.toast(carried === 1 ? t('1 gust jar from the hold aboard. Tap the wind button for a burst.') : t('{n} gust jars from the hold aboard. Tap the wind button for a burst.', { n: carried }), 'good', 3200) : null, 2700);
 }
 
 // The Regatta Cup's page, over the voyages.
@@ -605,11 +609,11 @@ function filmEvents(events) {
         break;
       case 'guide':
         audio.sfx.dolphins();
-        floatText(fx, e.x, e.y - 12, 'This way!', '#bfefff');
+        floatText(fx, e.x, e.y - 12, t('This way!'), '#bfefff');
         break;
       case 'dolphins':
         audio.sfx.dolphins();
-        floatText(fx, film.game.boat.x, film.game.boat.y - 14, 'BOW RIDERS!', '#bfefff');
+        floatText(fx, film.game.boat.x, film.game.boat.y - 14, t('BOW RIDERS!'), '#bfefff');
         break;
       case 'splash':
         burst(fx, e.x, e.y, { count: 18, speed: 28, color: C.foam, size: 2.2 });
@@ -652,17 +656,17 @@ function lookRound() {
   for (const id of ids) {
     const r = recordSighting(save, id);
     if (!r) continue;
-    met.push(r.entry.name);
-    if (r.page) filled.push(r.page.name);
+    met.push(t(r.entry.name));
+    if (r.page) filled.push(t(r.page.name));
   }
   if (!met.length) return;
   writeSave(save);
   // A filled page says it all; otherwise name what's new.
   if (filled.length) {
     audio.sfx.pickup('blackPearl');
-    for (const name of filled) ui.toast(`Page filled: ${name}! +${PAGE_REWARD.coins} coins, +${PAGE_REWARD.blackPearls} black pearl`, 'atlas good', 5200);
+    for (const name of filled) ui.toast(t('Page filled: {page}! +{coins} coins, +{n} black pearl', { page: name, coins: PAGE_REWARD.coins, n: PAGE_REWARD.blackPearls }), 'atlas good', 5200);
   } else {
-    ui.toast(`New in the Sea Atlas: ${met.join(', ')}`, 'atlas', 3400);
+    ui.toast(t('New in the Sea Atlas: {list}', { list: met.join(', ') }), 'atlas', 3400);
   }
 }
 
@@ -672,7 +676,7 @@ function handleEvents(events, live) {
   for (const e of events) {
     switch (e.type) {
       case 'tip':
-        if (live) ui.toast(e.text, 'tip', 5200);
+        if (live) ui.toast(t(e.text), 'tip', 5200);
         break;
       case 'pickup': {
         const colors = { pearl: '#fbf6ee', gust: '#bff3ff', repair: C.ok, bottle: '#c9e8b8', blackPearl: '#cdb8ff' };
@@ -681,18 +685,18 @@ function handleEvents(events, live) {
         if (!live) break;
         audio.sfx.pickup(e.kind);
         buzz(18);
-        if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, game.sea ? `PEARL +${e.bonus} s` : `PEARL ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
-        else if (e.kind === 'gust') floatText(fx, e.x, e.y - 10, 'GUST JAR', '#bff3ff');
-        else if (e.kind === 'repair') floatText(fx, e.x, e.y - 10, 'HULL +35', C.ok);
+        if (e.kind === 'pearl') floatText(fx, e.x, e.y - 10, game.sea ? `${t('PEARL')} +${e.bonus} s` : `${t('PEARL')} ${game.pearls}/${game.pearlsTotal}`, '#fbf6ee');
+        else if (e.kind === 'gust') floatText(fx, e.x, e.y - 10, t('GUST JAR'), '#bff3ff');
+        else if (e.kind === 'repair') floatText(fx, e.x, e.y - 10, t('HULL +35'), C.ok);
         else if (e.kind === 'blackPearl') {
-          floatText(fx, e.x, e.y - 12, 'BLACK PEARL!', '#cdb8ff');
+          floatText(fx, e.x, e.y - 12, t('BLACK PEARL!'), '#cdb8ff');
           ring(fx, e.x, e.y, '#ffffff', 40, 1);
           buzz(60);
-          firstSight('blackPearl', 'A black pearl! They are rare. Bring it home: finish the voyage to keep it.');
+          firstSight('blackPearl', t('A black pearl! They are rare. Bring it home: finish the voyage to keep it.'));
         }
         else if (e.kind === 'bottle') {
           audio.sfx.note();
-          ui.toast(`“${e.note}”`, 'note', 7000);
+          ui.toast(`“${t(e.note)}”`, 'note', 7000);
         }
         break;
       }
@@ -704,14 +708,14 @@ function handleEvents(events, live) {
         if (!live) break;
         if (e.phase === 'sighted') {
           audio.sfx.castaway('sighted');
-          firstSight('castaway', 'A castaway! Turn into the wind to slow right down, then drift alongside to haul them aboard.');
+          firstSight('castaway', t('A castaway! Turn into the wind to slow right down, then drift alongside to haul them aboard.'));
         } else if (e.phase === 'fast') {
-          ui.toast(`Too fast for ${e.name} to grab the line. Turn into the wind to stop.`, 'tip', 3600);
+          ui.toast(t('Too fast for {name} to grab the line. Turn into the wind to stop.', { name: t(e.name) }), 'tip', 3600);
         } else {
           audio.sfx.castaway('aboard');
           buzz(30);
-          floatText(fx, e.x, e.y - 14, `${e.name.toUpperCase()} ABOARD`, C.ok);
-          ui.toast(`${e.name}: “${e.line}” Now get them home.`, 'note rescue', 6500);
+          floatText(fx, e.x, e.y - 14, t('{name} ABOARD', { name: t(e.name).toUpperCase() }), C.ok);
+          ui.toast(`${t(e.name)}: “${t(e.line)}” ${t('Now get them home.')}`, 'note rescue', 6500);
         }
         break;
       }
@@ -723,14 +727,14 @@ function handleEvents(events, live) {
         buzz(25);
         if (game.sea) floatText(fx, c.x, c.y - 18, `+${e.bonus} s`, C.ok);
         else if (game.race) {
-          floatText(fx, c.x, c.y - 18, `MARK ${c.label} ✓`, C.ok);
+          floatText(fx, c.x, c.y - 18, `${t('MARK {n}', { n: c.label })} ✓`, C.ok);
           const next = game.level.checkpoints[e.index + 1];
-          ui.toast(next ? `Mark ${c.label} rounded. On to mark ${next.label}!` : 'Last mark rounded. Race for the harbor!', 'good', 2600);
-        } else ui.toast('Buoy reached. If you sink, you restart here.', 'good', 2600);
+          ui.toast(next ? t('Mark {n} rounded. On to mark {next}!', { n: c.label, next: next.label }) : t('Last mark rounded. Race for the harbor!'), 'good', 2600);
+        } else ui.toast(t('Buoy reached. If you sink, you restart here.'), 'good', 2600);
         break;
       }
       case 'early':
-        if (live) ui.toast(`Round mark ${e.mark + 1} first! The marks count only in order.`, 'alert', 3000);
+        if (live) ui.toast(t('Round mark {n} first! The marks count only in order.', { n: e.mark + 1 }), 'alert', 3000);
         break;
       case 'place':
         if (!live) break;
@@ -738,7 +742,7 @@ function handleEvents(events, live) {
         if (e.gained) buzz(15);
         break;
       case 'rival':
-        if (live && e.phase === 'finish') ui.toast(`${e.name} finishes ${ordinal(e.place)}.`, '', 2200);
+        if (live && e.phase === 'finish') ui.toast(t('{name} finishes {place}.', { name: t(e.name), place: ordinal(e.place) }), '', 2200);
         break;
       case 'bump':
         burst(fx, e.x, e.y, { count: Math.round(5 + e.impact * 1.5), speed: 14 + e.impact * 3, color: C.foam, size: 2 });
@@ -746,15 +750,15 @@ function handleEvents(events, live) {
         if (!live) break;
         audio.sfx.collide(e.impact * 0.7, 'sand');
         buzz(Math.min(80, 15 + e.impact * 6));
-        firstSight('bump', 'Bump! Boats that touch lose their way. Give the fleet room.');
+        firstSight('bump', t('Bump! Boats that touch lose their way. Give the fleet room.'));
         break;
       case 'gate':
         if (!live) break;
-        floatText(fx, game.boat.x, game.boat.y - 14, 'GATE MISSED', C.danger);
+        floatText(fx, game.boat.x, game.boat.y - 14, t('GATE MISSED'), C.danger);
         buzz(30);
         break;
       case 'windshift':
-        if (live) ui.toast(`Wind shift! It blows from the ${compassPoint(e.from)} now.`, '', 2600);
+        if (live) ui.toast(t('Wind shift! It blows from the {dir} now.', { dir: t(compassPoint(e.from)) }), '', 2600);
         break;
       case 'clock':
         if (!live) break;
@@ -811,12 +815,12 @@ function handleEvents(events, live) {
       case 'respawn':
         if (!live) break;
         audio.sfx.respawn();
-        ui.toast(game.race ? 'The hull gave out. Back to the last mark.' : 'The hull gave out. Back to the last buoy.', '', 3600);
+        ui.toast(game.race ? t('The hull gave out. Back to the last mark.') : t('The hull gave out. Back to the last buoy.'), '', 3600);
         break;
       case 'kraken':
         if (!live) break;
         audio.sfx.kraken(e.phase);
-        if (e.phase === 'warning') ui.toast(LAIR_WARNINGS[e.look] || LAIR_WARNINGS.kraken, 'alert', 2200);
+        if (e.phase === 'warning') ui.toast(t(LAIR_WARNINGS[e.look] || LAIR_WARNINGS.kraken), 'alert', 2200);
         else buzz(160);
         cam.shake = Math.min(1, cam.shake + (e.phase === 'strike' ? 0.7 : 0.1));
         break;
@@ -827,11 +831,11 @@ function handleEvents(events, live) {
       case 'guide':
         if (!live) break;
         audio.sfx.dolphins();
-        floatText(fx, e.x, e.y - 12, 'This way!', '#bfefff');
+        floatText(fx, e.x, e.y - 12, t('This way!'), '#bfefff');
         // Said once a voyage; after that the dolphins speak for themselves.
         if (!guideTold[e.reason]) {
           guideTold[e.reason] = true;
-          ui.toast(e.reason === 'irons' ? 'Stuck head to wind! Follow the dolphins: turn across the wind.' : "B isn't that way! Follow the dolphins.", '', 4200);
+          ui.toast(e.reason === 'irons' ? t('Stuck head to wind! Follow the dolphins: turn across the wind.') : t("B isn't that way! Follow the dolphins."), '', 4200);
         }
         break;
       case 'dolphins':
@@ -839,10 +843,10 @@ function handleEvents(events, live) {
         if (e.phase === 'join') {
           audio.sfx.dolphins();
           buzz(20);
-          floatText(fx, game.boat.x, game.boat.y - 14, 'BOW RIDERS!', '#bfefff');
-          firstSight('dolphins', 'Dolphins! Keep your speed up and they ride your bow wave, pushing you along.');
+          floatText(fx, game.boat.x, game.boat.y - 14, t('BOW RIDERS!'), '#bfefff');
+          firstSight('dolphins', t('Dolphins! Keep your speed up and they ride your bow wave, pushing you along.'));
         } else if (e.reason === 'slow') {
-          floatText(fx, game.boat.x, game.boat.y - 14, 'Too slow for the dolphins', '#bfefff');
+          floatText(fx, game.boat.x, game.boat.y - 14, t('Too slow for the dolphins'), '#bfefff');
         }
         break;
       case 'whale': {
@@ -854,8 +858,8 @@ function handleEvents(events, live) {
         if (!live) break;
         const d = Math.hypot(e.x - game.boat.x, e.y - game.boat.y);
         audio.sfx.whale(e.phase, Math.min(1, Math.max(0.15, 1 - d / 600)));
-        if (e.phase === 'spout') firstSight('whale', 'A whale! When a ring of bubbles rises, it is about to breach. Give it room.');
-        else if (e.phase === 'rising' && d < 160) ui.toast('Bubbles rising! The whale is coming up. Steer clear!', 'alert', 2000);
+        if (e.phase === 'spout') firstSight('whale', t('A whale! When a ring of bubbles rises, it is about to breach. Give it room.'));
+        else if (e.phase === 'rising' && d < 160) ui.toast(t('Bubbles rising! The whale is coming up. Steer clear!'), 'alert', 2000);
         else if (e.phase === 'breach' && d < 200) buzz(80);
         break;
       }
@@ -873,8 +877,8 @@ function handleEvents(events, live) {
           buzz(60);
           ui.toast(
             save.sightings.pirates
-              ? 'The pirates are after you again!'
-              : "Pirates! Their brig is fast downwind but can't sail close to the wind. Keep the wind on your beam, or slip through the reef!",
+              ? t('The pirates are after you again!')
+              : t("Pirates! Their brig is fast downwind but can't sail close to the wind. Keep the wind on your beam, or slip through the reef!"),
             'alert',
             save.sightings.pirates ? 2600 : 6500,
             true,
@@ -882,9 +886,9 @@ function handleEvents(events, live) {
           save.sightings.pirates = true;
           writeSave(save);
         } else if (e.reason === 'reef') {
-          ui.toast("The brig can't follow you through the reef!", 'good', 3000, true);
+          ui.toast(t("The brig can't follow you through the reef!"), 'good', 3000, true);
         } else if (e.reason === 'outran' || e.reason === 'harbor') {
-          ui.toast(e.reason === 'outran' ? 'You outran the pirates!' : 'The pirates turn back from the harbor guns!', 'good', 3000, true);
+          ui.toast(e.reason === 'outran' ? t('You outran the pirates!') : t('The pirates turn back from the harbor guns!'), 'good', 3000, true);
         }
         break;
       case 'cannon': {
@@ -905,7 +909,7 @@ function handleEvents(events, live) {
         audio.sfx.cannon(e.phase, Math.min(1, Math.max(0.2, 1 - d / 500)));
         if (e.phase === 'hit') {
           buzz(140);
-          floatText(fx, game.boat.x, game.boat.y - 14, 'HIT!', C.danger);
+          floatText(fx, game.boat.x, game.boat.y - 14, t('HIT!'), C.danger);
         } else if (e.phase === 'splash' && e.near) {
           buzz(25);
         }
@@ -917,7 +921,7 @@ function handleEvents(events, live) {
         if (!live) break;
         audio.sfx.boost();
         buzz(50);
-        ui.toast(`Second wind! ${SECOND_WIND_TIME} more seconds. Sail on!`, 'good', 2600);
+        ui.toast(t('Second wind! {n} more seconds. Sail on!', { n: SECOND_WIND_TIME }), 'good', 2600);
         break;
       case 'finish':
         if (game.sea) {
@@ -1016,13 +1020,13 @@ function frame(now) {
     pinching: input.state.pinchZoom !== null,
   });
   if (mode === 'playing' && renderer.life.colonies && renderer.life.colonies.near) {
-    firstSight('penguins', 'Penguins! Sail close and they dive in for a swim.');
+    firstSight('penguins', t('Penguins! Sail close and they dive in for a swim.'));
   }
   const isles = renderer.life.isles;
   if (mode === 'playing' && isles && isles.near === 'turtle') {
-    firstSight('turtles', 'Sea turtles on the beach! Sail close and they slip into the sea.');
+    firstSight('turtles', t('Sea turtles on the beach! Sail close and they slip into the sea.'));
   } else if (mode === 'playing' && isles && isles.near === 'seal') {
-    firstSight('seals', 'Seals on the rocks! Sail close and they flop in for a swim.');
+    firstSight('seals', t('Seals on the rocks! Sail close and they flop in for a swim.'));
   }
   audio.update(game, dt, mode === 'playing' || mode === 'finishing' || mode === 'film');
   requestAnimationFrame(frame);
@@ -1080,7 +1084,7 @@ installNativeHooks({
     writeSave(save);
     syncReminders();
     ui.setToggle('reminders', allowed);
-    ui.toast(allowed ? `Reminders on, at ${reminderTimes()}.` : 'No reminders, then. Settings can turn them on.');
+    ui.toast(allowed ? t('Reminders on, at {times}.', { times: reminderTimes() }) : t('No reminders, then. Settings can turn them on.'));
   },
   insets: ({ top, right, bottom, left }) => {
     const s = document.documentElement.style;

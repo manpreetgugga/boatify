@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">No Paddle</string>
+    <string name="app_name" translatable="false">No Paddle</string>
+    <string name="reminders_channel">Reminders</string>
+    <string name="reminders_channel_about">A nudge from the harbor at 9 am, 6 pm and 9 pm</string>
 </resources>

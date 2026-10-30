@@ -11,6 +11,8 @@
 // Everything here works on the save's `wallet` and leaves writing the save
 // to the caller.
 
+import { N_ } from '../i18n/index.js';
+
 export const PAY = {
   finish: 10, // any voyage brought home
   star: 5, // each star on this run
@@ -81,35 +83,35 @@ const line = (label, coins) => ({ label, coins });
 // What a finished voyage pays, line by line. `improved` is what the save's
 // recordResult returned (with prevStars) and `streak` the daily run of days.
 export function voyagePay(def, result, improved, streak = 0) {
-  const lines = [line('Voyage', PAY.finish), line(`${result.stars} ★`, result.stars * PAY.star)];
+  const lines = [line(N_('Voyage'), PAY.finish), line(`${result.stars} ★`, result.stars * PAY.star)];
   const fresh = result.stars - (improved.prevStars || 0);
-  if (fresh > 0) lines.push(line(fresh === 1 ? 'New star' : 'New stars', fresh * PAY.newStar));
-  if (result.pearls) lines.push(line('Pearls', result.pearls * PAY.pearl));
+  if (fresh > 0) lines.push(line(fresh === 1 ? N_('New star') : N_('New stars'), fresh * PAY.newStar));
+  if (result.pearls) lines.push(line(N_('Pearls'), result.pearls * PAY.pearl));
   const rescued = (result.rescued || []).length;
-  if (rescued) lines.push(line('Rescued', rescued * PAY.rescue));
-  if (improved.first && !def.daily) lines.push(line('First time home', PAY.first));
+  if (rescued) lines.push(line(N_('Rescued'), rescued * PAY.rescue));
+  if (improved.first && !def.daily) lines.push(line(N_('First time home'), PAY.first));
   if (def.daily && improved.first) {
-    lines.push(line('Daily voyage', PAY.daily));
+    lines.push(line(N_('Daily voyage'), PAY.daily));
     if (streak > 1) lines.push(line(`${streak}-day streak`, Math.min(7, streak) * PAY.streak));
   }
   return withMedals(lines, improved.medals);
 }
 
 export function seaPay(result, improved) {
-  const lines = [line('Distance', Math.floor(result.distance / PAY.seaPer))];
-  if (result.gates) lines.push(line('Gates', result.gates * PAY.gate));
-  if (result.pearls) lines.push(line('Pearls', result.pearls * PAY.pearl));
+  const lines = [line(N_('Distance'), Math.floor(result.distance / PAY.seaPer))];
+  if (result.gates) lines.push(line(N_('Gates'), result.gates * PAY.gate));
+  if (result.pearls) lines.push(line(N_('Pearls'), result.pearls * PAY.pearl));
   return withMedals(lines, improved.medals);
 }
 
 export function racePay(result, improved) {
-  const lines = [line('Place', PAY.place[result.place - 1] || PAY.place[PAY.place.length - 1])];
-  if (!result.bumps) lines.push(line('Clean race', PAY.clean));
+  const lines = [line(N_('Place'), PAY.place[result.place - 1] || PAY.place[PAY.place.length - 1])];
+  if (!result.bumps) lines.push(line(N_('Clean race'), PAY.clean));
   return withMedals(lines, improved.medals);
 }
 
 function withMedals(lines, medals = []) {
-  if (medals.length) lines.push(line(medals.length === 1 ? 'Medal' : 'Medals', medals.length * PAY.medal));
+  if (medals.length) lines.push(line(medals.length === 1 ? N_('Medal') : N_('Medals'), medals.length * PAY.medal));
   return lines.filter((l) => l.coins > 0);
 }
 
@@ -148,7 +150,7 @@ export function doublePay(save, pay) {
   save.wallet.earned += extra;
   pay.doubled = true;
   pay.coins += extra;
-  pay.lines = [...pay.lines, { label: 'Video', coins: extra }];
+  pay.lines = [...pay.lines, { label: N_('Video'), coins: extra }];
   return extra;
 }
 

@@ -9,6 +9,7 @@
 // voyage is sailed.
 
 import { isDailyUnlocked } from '../platform/save.js';
+import { t, currentLang } from '../i18n/index.js';
 
 export const REMINDER_TIMES = [
   { hour: 9, minute: 0, at: 'morning' },
@@ -188,8 +189,18 @@ export const REMINDERS = [
   { title: "Don't break the streak", text: 'A daily voyage before midnight keeps your run of days going.', at: 'night', needs: 'open' },
 ];
 
-// "9 am, 6 pm and 9 pm".
+// "9 am, 6 pm and 9 pm", or the clock times the game's language uses.
 export function reminderTimes(times = REMINDER_TIMES) {
+  const lang = currentLang();
+  if (lang !== 'en') {
+    try {
+      const locale = lang === 'hi' ? 'hi-IN' : lang;
+      const words = times.map(({ hour, minute }) => new Date(2000, 0, 1, hour, minute).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }));
+      return new Intl.ListFormat(locale, { type: 'conjunction' }).format(words);
+    } catch {
+      // An old WebView without Intl.ListFormat: the English below.
+    }
+  }
   const words = times.map(({ hour, minute }) => {
     const h = hour % 12 || 12;
     return `${h}${minute ? `:${String(minute).padStart(2, '0')}` : ''} ${hour < 12 ? 'am' : 'pm'}`;
@@ -203,11 +214,11 @@ function nextVoyage(save, campaign) {
   return next ? next.name : null;
 }
 
-// The reminders that fit this player now, ready for the phone.
+// The reminders that fit this player now, ready for the phone, in the game's language.
 export function remindersFor(save, campaign) {
   const open = isDailyUnlocked(save, campaign);
   const next = nextVoyage(save, campaign);
   return REMINDERS.filter((r) => (r.needs === 'open' ? open : r.needs === 'new' ? !open : true))
     .filter((r) => next || !r.text.includes('{next}'))
-    .map((r) => ({ title: r.title, text: r.text.replace('{next}', next), at: r.at || '' }));
+    .map((r) => ({ title: t(r.title), text: t(r.text, { next: next && t(next) }), at: r.at || '' }));
 }
