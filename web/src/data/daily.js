@@ -10,9 +10,10 @@ import { createGame, stepGame, drainEvents } from '../world/game.js';
 import { createAutopilot, autopilotInput } from '../world/autopilot.js';
 import { DRIFTERS } from '../world/castaways.js';
 import { angleDiff, toBearing } from '../core/math.js';
+import { festivalOn } from './festivals.js';
 
 // Bump when the generator changes so cached courses are regenerated.
-export const DAILY_VERSION = 2;
+export const DAILY_VERSION = 3;
 
 const FIRST = ['Saltwind', 'Gull', 'Driftwood', 'Cormorant', 'Brine', 'Kelp', 'Sundown', 'Mackerel', 'Lantern', 'Pelican', 'Squall', 'Coral'];
 const SECOND = ['Passage', 'Run', 'Crossing', 'Sound', 'Reach', 'Narrows', 'Shoals', 'Channel', 'Skerries', 'Roads'];
@@ -191,7 +192,24 @@ export function dailyCandidate(key, attempt) {
   if (spot) def.castaways = [{ ...spot, ...rng.pick(DRIFTERS) }];
 
   const startClear = isClear(level, start.x, start.y, 40) && isClear(level, finish.x, finish.y, 30);
-  return startClear ? def : null;
+  if (!startClear) return null;
+  const fest = festivalOn(key);
+  if (fest) dressForFestival(def, fest, key);
+  return def;
+}
+
+// A festival week's daily voyage: the festival's sea, night and weather, a
+// name of its own, and a word about the sail it wins. The course itself is
+// the one the day would have had.
+function dressForFestival(def, fest, key) {
+  const rng = createRng(hashString(`festival:${key}`));
+  def.festival = fest.id;
+  def.theme = fest.theme;
+  def.name = rng.pick(fest.names);
+  def.blurb = `${fest.blurb} ${def.blurb}`;
+  // A squall's rain and darkness stay; night falls over them.
+  def.weather = { ...(def.weather || {}), ...fest.weather };
+  def.tips = [{ at: 0, text: fest.tip }];
 }
 
 // Sail the course with the autopilot; the result is its time, or null when it

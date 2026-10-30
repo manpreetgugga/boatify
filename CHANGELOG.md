@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.35.0] - 2026-10-30
+
+Festival weeks: Halloween, Diwali, Christmas and New Year.
+
+- **A festival's own daily voyage.** For the week around each festival the daily voyage is that festival's, with a name of its own and night falling: jack-o'-lanterns and bats for Halloween, little clay lamps and fireworks for Diwali, snow, the northern lights and a lit tree on every island for Christmas, paper lanterns and fireworks for New Year.
+- **A sail you can only win that week.** Sail the festival voyage home in its week and its sail goes in the Sail Locker for good: Pumpkin, Rangoli, Candy Cane and Firework. Miss the week and it waits for next year; tap a locked one to see when.
+- **The harbor dresses up.** The title screen's sea is decorated for the week too, and says which sail is waiting.
+
 ## [0.34.0] - 2026-10-30
 
 Take your progress to a new phone.

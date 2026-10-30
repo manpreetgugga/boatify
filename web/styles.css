@@ -257,6 +257,16 @@ button:focus-visible {
   color: var(--brass);
 }
 
+/* Festival weeks tint the title's eyebrow and the festival line. */
+.title.halloween { --fest: #ff9a3c; }
+.title.diwali { --fest: #ffc93c; }
+.title.christmas { --fest: #ff6b6b; }
+.title.newyear { --fest: #ffd23f; }
+.title.festive .title-wrap > .eyebrow,
+.rumor.festive span {
+  color: var(--fest);
+}
+
 @keyframes rumor {
   from {
     opacity: 0;

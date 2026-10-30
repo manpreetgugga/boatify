@@ -17,6 +17,7 @@ export function buildLevel(def) {
     id: def.id,
     name: def.name,
     theme: def.theme || 'home',
+    festival: def.festival || null,
     width,
     height,
     islands,

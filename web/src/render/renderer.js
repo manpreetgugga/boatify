@@ -1,6 +1,7 @@
 // Draws a frame: sea, flows, shallows, wake, islands and the life on them,
 // marks, pickups, castaways, sea life, pirates, the regatta fleet and its dirty air, boat,
-// birds, cannonballs and spray, weather and lighting, then the HUD on top.
+// birds, cannonballs and spray, weather and lighting (and a festival's
+// decorations and fireworks in its week), then the HUD on top.
 // The prologue film swaps in its own camera and draws its marks over the sea.
 
 import { createCamera, updateCamera, snapCamera, applyCamera } from './camera.js';
@@ -32,6 +33,7 @@ import { updateIslandLife, drawIslandLife } from './islandlife.js';
 import { drawPirates, drawCannonballs } from './pirates.js';
 import { drawCastaways, shirtOf, skinOf } from './castaways.js';
 import { createLighting, drawLighting } from './lighting.js';
+import { drawFestive, createFestiveSky, drawFestiveSky } from './festive.js';
 import { createHud, drawHud } from './hud.js';
 import { snapFilmCamera, updateFilmCamera, drawFilmWorld, drawFilmLight } from './film.js';
 
@@ -51,6 +53,7 @@ export function createRenderer(canvas) {
     skipper: createSkipper(),
     fleet: createFleetFx(),
     light: createLighting(),
+    sky: createFestiveSky(),
     hud: createHud(),
     quality: 1,
   };
@@ -78,6 +81,7 @@ export function resetView(r, game) {
   r.life = createLifeFx();
   r.skipper = createSkipper();
   r.fleet = createFleetFx();
+  r.sky = createFestiveSky();
   r.hud.minimap = null;
   snapCamera(r.cam, game, r.w, r.h);
 }
@@ -131,6 +135,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawFloes(ctx, game, cam, time);
   drawIslandLife(ctx, r.life, game, cam, time);
   drawColonies(ctx, r.life, game, cam, time);
+  drawFestive(ctx, game, cam, time);
   drawMarks(ctx, game, cam, time);
   drawPickups(ctx, game, cam, time);
   drawCastaways(ctx, game, cam, time);
@@ -169,6 +174,7 @@ export function renderFrame(r, game, dt, time, ui) {
   drawLighting(ctx, r.light, game, cam, time, r.w, r.h);
   drawAurora(ctx, r.fx, game, r.w, r.h, time);
   drawMotes(ctx, r.fx, game, r.w, r.h, dt, time);
+  drawFestiveSky(ctx, r.sky, game, r.w, r.h, dt, r.fx.calm);
   drawLightning(ctx, r.fx, game, r.w, r.h);
   if (film) drawFilmLight(ctx, film, r.w, r.h);
   ctx.restore();

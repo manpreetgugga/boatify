@@ -1,7 +1,8 @@
 // The Sail Locker: sail designs and hull paints. They change how a boat
 // looks, never how it sails. Every medal unlocks one, so the goals beyond the
-// stars have something to show for them out on the water, and a few more are
-// bought with coins (`price`).
+// stars have something to show for them out on the water, a few more are
+// bought with coins (`price`), and each festival week has a sail of its own
+// (`festival`).
 //
 // A sail's `marks` are drawn over the cloth in sail coordinates: `u` runs
 // along the foot from the mast (0) to the clew (1) and `h` up the luff from
@@ -253,6 +254,56 @@ export const SAILS = [
       { dots: [[0.28, 0.36], [0.14, 0.48], [0.44, 0.34]], r: 0.03, color: '#7fd8f0' },
     ],
   },
+  // Won on a festival week's daily voyage, and only then (data/festivals.js).
+  {
+    id: 'pumpkin',
+    name: 'Pumpkin',
+    festival: 'halloween',
+    cloth: '#f28c28',
+    shade: '#cf7016',
+    marks: [
+      { dots: [[0.16, 0.52], [0.36, 0.48]], r: 0.06, color: '#2a1606' },
+      { line: [0.3, 0.035, 3], sharp: true, width: 0.06, color: '#2a1606' },
+      { band: [-0.1, 0.06], color: '#3f6b22' },
+    ],
+  },
+  {
+    id: 'rangoli',
+    name: 'Rangoli',
+    festival: 'diwali',
+    cloth: '#c2185b',
+    shade: '#9c1349',
+    marks: [
+      { band: [0.04, 0.1], color: '#ffc93c' },
+      { star: [0.28, 0.42, 0.15], color: '#ffc93c' },
+      { dots: [[0.28, 0.42], [0.1, 0.3], [0.48, 0.24], [0.14, 0.66], [0.4, 0.62]], r: 0.04, color: '#3fd0c9' },
+    ],
+  },
+  {
+    id: 'candy',
+    name: 'Candy Cane',
+    festival: 'christmas',
+    cloth: '#f7f3ea',
+    shade: '#ddd6c6',
+    marks: [
+      { panel: [0.08, 0.17], color: '#d6283b' },
+      { panel: [0.32, 0.41], color: '#d6283b' },
+      { panel: [0.56, 0.65], color: '#d6283b' },
+      { band: [-0.1, 0.06], color: '#2f8f5b' },
+    ],
+  },
+  {
+    id: 'firework',
+    name: 'Firework',
+    festival: 'newyear',
+    cloth: '#1c2a4a',
+    shade: '#141f38',
+    marks: [
+      { star: [0.26, 0.5, 0.14], color: '#ffd23f' },
+      { dots: [[0.12, 0.34], [0.42, 0.3], [0.1, 0.7], [0.4, 0.72], [0.26, 0.24], [0.52, 0.5]], r: 0.035, color: '#ff8ad0' },
+      { dots: [[0.18, 0.2], [0.48, 0.18], [0.06, 0.52], [0.32, 0.82]], r: 0.03, color: '#7fd8f0' },
+    ],
+  },
 ];
 
 export const HULLS = [
@@ -290,7 +341,7 @@ export function medalFor(item) {
 }
 
 export function isGearUnlocked(save, item) {
-  if (item.price) return !!(save.wallet && save.wallet.owned.includes(`gear:${item.id}`));
+  if (item.price || item.festival) return !!(save.wallet && save.wallet.owned.includes(`gear:${item.id}`));
   return !item.medal || isEarned(save, item.medal);
 }
 

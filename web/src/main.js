@@ -4,6 +4,7 @@
 import { LEVELS } from './data/levels.js';
 import { CAMPAIGN, voyageDef } from './data/worlds.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
+import { festivalOn, awardFestivalSail } from './data/festivals.js';
 import { createGame, stepGame, drainEvents, speedOf, PACE } from './world/game.js';
 import { openSeaDef, reviveRun } from './world/opensea.js';
 import { regattaDef, fleetFor, ordinal } from './world/regatta.js';
@@ -291,7 +292,10 @@ const ui = createUI(root, CAMPAIGN, {
 function startDemo() {
   // The title screen shows the autopilot sailing one of the unlocked voyages.
   const unlocked = CAMPAIGN.filter((l, i) => i === 0 || save.levels[CAMPAIGN[i - 1].id]);
-  const def = voyageDef(unlocked[demoIndex % unlocked.length].id);
+  const plain = voyageDef(unlocked[demoIndex % unlocked.length].id);
+  // In a festival week the title's sea is dressed for it too.
+  const fest = festivalOn(dateKey());
+  const def = fest ? { ...plain, festival: fest.id, weather: { ...plain.weather, ...fest.weather } } : plain;
   demoIndex += 1;
   game = createGame(def, { seed: demoIndex * 7, boat: selectedBoat(save) });
   game.tipsShown = new Set(def.tips.map((t, i) => i));
@@ -416,6 +420,7 @@ function settleVoyage(result) {
     improved = recordResult(save, game.def.id, result, game.notes, daily ? 'daily' : 'levels');
     improved.newBoats = unlockedBoats(save).slice(boatsBefore).map((id) => BOAT_TYPES[id].name);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
+    improved.festivalSail = awardFestivalSail(save, game.def, dateKey());
     const streak = daily ? currentStreak(save, daily) : 0;
     improved.pay = payOut(save, voyagePay(game.def, result, improved, streak), { blackPearls: result.blackPearls, voyage: game.def.id });
     // Keep the fastest run as the ghost (or the first one we see for a voyage).

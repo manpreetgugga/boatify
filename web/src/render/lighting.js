@@ -1,9 +1,11 @@
 // Night and fog: a screen-space overlay with holes cut out where there is
-// light (the boat's lantern, the lighthouse, buoys, glowing pearls).
+// light (the boat's lantern, the lighthouse, buoys, glowing pearls, a
+// festival's lamps).
 
 import { worldToScreen } from './camera.js';
 import { lighthouseLamp } from './terrain.js';
 import { worldLights } from './worldart.js';
+import { festiveLights } from './festive.js';
 
 const RES = 0.5;
 
@@ -83,7 +85,7 @@ export function drawLighting(ctx, light, game, cam, time, w, h) {
     hole(l, x, y, 18 * k, 0.6);
   }
   // Lava, harbor lamps, glowing crystal and the like.
-  for (const [x0, y0, r, strength] of worldLights(level, time)) {
+  for (const [x0, y0, r, strength] of [...worldLights(level, time), ...festiveLights(level)]) {
     const [x, y] = toS(x0, y0);
     const rr = r * k;
     if (x + rr < 0 || y + rr < 0 || x - rr > cw || y - rr > ch) continue;

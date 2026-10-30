@@ -12,6 +12,7 @@ import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { helmsman } from '../render/skipper.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat, ZOOMS } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
+import { festivalOn, festivalById, nextWeek } from '../data/festivals.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
@@ -455,6 +456,16 @@ export function createUI(root, levels, handlers) {
   let worldTab = null;
   const recordOf = (save, def) => (def.daily ? save.daily : save.levels)[def.id];
 
+  // How to win a festival sail: today, if it's that week, else when it comes.
+  function festivalHint(save, g) {
+    const f = festivalById(g.festival);
+    const today = dateKey();
+    const first = isDailyUnlocked(save, levels) ? '' : `Finish the first ${DAILY_UNLOCK} voyages to open the daily voyage, then s`;
+    if (festivalOn(today) === f) return `It's ${f.name} week! ${first || 'S'}ail today's ${f.name} voyage home to win the ${g.name} sail.`;
+    const w = nextWeek(f, today);
+    return `${first || 'S'}ail the daily voyage in ${f.name} week${w ? ` (${dayLabel(w[0])} to ${dayLabel(w[1])})` : ''} to win the ${g.name} sail.`;
+  }
+
   // Charting today's course can take a moment on a slow phone, so the button
   // says so until the briefing is ready.
   function openDaily(save, button, busyLabel) {
@@ -625,12 +636,18 @@ export function createUI(root, levels, handlers) {
       const sailedToday = !!save.daily[dailyId(today)];
       const streak = currentStreak(save, today);
       const orders = dailyOpen ? dayOrders(save, today) : null;
-      const node = el(`<section class="screen scrim title" aria-label="Title">
+      // A festival week dresses the title and names the sail it gives.
+      const fest = festivalOn(today);
+      const sail = fest && SAILS.find((g) => g.id === fest.sail);
+      const talk = fest && dailyOpen && !isGearUnlocked(save, sail)
+        ? `<p class="rumor festive"><span>${esc(fest.name)} week</span> Sail today's ${esc(fest.name)} voyage home to win the ${esc(sail.name)} sail.</p>`
+        : `<p class="rumor"><span>Harbor talk</span> ${esc(pickRumor(save, levels))}</p>`;
+      const node = el(`<section class="screen scrim title ${fest ? `festive ${fest.id}` : ''}" aria-label="Title">
         <div class="title-wrap">
-          <div class="eyebrow">A sailing voyage</div>
+          <div class="eyebrow">${fest ? `${esc(fest.name)} week` : 'A sailing voyage'}</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
           <p class="tagline">A squall took your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it. Ride it. Don't capsize.</p>
-          <p class="rumor"><span>Harbor talk</span> ${esc(pickRumor(save, levels))}</p>
+          ${talk}
           <div class="title-buttons">
             <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? 'Set sail' : 'Start voyage'}</button>
             <button class="btn" data-act="voyages">Voyages</button>
@@ -638,7 +655,7 @@ export function createUI(root, levels, handlers) {
           </div>
           <div class="title-buttons">
             ${orders ? `<button class="btn small ${orders.seen || orders.done.length === orders.picks.length ? '' : 'fresh'}" data-act="orders" aria-label="Orders, ${orders.done.length} of ${orders.picks.length} done">Orders <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span></button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">Daily voyage</button>` : ''}
+            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">${fest ? `${esc(fest.name)} voyage` : 'Daily voyage'}</button>` : ''}
             ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">Open Sea</button>` : ''}
             ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">Regatta</button>` : ''}
             <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
@@ -821,7 +838,7 @@ export function createUI(root, levels, handlers) {
       const pearls = (def.pickups || []).filter((p) => p.kind === 'pearl').length;
       const node = el(`<section class="screen dim" aria-label="Voyage briefing">
         <div class="sheet">
-          <div class="sheet-head"><span class="eyebrow">${def.daily ? `Daily voyage · ${esc(dayLabel(def.daily))}` : esc(voyageLabel(levels[index].id) || `Voyage ${index + 1}`)}</span><h2>${esc(def.name)}</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${def.daily ? `${def.festival ? `${esc(festivalById(def.festival).name)} voyage` : 'Daily voyage'} · ${esc(dayLabel(def.daily))}` : esc(voyageLabel(levels[index].id) || `Voyage ${index + 1}`)}</span><h2>${esc(def.name)}</h2></div>
           <div class="sheet-body"><div class="brief">
             <p class="lead">${esc(def.blurb)}</p>
             <div>
@@ -1009,6 +1026,7 @@ export function createUI(root, levels, handlers) {
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
               <span class="k">Next star</span><span class="v">${result.stars >= 3 ? 'Got them all' : `under ${formatTime(result.stars === 2 ? def.par.gold : def.par.silver)}`}</span>
               ${(improved.newBoats || []).map((name) => `<span class="k">Shipyard</span><span class="v">${esc(name)}<span class="badge">NEW BOAT</span></span>`).join('')}
+              ${improved.festivalSail ? `<span class="k">Sail Locker</span><span class="v">${esc(SAILS.find((g) => g.id === improved.festivalSail.sail).name)} sail<span class="badge">${esc(improved.festivalSail.name.toUpperCase())}</span></span>` : ''}
               ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
             ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
@@ -1200,7 +1218,8 @@ export function createUI(root, levels, handlers) {
         const open = isGearUnlocked(save, g);
         const medal = medalFor(g);
         const name = medal && isSealed(medal, save, LEVELS) ? 'A secret medal' : medal && esc(medal.name);
-        const sub = g.price ? (open ? 'From the Shop' : priceTag({ coins: g.price })) : !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
+        const fest = g.festival && festivalById(g.festival);
+        const sub = fest ? `${open ? '' : icon('lock', 13)}${esc(fest.name)} week` : g.price ? (open ? 'From the Shop' : priceTag({ coins: g.price })) : !medal ? `The ${esc(type.name.split(' ').pop().toLowerCase())}'s own` : open ? name : `${icon('lock', 13)}${name}`;
         const state = open ? '' : g.price ? `, ${formatCoins(g.price)} coins` : ', locked';
         return `<button class="gear ${open ? '' : g.price ? 'for-sale' : 'locked'}" data-kind="${kind}" data-id="${g.id}" aria-label="${esc(g.name)}${state}">
             <canvas class="gear-art" aria-hidden="true"></canvas><b>${esc(g.name)}</b><small>${sub}</small></button>`;
@@ -1210,7 +1229,7 @@ export function createUI(root, levels, handlers) {
           <div class="sheet-head"><h2>Sail Locker</h2><span class="eyebrow">${gearCount(save)} / ${GEAR_TOTAL}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
           <div class="sheet-body">
             <div class="locker-top"><canvas class="locker-preview" aria-hidden="true"></canvas>
-              <div><b class="locker-fit"></b><p class="locker-blurb">Every medal puts a new sail or hull paint in the locker, and a few more are for sale. They change how your boat looks, never how it sails.</p></div></div>
+              <div><b class="locker-fit"></b><p class="locker-blurb">Every medal puts a new sail or hull paint in the locker, a few more are for sale, and each festival week brings a sail of its own. They change how your boat looks, never how it sails.</p></div></div>
             <h3 class="setting-group">Sails</h3>
             <div class="gear-grid">${SAILS.map((g) => card('sail', g)).join('')}</div>
             <h3 class="setting-group">Hull paint</h3>
@@ -1258,6 +1277,10 @@ export function createUI(root, levels, handlers) {
               paint();
             },
           });
+          return;
+        }
+        if (!isGearUnlocked(save, g) && g.festival) {
+          ui.toast(festivalHint(save, g));
           return;
         }
         if (!isGearUnlocked(save, g)) {
