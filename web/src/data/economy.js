@@ -130,9 +130,9 @@ export function payOut(save, lines, { blackPearls = 0, voyage = null } = {}) {
 }
 
 // Is this voyage's black pearl still out there?
-// Medals and the harbourmaster's orders pay what they pay; a video doubles
-// the rest.
-const ONCE = new Set(['Medal', 'Medals', 'Orders']);
+// Medals, the harbourmaster's orders and the Regatta Cup's prize pay what
+// they pay; a video doubles the rest.
+const ONCE = new Set(['Medal', 'Medals', 'Orders', 'Cup prize']);
 
 // What a video on the results would add: the voyage's own coins again.
 export function doubleOf(pay) {

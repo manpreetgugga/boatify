@@ -1,6 +1,6 @@
 // Regatta: a race round the marks against three rival boats. A windward
-// start, a beat up to mark 1, a reach across to mark 2 and a run back down to
-// the harbor. Marks are rounded in order. The rivals sail with the autopilot
+// start, then the course's marks in order and a run down to the harbor (see
+// COURSES). Marks are rounded in order. The rivals sail with the autopilot
 // on boats tuned by the fleet's tier, and every boat leaves dirty air
 // downwind: sail in another boat's wind shadow and you slow down.
 
@@ -25,6 +25,11 @@ const DIRTY_LOSS = 0.25; // and takes up to this much of the wind
 const GIVE_WAY = 48; // rivals steer clear of a boat this close ahead
 const PLACE_HOLD = 1.2; // seconds a new place has to hold before it is called out
 const QUIET_START = 12; // the fleet sorts itself out off the line before places are called
+// A rival barely moving for this long (pinned against another boat, say)
+// slips through the fleet for a few seconds to get free.
+const STUCK_SPEED = 1.2;
+const STUCK_TIME = 8;
+const SLIP_TIME = 5;
 // Boats are drawn larger than their hulls (see render/boat.js), so they
 // bump at about the size they look.
 const BUMP_SCALE = 1.6;
@@ -58,53 +63,141 @@ export function ordinal(n) {
   return `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 }
 
-export function regattaDef(seed = 1, fleet = 0) {
-  const rng = createRng(hashString(`regatta:${seed}`));
+// The courses. A single race is always the Triangle; the Regatta Cup sails
+// all four in turn.
+export const COURSES = [
+  { id: 'triangle', name: 'The Triangle', legs: 'Beat up to mark 1, reach across to mark 2, then run for the harbor.' },
+  { id: 'updown', name: 'Up and Down', legs: 'Beat up to mark 1, run back down to mark 2, beat up again to mark 3, then run for the harbor.' },
+  { id: 'slalom', name: 'The Slalom', legs: 'Reach from side to side round marks 1, 2 and 3, then run for the harbor.' },
+  { id: 'island', name: 'Round the Island', legs: 'Sail round the island by its three marks, then run for the harbor.' },
+];
+
+export function courseById(id) {
+  return COURSES.find((c) => c.id === id) || COURSES[0];
+}
+
+const mark = (x, y, label) => ({ x: Math.round(x), y: Math.round(y), r: MARK_R, label });
+const isle = (rng, seed, i, s, jag = 0.3, stretch = [rng.range(0.85, 1.3), rng.range(0.75, 1)]) => ({
+  pts: blob(Math.round(s.x), Math.round(s.y), Math.round(s.r), (seed * 13 + i * 29) % 997, jag, 28, stretch, rng.range(0, Math.PI)),
+  kind: rng.chance(0.5) ? 'sand' : 'rock',
+});
+const rocksAt = (x, y, spread, count, seed) => rockField(Math.round(x), Math.round(y), spread, count, seed % 991, 5, 9).map((r) => ({ material: 'rock', ...r }));
+const gust = (x, y) => ({ x: Math.round(x), y: Math.round(y), kind: 'gust' });
+
+// Each course draws its marks first, before the start line, then the rest of
+// its sea. `wing` (1 or -1) mirrors a course north to south. Courses are
+// laid out in the same 1700 by 1100 sea, with the wind from the west, the
+// start line at x 1180 and the harbor near the east edge.
+const CHARTS = {
+  // Mark 2 lies south (wing 1) or north (-1) of mark 1.
+  triangle: {
+    marks: (rng, mid, wing) => [mark(rng.range(700, 760), mid + rng.range(-50, 50), '1'), mark(rng.range(720, 800), mid + wing * rng.range(320, 360), '2')],
+    // An island off the beat on the far side from mark 2, and one upwind of
+    // mark 2 whose lee falls across the approach to it.
+    sea: (rng, mid, wing, seed) => ({
+      islands: [
+        { x: rng.range(940, 1060), y: mid - wing * rng.range(330, 380), r: rng.range(55, 72) },
+        { x: rng.range(330, 420), y: mid + wing * rng.range(230, 290), r: rng.range(50, 64) },
+      ].map((s, i) => isle(rng, seed, i, s)),
+      rocks: rocksAt(rng.range(1100, 1200), mid + wing * rng.range(240, 290), 30, 4, seed * 7),
+      finishY: mid - wing * rng.range(40, 110),
+      pickups: [gust(rng.range(950, 1050), mid + wing * rng.range(150, 210)), gust(rng.range(1150, 1250), mid - wing * rng.range(20, 80))],
+    }),
+  },
+  // Windward and leeward: up to mark 1, back down to mark 2 beside the
+  // start, up again to mark 3 and home on the other side of the course.
+  updown: {
+    marks: (rng, mid, wing) => [
+      mark(rng.range(760, 800), mid + rng.range(-40, 40), '1'),
+      mark(rng.range(1260, 1300), mid + wing * rng.range(170, 210), '2'),
+      mark(rng.range(940, 990), mid - wing * rng.range(20, 80), '3'),
+    ],
+    sea: (rng, mid, wing, seed) => ({
+      islands: [
+        { x: rng.range(990, 1060), y: mid - wing * rng.range(370, 400), r: rng.range(52, 66) },
+        { x: rng.range(560, 640), y: mid + wing * rng.range(240, 290), r: rng.range(50, 62) },
+      ].map((s, i) => isle(rng, seed, i, s)),
+      rocks: rocksAt(rng.range(1060, 1140), mid + wing * rng.range(340, 380), 30, 4, seed * 7),
+      finishY: mid - wing * rng.range(140, 200),
+      pickups: [gust(rng.range(980, 1060), mid + wing * rng.range(60, 120)), gust(rng.range(1080, 1160), mid - wing * rng.range(150, 200))],
+    }),
+  },
+  // Three marks on alternate sides, every leg a reach, and a run home.
+  slalom: {
+    marks: (rng, mid, wing) => [
+      mark(rng.range(1010, 1060), mid - wing * rng.range(250, 290), '1'),
+      mark(rng.range(830, 880), mid + wing * rng.range(250, 290), '2'),
+      mark(rng.range(650, 700), mid - wing * rng.range(250, 290), '3'),
+    ],
+    sea: (rng, mid, wing, seed) => ({
+      islands: [
+        { x: rng.range(1050, 1110), y: mid + wing * rng.range(370, 400), r: rng.range(48, 60) },
+        { x: rng.range(470, 540), y: mid - wing * rng.range(140, 190), r: rng.range(46, 58) },
+      ].map((s, i) => isle(rng, seed, i, s)),
+      // A few rocks between the boards, in the middle of the slalom.
+      rocks: rocksAt(rng.range(845, 870), mid - wing * rng.range(0, 30), 22, 3, seed * 7),
+      finishY: mid + wing * rng.range(60, 140),
+      pickups: [gust(rng.range(930, 970), mid + wing * rng.range(60, 110)), gust(rng.range(1150, 1250), mid - wing * rng.range(40, 100))],
+    }),
+  },
+  // A big island in the middle, rounded by marks to the north, west and
+  // south of it: clockwise when wing is 1, anticlockwise when it is -1.
+  island: {
+    marks: (rng, mid, wing) => [
+      mark(rng.range(880, 920), mid - wing * rng.range(330, 360), '1'),
+      mark(rng.range(470, 510), mid + rng.range(-30, 30), '2'),
+      mark(rng.range(880, 920), mid + wing * rng.range(330, 360), '3'),
+    ],
+    sea: (rng, mid, wing, seed) => ({
+      islands: [
+        isle(rng, seed, 0, { x: rng.range(860, 900), y: mid + rng.range(-20, 20), r: rng.range(105, 118) }, 0.22, [rng.range(1, 1.15), rng.range(0.85, 1)]),
+        isle(rng, seed, 1, { x: rng.range(1260, 1320), y: mid + wing * rng.range(390, 420), r: rng.range(44, 54) }),
+      ],
+      rocks: rocksAt(rng.range(1060, 1120), mid - wing * rng.range(400, 430), 26, 3, seed * 7),
+      finishY: mid - wing * rng.range(20, 80),
+      pickups: [gust(rng.range(700, 760), mid + wing * rng.range(150, 200)), gust(rng.range(1180, 1240), mid + wing * rng.range(110, 170))],
+    }),
+  },
+};
+
+export function regattaDef(seed = 1, fleet = 0, courseId = 'triangle') {
+  const course = courseById(courseId);
+  const chart = CHARTS[course.id];
+  // The Triangle keeps the seeds it always had.
+  const rng = createRng(hashString(course.id === 'triangle' ? `regatta:${seed}` : `regatta:${course.id}:${seed}`));
   const [W, H] = SIZE;
   const from = 270 + rng.int(-2, 2) * 4;
   const mid = Math.round(H / 2 + rng.range(-40, 40));
-  const wing = rng.chance(0.5) ? 1 : -1; // mark 2 lies south (1) or north (-1)
-  const marks = [
-    { x: Math.round(rng.range(700, 760)), y: Math.round(mid + rng.range(-50, 50)), r: MARK_R, label: '1' },
-    { x: Math.round(rng.range(720, 800)), y: Math.round(mid + wing * rng.range(320, 360)), r: MARK_R, label: '2' },
-  ];
+  const wing = rng.chance(0.5) ? 1 : -1;
+  const marks = chart.marks(rng, mid, wing);
   // Four boats abreast on the line, close-hauled; you get one of the middle berths.
   const slots = [0, 1, 2, 3].map((i) => ({ x: START_X, y: Math.round(mid + (i - 1.5) * SLOT) }));
   const you = rng.int(1, 2);
   const [player] = slots.splice(you, 1);
   const heading = (from + (rng.chance(0.5) ? 50 : -50) + 360) % 360;
-  // An island off the beat on the far side from mark 2, and one upwind of
-  // mark 2 whose lee falls across the approach to it.
-  const isl1 = { x: rng.range(940, 1060), y: mid - wing * rng.range(330, 380), r: rng.range(55, 72) };
-  const isl2 = { x: rng.range(330, 420), y: mid + wing * rng.range(230, 290), r: rng.range(50, 64) };
-  const islands = [isl1, isl2].map((s, i) => ({
-    pts: blob(Math.round(s.x), Math.round(s.y), Math.round(s.r), (seed * 13 + i * 29) % 997, 0.3, 28, [rng.range(0.85, 1.3), rng.range(0.75, 1)], rng.range(0, Math.PI)),
-    kind: rng.chance(0.5) ? 'sand' : 'rock',
-  }));
-  const rocks = rockField(Math.round(rng.range(1100, 1200)), Math.round(mid + wing * rng.range(240, 290)), 30, 4, (seed * 7) % 991, 5, 9).map((r) => ({ material: 'rock', ...r }));
+  const sea = chart.sea(rng, mid, wing, seed);
+  const first = marks.length === 2 ? 'mark 1, then mark 2' : 'marks 1, 2 and 3 in turn';
   return {
     id: REGATTA,
     race: true,
+    course: course.id,
     seed,
-    windSeed: `regatta:${seed}`,
+    windSeed: course.id === 'triangle' ? `regatta:${seed}` : `regatta:${course.id}:${seed}`,
     fleet,
-    name: 'Regatta',
-    blurb: REGATTA_BLURB,
+    name: course.id === 'triangle' ? 'Regatta' : course.name,
+    blurb: course.id === 'triangle' ? REGATTA_BLURB : course.legs,
     size: SIZE,
     start: { ...player, heading },
     fleetStart: slots,
-    finish: { x: W - 210, y: Math.round(mid - wing * rng.range(40, 110)), r: 52, kind: 'harbor' },
+    finish: { x: W - 210, y: Math.round(sea.finishY), r: 52, kind: 'harbor' },
     wind: { from, speed: 16, gust: 0.26, shift: 9, period: 38 },
-    islands,
-    rocks,
-    pickups: [
-      { x: Math.round(rng.range(950, 1050)), y: Math.round(mid + wing * rng.range(150, 210)), kind: 'gust' },
-      { x: Math.round(rng.range(1150, 1250)), y: Math.round(mid - wing * rng.range(20, 80)), kind: 'gust' },
-    ],
+    islands: sea.islands,
+    rocks: sea.rocks,
+    pickups: sea.pickups,
     checkpoints: marks,
     par: { gold: 0, silver: 0 },
     tips: [
-      { at: 0.5, text: 'Race the fleet round mark 1, then mark 2, then into the harbor. Follow the gold line: upwind it zig-zags, so tack where it turns.' },
+      { at: 0.5, text: `Race the fleet round ${first}, then into the harbor. Follow the gold line: upwind it zig-zags, so tack where it turns.` },
       { at: 14, text: 'Every sail leaves dirty air downwind. Keep out of the shadow behind a rival, or it slows you down.' },
     ],
   };
@@ -134,6 +227,8 @@ export function prepareRace(game) {
       capsized: 0,
       capsizeTimer: 0,
       capsizes: 0,
+      slow: 0, // seconds barely moving
+      slip: 0, // seconds left passing through the other boats
       wind: { wx: 0, wy: 0, speed: 0, angle: 0, gust: 0, storm: 0 },
       env: { wx: 0, wy: 0, cx: 0, cy: 0 },
     };
@@ -276,6 +371,11 @@ function sailRival(game, r, dt) {
       r.think += THINK;
     }
     stepBoat(boat, r.input, env, dt);
+    r.slow = Math.hypot(boat.vx, boat.vy) < STUCK_SPEED ? r.slow + dt : 0;
+    if (r.slow > STUCK_TIME) {
+      r.slip = SLIP_TIME;
+      r.slow = 0;
+    }
     if (Math.abs(boat.heel) > CAPSIZE_ANGLE) {
       r.capsizeTimer += dt;
       if (r.capsizeTimer > 0.35) {
@@ -380,9 +480,12 @@ function bumpCircles(boat) {
 function bumpBoats(game, dt) {
   const race = game.race;
   race.bumpWait = Math.max(0, race.bumpWait - dt);
+  for (const r of race.rivals) r.slip = Math.max(0, r.slip - dt);
   const boats = [game.boat, ...race.rivals.map((r) => r.boat)];
+  const slipping = [false, ...race.rivals.map((r) => r.slip > 0)];
   for (let i = 0; i < boats.length; i++) {
     for (let j = i + 1; j < boats.length; j++) {
+      if (slipping[i] || slipping[j]) continue;
       const a = boats[i];
       const b = boats[j];
       if (Math.abs(a.x - b.x) > 40 || Math.abs(a.y - b.y) > 40) continue;
@@ -469,6 +572,7 @@ export function finishRace(game) {
     fleet: race.fleet,
     bumps: race.bumps,
     stars: place === 1 ? 3 : place === 2 ? 2 : 1,
+    marks,
     standings: race.order.map((e) => ({ name: e.name, player: !!e.player, time: e.time, marks: Math.min(e.next, marks) })),
   };
 }

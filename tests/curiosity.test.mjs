@@ -73,6 +73,7 @@ test('harbor talk is about what is left to find', () => {
   for (const l of LEVELS) for (const c of l.castaways || []) save.crew.push({ name: c.name, line: c.line });
   save.openSea.runs = 1;
   save.regatta.races = 1;
+  save.wallet.owned.push('boat:cutter'); // and the Regatta Cup won the Silver Cutter
   assert.deepEqual(rumors(save, LEVELS), SAYINGS);
 });
 

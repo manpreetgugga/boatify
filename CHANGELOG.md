@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.39.0] - 2026-10-30
+
+The Regatta Cup: four races on four courses, with points, a trophy and a boat to win.
+
+- **Four courses.** The Triangle you know, plus Up and Down (beat up to the top mark, run back down, beat up again and run home), The Slalom (weave between three marks) and Round the Island (go all the way round). Each has its own racing line, and the rivals sail every one.
+- **Points for every race.** 10, 6, 4 and 2 points from first to fourth. The most points after the fourth race takes the cup. The cup page shows the races you've sailed, where you finished and the points table.
+- **A trophy and a boat.** Win the cup and its trophy goes on the shelf, one for each fleet. The first cup you win also wins the Silver Cutter, a fast racer that points high but heels in a gust. The cup pays 500 coins and 2 black pearls for first, and less for the other places.
+- **Find it in the Regatta.** The Regatta's briefing has a Cup button. A cup under way and your trophies travel with your backup code.
+
 ## [0.38.0] - 2026-10-30
 
 The Sea Atlas: a book of everything you meet at sea.

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LEVELS } from '../web/src/data/levels.js';
-import { BOAT_TYPES, BOAT_ORDER } from '../web/src/physics/boat.js';
+import { BOAT_TYPES, BOAT_ORDER, STAR_BOATS } from '../web/src/physics/boat.js';
 import { createGame, stepGame, drainEvents } from '../web/src/world/game.js';
 import { createAutopilot, autopilotInput } from '../web/src/world/autopilot.js';
 import { createRecorder, recordGhost, finishGhost } from '../web/src/world/ghost.js';
@@ -28,10 +28,27 @@ test('every boat in the shipyard is complete and they unlock in order', () => {
     for (const k of ['name', 'tag', 'blurb', 'look', 'stats']) assert.ok(t[k], `${id}.${k}`);
     for (const k of ['hull', 'hullDark', 'deck', 'sail', 'sailShade']) assert.match(t.look[k], /^#[0-9a-f]{6}$/i, `${id}.look.${k}`);
     for (const v of Object.values(t.stats)) assert.ok(v >= 1 && v <= 5);
+    if (t.prize) continue;
     assert.ok(t.unlock > last, `${id} unlocks after the one before`);
     last = t.unlock;
   }
   assert.equal(BOAT_TYPES[BOAT_ORDER[0]].unlock, 0, 'the first boat is free');
+  // Prize boats come after every boat the stars unlock, and no stars unlock them.
+  assert.deepEqual(BOAT_ORDER.slice(0, STAR_BOATS.length), STAR_BOATS);
+  for (const id of BOAT_ORDER.slice(STAR_BOATS.length)) assert.ok(BOAT_TYPES[id].prize && BOAT_TYPES[id].unlock === undefined, id);
+});
+
+test('the Silver Cutter is won in the Regatta Cup, not with stars', () => {
+  const save = loadSave();
+  const r = { time: 60, stars: 3, pearls: 0, pearlsTotal: 5 };
+  for (const def of LEVELS) recordResult(save, def.id, r);
+  assert.deepEqual(unlockedBoats(save), STAR_BOATS, 'every star unlocks every boat but the prize');
+  assert.equal(isBoatUnlocked(save, 'cutter'), false);
+  save.settings.boat = 'cutter';
+  assert.equal(selectedBoat(save), 'sloop');
+  save.wallet.owned.push('boat:cutter');
+  assert.ok(isBoatUnlocked(save, 'cutter'));
+  assert.equal(selectedBoat(save), 'cutter');
 });
 
 test('a tougher hull takes less damage from the same rocks', () => {

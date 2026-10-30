@@ -157,8 +157,8 @@ function drawSeaClock(ctx, game, L, time) {
   text(ctx, formatDistance(sea.best), x + w - 10, y + 31, 15, C.text, 'right', 700);
 }
 
-// In a regatta: the leg you are on, your place in the fleet and the race
-// clock, with a warning chip underneath while you sail in dirty air.
+// In a regatta (or a cup race): the leg you are on, your place in the fleet
+// and the race clock, with a warning chip underneath while you sail in dirty air.
 function drawRaceBox(ctx, game, L, time) {
   drawPause(ctx, L);
   const race = game.race;
@@ -168,7 +168,8 @@ function drawRaceBox(ctx, game, L, time) {
   panel(ctx, x, y, w, 44, 10);
   const marks = game.level.checkpoints.length;
   const leg = game.nextCheckpoint < marks ? `MARK ${game.nextCheckpoint + 1}/${marks}` : 'FINISH';
-  text(ctx, 'REGATTA', x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
+  const cup = game.def.cup;
+  text(ctx, cup ? `CUP ${cup.race}/${cup.of}` : 'REGATTA', x + 12, y + 13, 11, C.textDim, 'left', 600, FONT.body);
   text(ctx, leg, x + w - 10, y + 13, 11, C.warn, 'right', 700, FONT.body);
   text(ctx, formatTime(game.time), x + 12, y + 30, 21, C.text, 'left', 700);
   const place = race.place || 1;

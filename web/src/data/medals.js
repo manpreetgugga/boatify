@@ -1,7 +1,7 @@
 // Medals: goals beyond the stars. Some are won in a single voyage, others
 // count up across the whole save. A medal, once earned, is kept for good.
 
-import { BOAT_ORDER } from '../physics/boat.js';
+import { STAR_BOATS } from '../physics/boat.js';
 import { toMeters } from '../physics/sailing.js';
 import { unlockedBoats, isUnlocked, isDailyUnlocked } from '../platform/save.js';
 import { dateKey } from './daily.js';
@@ -166,14 +166,14 @@ export const MEDALS = [
     name: 'Shipwright',
     icon: 'hammer',
     text: 'Unlock every boat in the Shipyard.',
-    progress: (save) => [unlockedBoats(save).length, BOAT_ORDER.length],
+    progress: (save) => [count(STAR_BOATS, (id) => unlockedBoats(save).includes(id)), STAR_BOATS.length],
   },
   {
     id: 'fleet-captain',
     name: 'Fleet Captain',
     icon: 'fleet',
     text: 'Finish a voyage in every boat.',
-    progress: (save) => [count(BOAT_ORDER, (id) => save.sailed.includes(id)), BOAT_ORDER.length],
+    progress: (save) => [count(STAR_BOATS, (id) => save.sailed.includes(id)), STAR_BOATS.length],
   },
   {
     id: 'day-sailor',

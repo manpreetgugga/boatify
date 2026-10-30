@@ -32,7 +32,7 @@ import { createGame, stepGame, drainEvents } from '../web/src/world/game.js';
 import { isClear } from '../web/src/world/collision.js';
 import { holdsBlackPearl } from '../web/src/world/blackpearls.js';
 import { openSeaDef, reviveRun, endRun } from '../web/src/world/opensea.js';
-import { BOAT_ORDER } from '../web/src/physics/boat.js';
+import { STAR_BOATS } from '../web/src/physics/boat.js';
 
 const total = (lines) => lines.reduce((a, l) => a + l.coins, 0);
 const rich = (coins = 0, blackPearls = 0) => {
@@ -154,7 +154,10 @@ test('a black pearl trades for coins', () => {
 });
 
 test('black pearls unlock a boat before the stars do, and a reset keeps it', () => {
-  for (const id of BOAT_ORDER.slice(1)) assert.ok(BOAT_PRICES[id] > 0, id);
+  for (const id of STAR_BOATS.slice(1)) assert.ok(BOAT_PRICES[id] > 0, id);
+  // The Regatta Cup's boat is won, never bought.
+  assert.equal(BOAT_PRICES.cutter, undefined);
+  assert.ok(!buyBoat(rich(0, 99), 'cutter'));
   const save = rich(0, BOAT_PRICES.proa);
   assert.ok(!isBoatUnlocked(save, 'proa'));
   assert.ok(!buyBoat(save, 'galleon'));

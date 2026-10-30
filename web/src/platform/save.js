@@ -6,6 +6,7 @@ import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { dateKey } from '../data/daily.js';
 import { blankWallet, cleanWallet } from '../data/economy.js';
 import { cleanOrders } from '../data/orders.js';
+import { blankCup, cleanCup } from '../data/cup.js';
 
 const KEY = 'boatify.save.v1';
 const GHOST_KEY = 'boatify.ghosts.v1';
@@ -69,6 +70,7 @@ function blank() {
     daily: {},
     openSea: { best: 0, gates: 0, runs: 0 }, // best distance east, most gates in a run
     regatta: { races: 0, wins: 0, podiums: 0, best: null }, // best: fastest winning time
+    cup: blankCup(), // the Regatta Cup under way, cups sailed and trophies won (data/cup.js)
     streak: { count: 0, best: 0, last: null },
     settings: { ...DEFAULT_SETTINGS },
     notes: [],
@@ -115,6 +117,7 @@ export function cleanSave(data) {
     streak: { ...base.streak, ...(isObj(data.streak) ? data.streak : {}) },
     openSea: { ...base.openSea, ...(isObj(data.openSea) ? data.openSea : {}) },
     regatta: { ...base.regatta, ...(isObj(data.regatta) ? data.regatta : {}) },
+    cup: cleanCup(data.cup),
     levels: isObj(data.levels) ? data.levels : {},
     daily: isObj(data.daily) ? data.daily : {},
     notes: Array.isArray(data.notes) ? data.notes : [],
@@ -260,10 +263,12 @@ export function currentStreak(save, today) {
   return s.last === today || s.last === dayBefore(today) ? s.count : 0;
 }
 
-// Boats in the Shipyard unlock with campaign stars, or early with black pearls.
+// Boats in the Shipyard unlock with campaign stars, or early with black
+// pearls. A prize boat is only ever won.
 export function isBoatUnlocked(save, id) {
   const type = BOAT_TYPES[id];
-  return !!type && (totalStars(save) >= type.unlock || !!(save.wallet && save.wallet.owned.includes(`boat:${id}`)));
+  const owned = !!(save.wallet && save.wallet.owned.includes(`boat:${id}`));
+  return !!type && (owned || (!type.prize && totalStars(save) >= type.unlock));
 }
 
 export function unlockedBoats(save) {

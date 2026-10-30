@@ -117,10 +117,34 @@ export const BOAT_TYPES = {
     stats: { speed: 3, pointing: 2, stability: 5, agility: 1, toughness: 5 },
     look: { hull: '#5a3520', hullDark: '#2f1a0e', deck: '#c49663', sail: '#f3ead6', sailShade: '#d8ccb1', trim: '#c9a13b' },
   },
+  // No stars or black pearls buy her: she is the Regatta Cup's prize.
+  cutter: {
+    id: 'cutter',
+    name: 'Silver Cutter',
+    tag: 'Racer, won in the Regatta Cup',
+    blurb: 'A thoroughbred racing hull with a tall, flat-cut rig. Quick on every point of sail and high on the wind, but she heels hard in a gust and dents on the rocks.',
+    prize: 'cup',
+    length: 11.5,
+    beam: 3.7,
+    sailPower: 0.0545,
+    surgeDrag: 0.0315,
+    surgeDragLinear: 0.05,
+    swayDrag: 5.6,
+    swayDragLinear: 10.5,
+    turnRate: 1.8,
+    rightingMoment: 52,
+    trimSpeed: 2,
+    toughness: 0.8,
+    stats: { speed: 5, pointing: 4, stability: 2, agility: 4, toughness: 2 },
+    look: { hull: '#c3cad1', hullDark: '#6f7a85', deck: '#e4d8bc', sail: '#ffffff', sailShade: '#d5dce4' },
+  },
 };
 
-// Shipyard order, which is also the order they unlock in.
-export const BOAT_ORDER = ['sloop', 'skiff', 'proa', 'junk', 'galleon'];
+// Shipyard order, which is also the order they unlock in. Prize boats come
+// last: they are won, not unlocked.
+export const BOAT_ORDER = ['sloop', 'skiff', 'proa', 'junk', 'galleon', 'cutter'];
+// The boats stars (or black pearls) unlock.
+export const STAR_BOATS = BOAT_ORDER.filter((id) => !BOAT_TYPES[id].prize);
 
 export const CAPSIZE_ANGLE = 1.0; // radians (~57 degrees)
 export const HEEL_WARNING = 0.72; // radians (~41 degrees)

@@ -210,7 +210,28 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   step(`${race[2]} in ${race[1].time.toFixed(1)} s, ${race[1].bumps} bumps`);
   await snap('09e-race-results');
 
+  step('regatta cup: the last race of a cup well in hand wins the trophy and the Silver Cutter');
+  await tab.evaluate(() => {
+    window.__boatify.save.cup.now = { fleet: 0, race: 3, points: [30, 8, 6, 4], last: [0, 1, 2, 3], places: [1, 1, 2] };
+    window.__boatify.openCup();
+  });
+  await tab.waitForSelector('section[aria-label="Regatta Cup"].open');
+  const legs = await tab.locator('.cup-races li').evaluateAll((li) => li.map((l) => l.className));
+  if (legs.join() !== 'done,done,done,next') throw new Error(`cup races ${legs}`);
+  await tab.waitForTimeout(300);
+  await snap('09e1-cup');
+  await tab.getByRole('button', { name: 'Race 4: Round the Island' }).click();
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'playing' && window.__boatify.state().race.course === 'island', null, { timeout: 8000 });
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'results', null, { timeout: 120000 });
+  await tab.waitForTimeout(800);
+  const cup = await tab.evaluate(() => [window.__boatify.save.cup, window.__boatify.save.wallet.owned.includes('boat:cutter'), document.querySelector('section[aria-label="Cup over"] h2').textContent, document.querySelector('.cup-won span').textContent]);
+  if (cup[0].now !== null || cup[0].sailed !== 1 || cup[0].trophies.club !== 1 || !cup[1] || cup[2] !== 'You won the cup!' || cup[3] !== 'Club Cup') throw new Error(`cup ${JSON.stringify(cup)}`);
+  await tab.getByRole('button', { name: 'Regatta Cup' }).waitFor();
+  step(`${cup[2]} The ${cup[3]} is on the shelf`);
+  await snap('09e2-cup-won');
+
   step('open sea second wind: two black pearls buy thirty more seconds, once a run');
+  const pearlsWon = await tab.evaluate(() => window.__boatify.save.wallet.blackPearls);
   await tab.evaluate(() => {
     window.__boatify.setAutopilot(false);
     window.__boatify.setTimeScale(1);
@@ -226,20 +247,21 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.getByRole('button', { name: /Sail on/ }).click();
   await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
   const revived = await tab.evaluate(() => [window.__boatify.state().sea.clock, window.__boatify.save.wallet.blackPearls, window.__boatify.save.openSea.runs]);
-  if (!(revived[0] > 25) || revived[1] !== 1 || revived[2] !== 1) throw new Error(`second wind ${JSON.stringify(revived)}`);
+  if (!(revived[0] > 25) || revived[1] !== pearlsWon + 1 || revived[2] !== 1) throw new Error(`second wind ${JSON.stringify(revived)}`);
   await tab.evaluate(() => window.__boatify.setSeaClock(0.5));
   await tab.waitForFunction(() => window.__boatify.state().mode === 'results', null, { timeout: 15000 });
   const runs = await tab.evaluate(() => window.__boatify.save.openSea.runs);
   if (runs !== 2) throw new Error(`open sea runs after a second wind: ${runs}`);
   step(`back on the water with ${revived[0].toFixed(0)} s, then the run ended for good`);
 
-  step('shipyard: five boats, the sloop is sailing');
+  step('shipyard: six boats, the sloop is sailing, the cup won the Silver Cutter');
   await tab.evaluate(() => window.__boatify.showTitle());
   await tab.getByRole('button', { name: 'Shipyard' }).click();
   await tab.waitForSelector('section[aria-label="Shipyard"].open');
   const cards = await tab.locator('.boat-card').count();
   const picked = await tab.locator('.boat-card.picked h3').textContent();
-  if (cards !== 5 || picked !== 'Driftwood Sloop') throw new Error(`shipyard shows ${cards} boats, picked ${picked}`);
+  const cutter = await tab.locator('.boat-card', { hasText: 'Silver Cutter' }).getAttribute('class');
+  if (cards !== 6 || picked !== 'Driftwood Sloop' || /locked/.test(cutter)) throw new Error(`shipyard shows ${cards} boats, picked ${picked}, cutter ${cutter}`);
   await tab.waitForTimeout(300);
   await snap('10-shipyard');
 
@@ -301,7 +323,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.locator('.confirm').getByRole('button', { name: /Unlock/ }).click();
   await tab.waitForSelector('section[aria-label="Shop"].open');
   const shop = await tab.evaluate(() => ({ ...window.__boatify.save.wallet, boat: window.__boatify.save.settings.boat }));
-  if (shop.jars !== 1 || shop.blackPearls !== 0 || !shop.owned.includes('boat:skiff') || shop.boat !== 'skiff') throw new Error(`shop ${JSON.stringify(shop)}`);
+  if (shop.jars !== 1 || shop.blackPearls !== pearlsWon || !shop.owned.includes('boat:skiff') || shop.boat !== 'skiff') throw new Error(`shop ${JSON.stringify(shop)}`);
   step(`${shop.coins} coins left, a jar in the hold, the skiff unlocked`);
   await tab.waitForTimeout(300);
   await snap('11c-shop');

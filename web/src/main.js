@@ -8,6 +8,7 @@ import { festivalOn, awardFestivalSail } from './data/festivals.js';
 import { createGame, stepGame, drainEvents, speedOf, PACE } from './world/game.js';
 import { openSeaDef, reviveRun } from './world/opensea.js';
 import { regattaDef, fleetFor, ordinal } from './world/regatta.js';
+import { startCup, cupCourse, scoreCupRace, cupPay, CUP_RACES } from './data/cup.js';
 import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
 import { createAutopilot, autopilotInput } from './world/autopilot.js';
@@ -68,7 +69,7 @@ const audio = createAudio();
 
 let mode = 'title'; // title | film | countdown | playing | paused | finishing | offer | results
 let game = null;
-let levelIndex = 0; // campaign index, 'daily', 'sea' or 'regatta'
+let levelIndex = 0; // campaign index, 'daily', 'sea', 'regatta' or 'cup'
 let autopilot = null;
 let botDriving = false;
 let recorder = null;
@@ -225,6 +226,8 @@ const ui = createUI(root, CAMPAIGN, {
       showTitle(false);
       ui.voyages(save);
     }),
+  // From the last race of a cup to the cup's page.
+  onCup: () => moveOn(openCup),
   onSettings: (s, key) => {
     applySettings();
     writeSave(save);
@@ -326,7 +329,7 @@ function startLevel(ref) {
   // Every Open Sea run is a fresh stretch of sea, and every regatta a fresh
   // course, raced against the fleet your wins have earned.
   const seed = (Date.now() % 1e9) + 1;
-  const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'daily' ? dailyDef() : CAMPAIGN[ref] && voyageDef(CAMPAIGN[ref].id);
+  const def = ref === 'sea' ? openSeaDef(seed) : ref === 'regatta' ? regattaDef(seed, fleetFor(save.regatta.wins)) : ref === 'cup' ? cupRaceDef(seed) : ref === 'daily' ? dailyDef() : CAMPAIGN[ref] && voyageDef(CAMPAIGN[ref].id);
   if (!def) return;
   if (cancelCountdown) cancelCountdown();
   settleJars();
@@ -360,6 +363,24 @@ function startLevel(ref) {
     input.setEnabled(true);
   });
   if (carried) setTimeout(() => mode === 'playing' || mode === 'countdown' ? ui.toast(`${carried} gust ${carried === 1 ? 'jar' : 'jars'} from the hold aboard. Tap the wind button for a burst.`, 'good', 3200) : null, 2700);
+}
+
+// The Regatta Cup's page, over the voyages.
+function openCup() {
+  showTitle(false);
+  ui.voyages(save);
+  ui.cupBriefing(save);
+}
+
+// The Regatta Cup's next race, starting a cup when none is under way. A cup
+// race counts only once it's finished, so a restart sails it again.
+function cupRaceDef(seed) {
+  if (!save.cup.now) {
+    startCup(save, fleetFor(save.regatta.wins));
+    writeSave(save);
+  }
+  const now = save.cup.now;
+  return { ...regattaDef(seed, now.fleet, cupCourse(save)), cup: { race: now.race + 1, of: CUP_RACES } };
 }
 
 // The hold's jars that went aboard and were used are gone; the rest stay.
@@ -414,7 +435,9 @@ function settleVoyage(result) {
   } else if (game.race) {
     improved = recordRace(save, result);
     improved.medals = awardMedals(save, LEVELS, { def: game.def, result, improved });
-    improved.pay = payOut(save, racePay(result, improved));
+    if (game.def.cup) improved.cup = scoreCupRace(save, result);
+    const prize = improved.cup && improved.cup.done ? improved.cup.prize : null;
+    improved.pay = payOut(save, [...racePay(result, improved), ...cupPay(improved.cup)], { blackPearls: prize ? prize.blackPearls : 0 });
   } else {
     const hadGhost = !!ghost;
     const daily = game.def.daily;
@@ -1233,7 +1256,8 @@ window.__boatify = {
       pearls: game && game.pearls,
       aboard: game && game.boat.crew,
       sea: game && game.sea && { clock: game.sea.clock, gates: game.sea.gates, missed: game.sea.missed, best: game.sea.best },
-      race: game && game.race && { place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
+      cup: save.cup,
+      race: game && game.race && { course: game.def.course, place: game.race.place, mark: game.nextCheckpoint, dirty: game.race.dirty, bumps: game.race.bumps, rivals: game.race.rivals.map((r) => ({ name: r.name, x: r.boat.x, y: r.boat.y, next: r.next, finished: r.finished })) },
       result: game && game.result,
       wallet: { ...save.wallet },
       blackPearls: game && game.blackPearls,
@@ -1244,6 +1268,7 @@ window.__boatify = {
     };
   },
   save,
+  openCup,
   applySettings,
   isAndroidApp,
   exitApp,

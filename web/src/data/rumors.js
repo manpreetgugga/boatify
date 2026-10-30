@@ -43,7 +43,9 @@ export function rumors(save, levels) {
   const stars = totalStars(save);
   for (const id of BOAT_ORDER) {
     const t = BOAT_TYPES[id];
-    if (!isBoatUnlocked(save, id)) out.push(`The shipwright is building a ${t.name}. It's yours at ★ ${t.unlock}, and you have ${stars}.`);
+    if (isBoatUnlocked(save, id)) continue;
+    if (t.prize) out.push(`The shipwright is building a ${t.name} for whoever first wins the Regatta Cup.`);
+    else out.push(`The shipwright is building a ${t.name}. It's yours at ★ ${t.unlock}, and you have ${stars}.`);
   }
   if (!isDailyUnlocked(save, levels)) out.push('Sailors say a new sea is charted every sunrise, for those who know the way.');
   else {

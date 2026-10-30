@@ -6,7 +6,8 @@ import { formatTime, compassPoint, DEG } from '../core/math.js';
 import { beaufort, toKnots, formatDistance } from '../physics/sailing.js';
 import { POLAR } from '../world/autopilot.js';
 import { SEA_BLURB, PEARL_TIME } from '../world/opensea.js';
-import { REGATTA_BLURB, FLEETS, RIVALS, fleetFor, ordinal } from '../world/regatta.js';
+import { REGATTA_BLURB, FLEETS, RIVALS, COURSES, fleetFor, ordinal } from '../world/regatta.js';
+import { CUP_RACES, CUP_POINTS, CUP_PRIZES, CUP_BOAT, cupTable, trophyCount } from '../data/cup.js';
 import { BOAT_TYPES, BOAT_ORDER } from '../physics/boat.js';
 import { drawBoat, drawSailFlat, VISUAL } from '../render/boat.js';
 import { helmsman } from '../render/skipper.js';
@@ -52,6 +53,23 @@ function needMore(save, price) {
   const short = shortOf(save, price);
   if (short.blackPearls) return `You need ${short.blackPearls} more ${short.blackPearls === 1 ? 'black pearl' : 'black pearls'}. They lie where the sea is most dangerous: by whirlpools, krakens and pirates.`;
   return `You need ${formatCoins(short.coins)} more coins. Every voyage you sail pays some.`;
+}
+
+// The cup's points table, best first. `gained` is this race's points, if shown.
+function cupRows(table) {
+  return table
+    .map((e, i) => `<span class="k">${ordinal(i + 1)}</span><span class="v ${e.player ? 'you' : ''}">${e.player ? '<b>You</b>' : esc(e.name)} <small>${e.points} pts${e.gained ? ` · +${e.gained}` : ''}</small></span>`)
+    .join('');
+}
+
+// Where you stand in a cup under way, in a line.
+function cupStanding(now) {
+  const table = cupTable(now);
+  const place = table.findIndex((e) => e.player);
+  const pts = (n) => `${n} point${n === 1 ? '' : 's'}`;
+  const gap = place ? table[0].points - table[place].points : table[0].points - table[1].points;
+  const where = place ? (gap ? `You're ${ordinal(place + 1)}, ${pts(gap)} behind ${table[0].name}.` : `You're level on points with ${table[0].name} at the top.`) : gap ? `You lead by ${pts(gap)}.` : `You're level on points with ${table[1].name} at the top.`;
+  return `Race ${now.race + 1} of ${CUP_RACES} next. ${where}`;
 }
 
 // What a voyage paid, under its results, with a video to pay its coins twice
@@ -931,6 +949,10 @@ export function createUI(root, levels, handlers) {
         ui.regattaBriefing(save, how);
         return;
       }
+      if (index === 'cup') {
+        ui.cupBriefing(save, how);
+        return;
+      }
       const def = defOf(index);
       const rec = recordOf(save, def);
       const streak = def.daily ? currentStreak(save, def.daily) : 0;
@@ -1040,15 +1062,63 @@ export function createUI(root, levels, handlers) {
                 <dt>Podiums</dt><dd>${rec.podiums}</dd>
                 <dt>Best win</dt><dd>${rec.best !== null ? formatTime(rec.best) : '—'}</dd>
                 <dt>Medal</dt><dd>${esc(medal.name)}${isEarned(save, medal.id) ? ' <span style="color:var(--brass)">earned</span>' : ': win a race'}</dd>
+                <dt>Cup</dt><dd>${save.cup.now ? `Race ${save.cup.now.race + 1} of ${CUP_RACES} next` : trophyCount(save) ? `${icon('trophy', 14)} ${trophyCount(save)} won` : `${CUP_RACES} races, one trophy`}</dd>
               </dl>
             </div>
           </div></div>
-          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn primary" data-act="go" data-autofocus>Race</button></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn ${save.cup.sailed || save.cup.now ? '' : 'fresh'}" data-act="cup">${icon('trophy', 16)} Cup</button><button class="btn primary" data-act="go" data-autofocus>Race</button></div>
         </div></section>`);
       click(node, '[data-act=back]', () => ui.back());
       click(node, '[data-act=go]', () => handlers.onPlay('regatta'));
+      click(node, '[data-act=cup]', () => ui.cupBriefing(save));
       click(node, '[data-act=shipyard]', () => ui.shipyard(save));
       lastBriefing = 'regatta';
+      show('briefing', node, { push: how === 'push', keep: how === 'restore' });
+    },
+
+    // The Regatta Cup: its four courses, the points so far and the trophy shelf.
+    cupBriefing(save, how = 'push') {
+      const now = save.cup.now;
+      const fleet = FLEETS[now ? now.fleet : fleetFor(save.regatta.wins)];
+      const next = now ? now.race : 0;
+      const races = COURSES.map((c, i) => {
+        const state = i < next ? 'done' : i === next ? 'next' : '';
+        const note = i < next ? ordinal(now.places[i]) : i === next ? 'Next' : '';
+        return `<li class="${state}"><b>${i + 1}</b><span>${esc(c.name)}</span>${note ? `<small>${note}</small>` : ''}</li>`;
+      }).join('');
+      const table = now && next ? `<div class="eyebrow">Points</div><div class="stat-rows standings cup-table">${cupRows(cupTable(now))}</div>` : '';
+      const shelf = FLEETS.map((f) => {
+        const n = save.cup.trophies[f.id];
+        return `<div class="trophy ${n ? 'won' : ''} ${f.id}" role="img" aria-label="${esc(f.name)} cup${n ? `, won ${n === 1 ? 'once' : `${n} times`}` : ', not won yet'}">${icon('trophy', 30)}<span>${esc(f.name)}</span><small>${n ? `× ${n}` : '—'}</small></div>`;
+      }).join('');
+      const boat = BOAT_TYPES[CUP_BOAT];
+      const prize = CUP_PRIZES[0];
+      const go = now ? `Race ${next + 1}: ${COURSES[next].name}` : 'Start the cup';
+      const node = el(`<section class="screen dim" aria-label="Regatta Cup">
+        <div class="sheet cup-sheet">
+          <div class="sheet-head"><span class="eyebrow">${esc(fleet.name)} fleet</span><h2>Regatta Cup</h2></div>
+          <div class="sheet-body"><div class="brief">
+            <p class="lead">${now && next ? cupStanding(now) : `${CUP_RACES} races on ${CUP_RACES} courses against the same three rivals. Each race scores ${CUP_POINTS.join(', ').replace(/, (\d+)$/, ' and $1')} points from first to fourth, and the most points after the last race takes the cup.`}</p>
+            <div>
+              <div class="eyebrow">The races</div>
+              <ol class="cup-races">${races}</ol>
+            </div>
+            <div>
+              <div class="eyebrow shelf-label">Trophies</div>
+              <div class="trophy-shelf">${shelf}</div>
+              <dl class="facts">
+                <dt>Prize</dt><dd>${formatCoins(prize.coins)} coins and ${prize.blackPearls} black pearls${isBoatUnlocked(save, CUP_BOAT) ? '' : `, and your first cup wins the <b>${esc(boat.name)}</b>`}</dd>
+                <dt>Boat</dt><dd>${esc(BOAT_TYPES[selectedBoat(save)].name)} <button class="link" data-act="shipyard">Change</button></dd>
+              </dl>
+              ${table}
+            </div>
+          </div><p class="sheet-note">A race counts once you cross the line, so a restart sails it again.</p></div>
+          <div class="sheet-foot"><button class="btn" data-act="back">Back</button><button class="btn primary" data-act="go" data-autofocus>${esc(go)}</button></div>
+        </div></section>`);
+      click(node, '[data-act=back]', () => ui.back());
+      click(node, '[data-act=go]', () => handlers.onPlay('cup'));
+      click(node, '[data-act=shipyard]', () => ui.shipyard(save));
+      lastBriefing = 'cup';
       show('briefing', node, { push: how === 'push', keep: how === 'restore' });
     },
 
@@ -1213,21 +1283,32 @@ export function createUI(root, levels, handlers) {
     raceResults(result, improved, save) {
       tipQueue = [];
       const rec = save.regatta;
+      const cup = improved.cup;
       const fleet = FLEETS.find((f) => f.id === result.fleet) || FLEETS[0];
-      const head = result.place === 1 ? 'You won!' : `${ordinal(result.place)} place`;
+      const head = cup && cup.done ? (cup.place === 1 ? 'You won the cup!' : `${ordinal(cup.place)} in the cup`) : result.place === 1 ? 'You won!' : `${ordinal(result.place)} place`;
+      const marks = result.marks || 2;
       const rows = result.standings
         .map((e, i) => {
-          const time = e.time !== null ? formatTime(e.time) : e.marks < 2 ? `mark ${e.marks + 1}` : 'sailing';
+          const time = e.time !== null ? formatTime(e.time) : e.marks < marks ? `mark ${e.marks + 1}` : 'sailing';
           return `<span class="k">${ordinal(i + 1)}</span><span class="v ${e.player ? 'you' : ''}">${e.player ? '<b>You</b>' : esc(e.name)} <small>${time}</small></span>`;
         })
         .join('');
       const stepUp = fleetFor(rec.wins) > fleetFor(rec.wins - (improved.won ? 1 : 0));
-      const node = el(`<section class="screen dim" aria-label="Race over">
+      const eyebrow = cup ? `Regatta Cup · Race ${cup.race} of ${cup.of}` : `Regatta · ${esc(fleet.name)} fleet`;
+      const trophy = cup && cup.done && cup.trophy ? `<div class="cup-won ${cup.trophy}">${icon('trophy', 56)}<span>${esc(fleet.name)} Cup</span>${cup.boat ? `<small>The ${esc(BOAT_TYPES[cup.boat].name)} is yours. She's waiting in the Shipyard.</small>` : ''}</div>` : '';
+      const table = cup ? `<div class="eyebrow">${cup.done ? 'Final points' : 'Cup points'}</div><div class="stat-rows standings cup-table">${cupRows(cup.table)}</div>` : '';
+      const foot = !cup
+        ? '<button class="btn primary" data-act="retry" data-autofocus>Race again</button>'
+        : cup.done
+          ? '<button class="btn primary" data-act="cup" data-autofocus>Regatta Cup</button>'
+          : `<button class="btn primary" data-act="next" data-autofocus>Race ${cup.race + 1}: ${esc(COURSES[cup.race].name)}</button>`;
+      const node = el(`<section class="screen dim" aria-label="${cup && cup.done ? 'Cup over' : 'Race over'}">
         <div class="sheet narrow results-sheet">
-          <div class="sheet-head"><span class="eyebrow">Regatta · ${esc(fleet.name)} fleet</span><h2>${head}</h2></div>
+          <div class="sheet-head"><span class="eyebrow">${eyebrow}</span><h2>${head}</h2></div>
           <div class="sheet-body">
-            <div class="result-stars">${stars(0)}</div>
-            <div class="stat-rows standings">${rows}</div>
+            ${trophy || `<div class="result-stars">${stars(0)}</div>`}
+            ${cup ? '' : `<div class="stat-rows standings">${rows}</div>`}
+            ${table}
             <div class="stat-rows">
               <span class="k">Time</span><span class="v">${formatTime(result.time)}${improved.time && !improved.firstWin ? '<span class="badge">BEST WIN</span>' : ''}</span>
               <span class="k">Bumps</span><span class="v">${result.bumps}</span>
@@ -1241,10 +1322,12 @@ export function createUI(root, levels, handlers) {
           <div class="sheet-foot">
             ${shareButton()}
             <button class="btn small" data-act="voyages">Voyages</button>
-            <button class="btn primary" data-act="retry" data-autofocus>Race again</button>
+            ${foot}
           </div>
         </div></section>`);
       click(node, '[data-act=retry]', () => handlers.onRestart());
+      click(node, '[data-act=next]', () => handlers.onPlay('cup'));
+      click(node, '[data-act=cup]', () => handlers.onCup());
       click(node, '[data-act=voyages]', () => handlers.onQuit());
       wireResults(node, improved.pay, shareText('race', { place: result.place }));
       show('results', node);
@@ -1283,7 +1366,9 @@ export function createUI(root, levels, handlers) {
           ? `<div class="boat-buy"><button class="btn small" disabled>Sailing</button>${upgrade}</div>`
           : open
             ? `<div class="boat-buy"><button class="btn small primary" data-boat="${id}">Choose</button>${upgrade}</div>`
-            : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })} Now</button></div>`;
+            : t.prize
+              ? `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">${icon('trophy', 14)} Win the Regatta Cup</button></div>`
+              : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })} Now</button></div>`;
         return `<div class="boat-card ${open ? '' : 'locked'} ${picked ? 'picked' : ''}">
             <canvas class="boat-art" data-type="${id}" aria-hidden="true"></canvas>
             <div class="boat-head"><h3>${esc(t.name)}</h3><span class="tag">${esc(t.tag)}</span></div>
@@ -1300,7 +1385,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-boat]', (e, b) => {
         const t = BOAT_TYPES[b.dataset.boat];
         if (!isBoatUnlocked(save, t.id)) {
-          ui.toast(`Earn ${t.unlock - have} more ★ to unlock the ${t.name}.`);
+          ui.toast(t.prize ? `Win the Regatta Cup to sail the ${t.name}.` : `Earn ${t.unlock - have} more ★ to unlock the ${t.name}.`);
           return;
         }
         handlers.onBoat(t.id);
