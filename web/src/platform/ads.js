@@ -1,5 +1,5 @@
-// Ads, and nothing for sale: rewarded videos for a black pearl or a second
-// wind, and the short ad between voyages. The Android app exposes AdMob to
+// Ads, and nothing for sale: rewarded videos for a black pearl, a second
+// wind or a voyage's coins twice over, and the short ad between voyages. The Android app exposes AdMob to
 // the page as `window.BoatifyAds` and answers through
 // `window.BoatifyAdsReply` (docs/MONETIZATION.md has the contract), and
 // `nativeAds` speaks to it. Anywhere else (the browser, the tests) the game
@@ -10,6 +10,7 @@
 export const REWARDS = {
   blackPearl: { id: 'reward_black_pearl', blackPearls: 1, perDay: 3 },
   secondWind: { id: 'reward_second_wind', blackPearls: 0, perDay: 3 },
+  doubleCoins: { id: 'reward_double_coins', blackPearls: 0, perDay: 5 },
 };
 
 // The short ad between voyages. It never interrupts sailing: it plays as the

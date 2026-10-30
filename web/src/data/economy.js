@@ -130,6 +130,28 @@ export function payOut(save, lines, { blackPearls = 0, voyage = null } = {}) {
 }
 
 // Is this voyage's black pearl still out there?
+// Medals and the harbourmaster's orders pay what they pay; a video doubles
+// the rest.
+const ONCE = new Set(['Medal', 'Medals', 'Orders']);
+
+// What a video on the results would add: the voyage's own coins again.
+export function doubleOf(pay) {
+  if (!pay || pay.doubled) return 0;
+  return pay.lines.reduce((a, l) => a + (ONCE.has(l.label) ? 0 : l.coins), 0);
+}
+
+// A video watched on the results pays that, once. Returns the coins added.
+export function doublePay(save, pay) {
+  const extra = doubleOf(pay);
+  if (!(extra > 0)) return 0;
+  save.wallet.coins += extra;
+  save.wallet.earned += extra;
+  pay.doubled = true;
+  pay.coins += extra;
+  pay.lines = [...pay.lines, { label: 'Video', coins: extra }];
+  return extra;
+}
+
 export function blackPearlWaiting(save, voyageId) {
   return !save.wallet.found[voyageId];
 }

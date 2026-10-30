@@ -34,6 +34,7 @@ Only ever played when the player asks for one (`REWARDS` in `ads.js`):
 | -------------------- | ---------------------------------------- | ------- |
 | `reward_black_pearl` | 1 black pearl (Shop)                     | 3       |
 | `reward_second_wind` | an Open Sea second wind, no black pearls | 3       |
+| `reward_double_coins` | a voyage's coins paid again (results)   | 5       |
 
 ### The ad between voyages
 

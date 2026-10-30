@@ -63,6 +63,41 @@ export function askReminders(withSettings = false) {
   }
 }
 
+// Share some text (and the link in it): Android's share sheet in the app, the
+// browser's own sharing where there is one, else the clipboard. Resolves to
+// 'shared', 'copied' or 'failed'.
+export async function share(text) {
+  try {
+    if (bridge && bridge.share) {
+      bridge.share(text);
+      return 'shared';
+    }
+    if (navigator.share) {
+      await navigator.share({ text });
+      return 'shared';
+    }
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return 'copied';
+    }
+  } catch {
+    // Cancelled, or not allowed.
+  }
+  return 'failed';
+}
+
+// Google Play's "Rate this game" box (Android only). Play decides whether it
+// actually shows, and says nothing either way.
+export const canReview = !!(bridge && bridge.askReview);
+
+export function askReview() {
+  try {
+    if (canReview) bridge.askReview();
+  } catch {
+    // No rating box, then.
+  }
+}
+
 // handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed) }
 export function installNativeHooks(handlers) {
   window.BoatifyNative = {

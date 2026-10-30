@@ -26,9 +26,10 @@ import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
-import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders } from './platform/native.js';
+import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders, share, canReview, askReview } from './platform/native.js';
+import { reviewDue, markReview } from './platform/social.js';
 import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js';
-import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
+import { voyagePay, seaPay, racePay, payOut, doubleOf, doublePay, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
 import { tallyOrders } from './data/orders.js';
 import { ads, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/ads.js';
 
@@ -230,6 +231,16 @@ const ui = createUI(root, CAMPAIGN, {
   },
   canRemind,
   remindersAllowed,
+  // A video on the results pays the voyage's own coins again, once.
+  doubleOf: (pay) => (ads().adsReady() && videosLeft(save, REWARDS.doubleCoins, dateKey()) > 0 ? doubleOf(pay) : 0),
+  onDouble: async (pay) => {
+    const r = await watchVideo(save, REWARDS.doubleCoins, dateKey());
+    if (!r.ok || !doublePay(save, pay)) return false;
+    writeSave(save);
+    audio.sfx.coins();
+    return true;
+  },
+  onShare: (text) => share(text),
   onReset: () => resetProgress(save),
   onSeenIntro: () => writeSave(save),
   onSeen: () => writeSave(save),
@@ -433,6 +444,11 @@ function showResults() {
     save.remindersAsked = true;
     writeSave(save);
     if (save.settings.reminders && !remindersAllowed()) setTimeout(() => askReminders(), 1500);
+  } else if (canReview && !game.sea && !game.race && reviewDue(save, { stars: pending.result.stars, finished: voyagesHome() })) {
+    // A three-star finish is a good moment to ask for a rating: once the stars have landed.
+    markReview(save);
+    writeSave(save);
+    setTimeout(() => mode === 'results' && askReview(), 2400);
   }
 }
 

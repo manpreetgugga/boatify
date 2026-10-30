@@ -27,10 +27,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
+import com.google.android.play.core.review.ReviewManagerFactory
 
 // Hosts the bundled web game full screen. The game is served from the APK's
 // assets through WebViewAssetLoader, so it runs offline; only the ads
-// (AdsBridge) use the network. Reminders (Reminders.kt) are set from here.
+// (AdsBridge) use the network. Reminders (Reminders.kt) are set from here,
+// and the share sheet and Google Play's rating box open from here.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var ads: AdsBridge
@@ -181,6 +183,25 @@ class MainActivity : Activity() {
         }
     }
 
+    // Android's share sheet, for a result or a link to the game.
+    private fun shareText(text: String) {
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+        try {
+            startActivity(Intent.createChooser(send, null))
+        } catch (e: ActivityNotFoundException) {
+            // Nothing on the phone can share text.
+        }
+    }
+
+    // Google Play's own rating box. Play decides whether it shows (it won't
+    // for a sideloaded APK, or too often), and never says.
+    private fun askForReview() {
+        val manager = ReviewManagerFactory.create(this)
+        manager.requestReviewFlow().addOnCompleteListener { request ->
+            if (request.isSuccessful && !isFinishing) manager.launchReviewFlow(this, request.result)
+        }
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == ASK_REMINDERS) reportReminders()
@@ -242,6 +263,16 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun askReminders(withSettings: Boolean) {
             runOnUiThread { askForReminders(withSettings) }
+        }
+
+        @JavascriptInterface
+        fun share(text: String) {
+            runOnUiThread { shareText(text.take(2000)) }
+        }
+
+        @JavascriptInterface
+        fun askReview() {
+            runOnUiThread { askForReview() }
         }
     }
 

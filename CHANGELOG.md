@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.33.0] - 2026-10-30
+
+Double your coins, tell a friend.
+
+- **Double it.** On the results, a video pays the voyage's coins again: the button shows how many more you'd get. Medals and the harbourmaster's orders pay what they pay; up to five a day.
+- **Share.** Every results screen has a Share button that sends your time, stars, distance or place with a link to the game, and **Settings → Tell a friend** sends the link alone. On a phone it opens the share sheet; in a browser it copies the text.
+- **Rate the game.** Once you've sailed a few voyages home, a three-star finish may bring up Google Play's own rating box, a month apart at the least and three times at most.
+
 ## [0.32.0] - 2026-10-30
 
 Reminders from the harbor.

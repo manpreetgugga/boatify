@@ -84,6 +84,7 @@ function blank() {
     seenIntro: false,
     seenFilm: false, // the prologue has played through or been skipped
     remindersAsked: false, // the phone has been asked to allow reminders
+    review: { asked: 0, last: 0 }, // Google Play's rating box: times asked, when last
   };
 }
 
@@ -118,6 +119,7 @@ export function loadSave() {
     sightings: isObj(data.sightings) ? data.sightings : {},
     wallet: cleanWallet(data.wallet),
     orders: cleanOrders(data.orders),
+    review: { ...base.review, ...(isObj(data.review) ? data.review : {}) },
   };
 }
 

@@ -17,6 +17,7 @@ import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
 import { ads, REWARDS, watchVideo, videosLeft } from '../platform/ads.js';
+import { shareText } from '../platform/social.js';
 import { CHEST, dayOrders, todaysOrders, swapOrder } from '../data/orders.js';
 import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
@@ -47,14 +48,19 @@ function needMore(save, price) {
   return `You need ${formatCoins(short.coins)} more coins. Every voyage you sail pays some.`;
 }
 
-// What a voyage paid, under its results.
-function rewardStrip(pay) {
+// What a voyage paid, under its results, with a video to pay its coins twice
+// over (`extra` more) when one is on offer.
+function rewardStrip(pay, extra = 0) {
   if (!pay || (!pay.coins && !pay.blackPearls)) return '';
+  return `<div class="reward">${rewardInner(pay)}${extra > 0 ? `<button class="btn small double-btn" data-act="double" aria-label="Watch a video for ${formatCoins(extra)} more coins">${icon('play', 16)} ×2 <span class="coins">+${formatCoins(extra)}</span></button>` : ''}</div>`;
+}
+
+const shareButton = () => `<button class="btn icon" data-act="share" aria-label="Share">${icon('share', 18)}</button>`;
+
+function rewardInner(pay) {
   const lines = pay.lines.map((l) => `${esc(l.label)} <b>${formatCoins(l.coins)}</b>`).join(' · ');
-  return `<div class="reward">
-      <div class="reward-sum"><span class="coins">${icon('coin', 20)}+${formatCoins(pay.coins)}</span>${pay.blackPearls ? `<span class="gems">${icon('blackPearl', 20)}+${pay.blackPearls}</span>` : ''}</div>
-      <small>${lines}${pay.blackPearls ? ` · Black pearl <b>${pay.blackPearls}</b>` : ''}</small>
-    </div>`;
+  return `<div class="reward-sum"><span class="coins">${icon('coin', 20)}+${formatCoins(pay.coins)}</span>${pay.blackPearls ? `<span class="gems">${icon('blackPearl', 20)}+${pay.blackPearls}</span>` : ''}${pay.doubled ? '<span class="badge">×2</span>' : ''}</div>
+      <small>${lines}${pay.blackPearls ? ` · Black pearl <b>${pay.blackPearls}</b>` : ''}</small>`;
 }
 
 function el(html) {
@@ -548,6 +554,31 @@ export function createUI(root, levels, handlers) {
     );
   }
 
+  // A Share button: the phone's share sheet, or the clipboard in a browser.
+  async function shareOut(text) {
+    const r = await handlers.onShare(text);
+    if (r === 'copied') ui.toast('Copied. Paste it to a friend.');
+    else if (r === 'failed') ui.toast("Sharing didn't work here.");
+  }
+
+  // The results' Share button, and the video that doubles the coins.
+  function wireResults(node, pay, text) {
+    click(node, '[data-act=share]', () => shareOut(text));
+    click(node, '[data-act=double]', async (e, b) => {
+      b.disabled = true;
+      const ok = await handlers.onDouble(pay);
+      if (!b.isConnected) return;
+      if (!ok) {
+        b.disabled = false;
+        ui.toast('No video right now.');
+        return;
+      }
+      const strip = b.closest('.reward');
+      strip.innerHTML = rewardInner(pay);
+      strip.classList.add('doubled');
+    });
+  }
+
   const ui = {
     // A Settings switch flipped from outside (the phone answering), if Settings is open.
     setToggle(key, on) {
@@ -971,11 +1002,12 @@ export function createUI(root, levels, handlers) {
               ${(improved.newBoats || []).map((name) => `<span class="k">Shipyard</span><span class="v">${esc(name)}<span class="badge">NEW BOAT</span></span>`).join('')}
               ${def.daily ? `<span class="k">Streak</span><span class="v">${days(streak)}${improved.first && streak > 1 ? '<span class="badge">+1</span>' : ''}</span>` : ''}
             </div>
-            ${rewardStrip(improved.pay)}
+            ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
             ${orderStrip(improved.orders)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
+            ${shareButton()}
             ${hasNext ? '<button class="btn small" data-act="voyages">Voyages</button>' : ''}
             <button class="btn small" data-act="retry">Retry</button>
             ${hasNext ? `<button class="btn primary" data-act="next" data-autofocus>${nextWorld ? `Sail to ${esc(nextWorld.name)}` : 'Next voyage'}</button>` : '<button class="btn primary" data-act="voyages" data-autofocus>Done</button>'}
@@ -984,6 +1016,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=retry]', () => handlers.onRestart());
       click(node, '[data-act=next]', () => handlers.onPlay(index + 1));
       click(node, '[data-act=voyages]', () => handlers.onQuit());
+      wireResults(node, improved.pay, shareText('voyage', { name: def.name, time: result.time, stars: result.stars }));
       show('results', node);
       const starEls = node.querySelectorAll('.result-stars span');
       starEls.forEach((s, i) => {
@@ -1022,17 +1055,19 @@ export function createUI(root, levels, handlers) {
               <span class="k">Time at sea</span><span class="v">${formatTime(result.time)}</span>
               <span class="k">Capsizes</span><span class="v">${result.capsizes}</span>
             </div>
-            ${rewardStrip(improved.pay)}
+            ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
             ${orderStrip(improved.orders)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
+            ${shareButton()}
             <button class="btn small" data-act="voyages">Voyages</button>
             <button class="btn primary" data-act="retry" data-autofocus>Sail again</button>
           </div>
         </div></section>`);
       click(node, '[data-act=retry]', () => handlers.onRestart());
       click(node, '[data-act=voyages]', () => handlers.onQuit());
+      wireResults(node, improved.pay, shareText('sea', { distance: result.distance }));
       show('results', node);
       const medalEls = node.querySelectorAll('.medal-chip');
       if (medalEls.length) {
@@ -1070,17 +1105,19 @@ export function createUI(root, levels, handlers) {
               <span class="k">Wins</span><span class="v">${rec.wins} of ${rec.races}</span>
               ${stepUp ? `<span class="k">Next race</span><span class="v">${esc(FLEETS[fleetFor(rec.wins)].name)} fleet<span class="badge">STEP UP</span></span>` : ''}
             </div>
-            ${rewardStrip(improved.pay)}
+            ${rewardStrip(improved.pay, handlers.doubleOf(improved.pay))}
             ${orderStrip(improved.orders)}
             ${medalStrip(improved.medals)}
           </div>
           <div class="sheet-foot">
+            ${shareButton()}
             <button class="btn small" data-act="voyages">Voyages</button>
             <button class="btn primary" data-act="retry" data-autofocus>Race again</button>
           </div>
         </div></section>`);
       click(node, '[data-act=retry]', () => handlers.onRestart());
       click(node, '[data-act=voyages]', () => handlers.onQuit());
+      wireResults(node, improved.pay, shareText('race', { place: result.place }));
       show('results', node);
       node.querySelectorAll('.result-stars span').forEach((s, i) => {
         if (i < result.stars) {
@@ -1269,6 +1306,9 @@ export function createUI(root, levels, handlers) {
             ${ads().privacyRequired() ? `<h3 class="setting-group">Privacy</h3>
             <div class="setting"><span class="label"><b>Ad privacy</b><small>Change what you agreed to for ads</small></span>
               <button class="btn small" data-act="privacy">Options</button></div>` : ''}
+            <h3 class="setting-group">Friends</h3>
+            <div class="setting"><span class="label"><b>Tell a friend</b><small>Send them the link to No Paddle</small></span>
+              <button class="btn small" data-act="share">${icon('share', 16)} Share</button></div>
             <h3 class="setting-group">Progress</h3>
             <div class="setting"><span class="label"><b>Reset progress</b><small>Clears times, stars, medals and the logbook</small></span>
               <button class="btn small" data-act="reset">Reset</button></div>
@@ -1300,6 +1340,7 @@ export function createUI(root, levels, handlers) {
           b.textContent = 'Tap again';
         }
       });
+      click(node, '[data-act=share]', () => shareOut(shareText('game')));
       click(node, '[data-act=privacy]', async () => {
         const r = await ads().privacyOptions();
         if (!r.ok) ui.toast("The privacy options couldn't open. Try again later.");
