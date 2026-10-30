@@ -86,6 +86,37 @@ export async function share(text) {
   return 'failed';
 }
 
+// The clipboard, for backup codes. copyText resolves to true once the text is
+// on it. pasteText resolves to the clipboard's text, or null where the game
+// can't read it (then the player pastes into the box themselves).
+export async function copyText(text) {
+  try {
+    if (bridge && bridge.copyText) {
+      bridge.copyText(text);
+      return true;
+    }
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Not allowed.
+  }
+  return false;
+}
+
+export const canPaste = !!((bridge && bridge.pasteText) || (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText));
+
+export async function pasteText() {
+  try {
+    if (bridge && bridge.pasteText) return String(bridge.pasteText() || '');
+    if (navigator.clipboard && navigator.clipboard.readText) return await navigator.clipboard.readText();
+  } catch {
+    // Not allowed.
+  }
+  return null;
+}
+
 // Google Play's "Rate this game" box (Android only). Play decides whether it
 // actually shows, and says nothing either way.
 export const canReview = !!(bridge && bridge.askReview);

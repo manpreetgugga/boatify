@@ -1,0 +1,1 @@
+Take your progress to a new phone. Settings > Backup code shows all your progress (stars, coins, black pearls, boats, sails, medals and the logbook) as one line of text. Copy it, then paste it on another phone and tap Restore. The game shows what the code holds before anything changes, and a code cut short or mistyped is turned away.

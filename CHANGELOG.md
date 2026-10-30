@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.0] - 2026-10-30
+
+Take your progress to a new phone.
+
+- **Backup code.** **Settings → Backup code** shows your whole voyage so far (stars, times, coins, black pearls, boats, sails, medals and the logbook) as one line of text. Copy it and keep it in a note or a message to yourself.
+- **Restore on another phone.** Paste the code into the box below it and tap Restore. The game says what the code holds before anything changes, then takes it in place of the progress on that phone.
+- **Typos are caught.** A code cut short, mistyped or from somewhere else is turned away with a word on what went wrong, and nothing is lost. Ghost runs stay behind; the next voyage records a new one.
+
 ## [0.33.0] - 2026-10-30
 
 Double your coins, tell a friend.

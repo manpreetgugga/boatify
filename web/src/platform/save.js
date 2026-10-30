@@ -98,8 +98,14 @@ export function loadSave() {
   } catch {
     data = null;
   }
+  return cleanSave(data);
+}
+
+// A save as stored (or read from a backup code), with anything missing or
+// malformed put back to how a new game starts.
+export function cleanSave(data) {
   const base = blank();
-  if (!data || typeof data !== 'object') return base;
+  if (!isObj(data)) return base;
   return {
     ...base,
     ...data,
@@ -278,6 +284,15 @@ export function resetProgress(save) {
   const { settings, wallet, orders } = save;
   const fresh = blank();
   Object.assign(save, fresh, { settings, wallet, orders });
+  writeSave(save);
+  clearGhosts();
+}
+
+// Progress brought over from another phone with a backup code takes this
+// one's place, settings and all. The old best-run ghosts go with it.
+export function restoreSave(save, restored) {
+  for (const k of Object.keys(save)) delete save[k];
+  Object.assign(save, restored);
   writeSave(save);
   clearGhosts();
 }

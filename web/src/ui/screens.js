@@ -18,6 +18,7 @@ import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlock
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
 import { ads, REWARDS, watchVideo, videosLeft } from '../platform/ads.js';
 import { shareText } from '../platform/social.js';
+import { backupCode, readBackup } from '../platform/backup.js';
 import { CHEST, dayOrders, todaysOrders, swapOrder } from '../data/orders.js';
 import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
@@ -54,6 +55,14 @@ function rewardStrip(pay, extra = 0) {
   if (!pay || (!pay.coins && !pay.blackPearls)) return '';
   return `<div class="reward">${rewardInner(pay)}${extra > 0 ? `<button class="btn small double-btn" data-act="double" aria-label="Watch a video for ${formatCoins(extra)} more coins">${icon('play', 16)} ×2 <span class="coins">+${formatCoins(extra)}</span></button>` : ''}</div>`;
 }
+
+// Why a pasted backup code couldn't be read.
+const BACKUP_TROUBLE = {
+  empty: 'Paste a backup code in the box first.',
+  'not-a-code': "That isn't a No Paddle backup code.",
+  damaged: 'That code is cut short or has a typo. Copy it again on the other phone.',
+  unsupported: "This phone can't open that code. Update Android System WebView and try again.",
+};
 
 const shareButton = () => `<button class="btn icon" data-act="share" aria-label="Share">${icon('share', 18)}</button>`;
 
@@ -1310,6 +1319,8 @@ export function createUI(root, levels, handlers) {
             <div class="setting"><span class="label"><b>Tell a friend</b><small>Send them the link to No Paddle</small></span>
               <button class="btn small" data-act="share">${icon('share', 16)} Share</button></div>
             <h3 class="setting-group">Progress</h3>
+            <div class="setting"><span class="label"><b>Backup code</b><small>Move your progress to another phone</small></span>
+              <button class="btn small" data-act="backup">Open</button></div>
             <div class="setting"><span class="label"><b>Reset progress</b><small>Clears times, stars, medals and the logbook</small></span>
               <button class="btn small" data-act="reset">Reset</button></div>
           </div>
@@ -1341,12 +1352,76 @@ export function createUI(root, levels, handlers) {
         }
       });
       click(node, '[data-act=share]', () => shareOut(shareText('game')));
+      click(node, '[data-act=backup]', () => ui.backup(save));
       click(node, '[data-act=privacy]', async () => {
         const r = await ads().privacyOptions();
         if (!r.ok) ui.toast("The privacy options couldn't open. Try again later.");
       });
       click(node, '[data-act=back]', () => ui.back());
       show('settings', node, { push: true });
+    },
+
+    // Backup code: this phone's progress as a code to copy, and a box to paste
+    // one from another phone.
+    backup(save) {
+      const node = el(`<section class="screen dim" aria-label="Backup code">
+        <div class="sheet narrow">
+          <div class="sheet-head"><h2>Backup code</h2><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body backup">
+            <h3 class="setting-group">This phone's progress</h3>
+            <p class="sheet-note backup-note">Copy the code and keep it somewhere safe, like a note or a message to yourself.</p>
+            <textarea class="backup-code" readonly rows="3" spellcheck="false" aria-label="This phone's backup code">…</textarea>
+            <div class="backup-foot"><button class="btn small primary" data-act="copy" disabled>${icon('copy', 16)} Copy code</button></div>
+            <h3 class="setting-group">Bring progress here</h3>
+            <p class="sheet-note backup-note">Paste the code from your other phone. It takes the place of the progress on this one.</p>
+            <textarea class="backup-paste" rows="3" spellcheck="false" autocomplete="off" placeholder="NP1.…" aria-label="Paste a backup code"></textarea>
+            <div class="backup-foot">${handlers.canPaste ? '<button class="btn small" data-act="paste">Paste</button>' : ''}<button class="btn small primary" data-act="restore">Restore</button></div>
+          </div>
+        </div></section>`);
+      const mine = node.querySelector('.backup-code');
+      const box = node.querySelector('.backup-paste');
+      backupCode(save).then((code) => {
+        mine.value = code;
+        node.querySelector('[data-act=copy]').disabled = false;
+      });
+      mine.addEventListener('focus', () => mine.select());
+      click(node, '[data-act=copy]', async (e, b) => {
+        if (await handlers.onCopy(mine.value)) {
+          ui.toast('Copied. Keep it somewhere safe.', 'good');
+          b.lastChild.textContent = ' Copied';
+        } else {
+          mine.focus();
+          mine.select();
+          ui.toast('Hold the code and choose Copy.');
+        }
+      });
+      click(node, '[data-act=paste]', async () => {
+        const text = await handlers.onPaste();
+        if (text) box.value = text.trim();
+        else {
+          box.focus();
+          ui.toast('Hold the box and choose Paste.');
+        }
+      });
+      click(node, '[data-act=restore]', async (e, b) => {
+        b.disabled = true;
+        const r = await readBackup(box.value);
+        b.disabled = false;
+        if (!r.ok) {
+          ui.toast(BACKUP_TROUBLE[r.reason], 'warn', 5000);
+          return;
+        }
+        const t = r.summary;
+        const holds = [`★ ${t.stars}`, `${t.voyages} ${t.voyages === 1 ? 'voyage' : 'voyages'} home`, `${formatCoins(t.coins)} coins`, `${t.blackPearls} black ${t.blackPearls === 1 ? 'pearl' : 'pearls'}`, `${t.medals} ${t.medals === 1 ? 'medal' : 'medals'}`];
+        ui.confirm({
+          title: "Replace this phone's progress?",
+          text: `The code holds ${holds.slice(0, -1).join(', ')} and ${holds.at(-1)}. What's on this phone now will be gone.`,
+          ok: 'Restore',
+          onOk: () => handlers.onRestore(r.save),
+        });
+      });
+      click(node, '[data-act=back]', () => ui.back());
+      show('backup', node, { push: true });
     },
 
     howto(save, thenPlay = false, playIndex = 0) {

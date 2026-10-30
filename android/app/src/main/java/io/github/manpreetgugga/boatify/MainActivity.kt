@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -32,10 +34,12 @@ import com.google.android.play.core.review.ReviewManagerFactory
 // Hosts the bundled web game full screen. The game is served from the APK's
 // assets through WebViewAssetLoader, so it runs offline; only the ads
 // (AdsBridge) use the network. Reminders (Reminders.kt) are set from here,
-// and the share sheet and Google Play's rating box open from here.
+// and the share sheet, the clipboard (for backup codes) and Google Play's
+// rating box are reached from here.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var ads: AdsBridge
+    private var clipboard: ClipboardManager? = null
     private var insets = intArrayOf(0, 0, 0, 0)
     private var pageReady = false
 
@@ -48,6 +52,7 @@ class MainActivity : Activity() {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        clipboard = getSystemService(ClipboardManager::class.java)
 
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -273,6 +278,19 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun askReview() {
             runOnUiThread { askForReview() }
+        }
+
+        // Backup codes go out through the clipboard and come back the same way.
+        @JavascriptInterface
+        fun copyText(text: String) {
+            runOnUiThread { clipboard?.setPrimaryClip(ClipData.newPlainText("No Paddle backup code", text.take(200_000))) }
+        }
+
+        @JavascriptInterface
+        fun pasteText(): String {
+            val clip = clipboard?.primaryClip ?: return ""
+            if (clip.itemCount == 0) return ""
+            return clip.getItemAt(0).text?.toString()?.take(200_000) ?: ""
         }
     }
 

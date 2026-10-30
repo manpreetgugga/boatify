@@ -25,8 +25,8 @@ import { createAudio } from './audio/audio.js';
 import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
-import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
-import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders, share, canReview, askReview } from './platform/native.js';
+import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, restoreSave, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
+import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders, share, canReview, askReview, copyText, canPaste, pasteText } from './platform/native.js';
 import { reviewDue, markReview } from './platform/social.js';
 import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js';
 import { voyagePay, seaPay, racePay, payOut, doubleOf, doublePay, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
@@ -242,6 +242,14 @@ const ui = createUI(root, CAMPAIGN, {
   },
   onShare: (text) => share(text),
   onReset: () => resetProgress(save),
+  // Backup codes: copied out, pasted in, and a restored save starts the game afresh.
+  onCopy: (text) => copyText(text),
+  canPaste,
+  onPaste: () => pasteText(),
+  onRestore: (restored) => {
+    restoreSave(save, restored);
+    window.location.reload();
+  },
   onSeenIntro: () => writeSave(save),
   onSeen: () => writeSave(save),
   motionReduced,

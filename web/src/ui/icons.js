@@ -38,6 +38,7 @@ const PATHS = {
   cloud: '<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>',
   home: '<path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>',
   share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
   lantern: '<path d="M9 3h6M12 3v2M7.5 8a4.5 1.5 0 0 1 9 0v8a4.5 1.5 0 0 1-9 0z"/><path d="M7.5 8h9M7.5 16h9M12 11c-1 1-1 2.5 0 3 1-.5 1-2 0-3zM10 21h4"/>',
 };
 
