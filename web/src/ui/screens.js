@@ -14,6 +14,7 @@ import { drawHarbor } from '../render/harbor.js';
 import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, isBoatUnlocked, selectedBoat, ZOOMS } from '../platform/save.js';
 import { dateKey, dailyId } from '../data/daily.js';
 import { festivalOn, festivalById, nextWeek } from '../data/festivals.js';
+import { PARTS, UPGRADE_STEPS, upgradeLevel, upgradeLevels, upgradeCount, nextPrice, buyUpgrade } from '../data/upgrades.js';
 import { ROWS, PIECES, HARBOR_TOTAL, ROW_PEARLS, harborBuilt, isBuilt, waitingOn, rowDone, buildPiece, nextPiece } from '../data/harbor.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
@@ -152,10 +153,21 @@ const BOAT_STATS = [
   ['toughness', 'Toughness'],
 ];
 
-function statBar(n) {
+// `plus` is the boatyard upgrades on top, shown after the bar.
+function statBar(n, plus = 0) {
   let dots = '';
   for (let i = 1; i <= 5; i++) dots += `<i class="${i <= n ? 'on' : ''}"></i>`;
-  return `<span class="bar" aria-label="${n} of 5">${dots}</span>`;
+  const more = plus ? `<b class="bar-plus">+${plus}</b>` : '';
+  return `<span class="bar" aria-label="${n} of 5${plus ? `, upgraded ${plus}` : ''}">${dots}${more}</span>`;
+}
+
+// A boat's stats, with its upgrades.
+function boatStats(t, levels = {}) {
+  const plus = (k) => {
+    const part = PARTS.find((p) => p.stat === k);
+    return (part && levels[part.id]) || 0;
+  };
+  return `<dl class="boat-stats">${BOAT_STATS.map(([k, label]) => `<dt>${label}</dt><dd>${statBar(t.stats[k], plus(k))}</dd>`).join('')}</dl>`;
 }
 
 // A boat on a reach over a patch of open water, for the Shipyard cards and
@@ -1262,23 +1274,25 @@ export function createUI(root, levels, handlers) {
         const t = BOAT_TYPES[id];
         const open = isBoatUnlocked(save, id);
         const picked = id === chosen;
+        const ups = upgradeCount(save, id);
+        const upgrade = `<button class="btn small" data-upgrade="${id}" aria-label="Upgrade the ${esc(t.name)}, ${ups} of ${PARTS.length * UPGRADE_STEPS}">${icon('hammer', 14)} ${ups}/${PARTS.length * UPGRADE_STEPS}</button>`;
         const action = picked
-          ? '<button class="btn small" disabled>Sailing</button>'
+          ? `<div class="boat-buy"><button class="btn small" disabled>Sailing</button>${upgrade}</div>`
           : open
-            ? `<button class="btn small primary" data-boat="${id}">Choose</button>`
+            ? `<div class="boat-buy"><button class="btn small primary" data-boat="${id}">Choose</button>${upgrade}</div>`
             : `<div class="boat-buy"><button class="btn small" data-boat="${id}" aria-disabled="true">★ ${t.unlock} to unlock</button><button class="btn small gem-btn" data-buy="${id}" aria-label="Unlock now for ${BOAT_PRICES[id]} black pearls">${priceTag({ blackPearls: BOAT_PRICES[id] })} Now</button></div>`;
         return `<div class="boat-card ${open ? '' : 'locked'} ${picked ? 'picked' : ''}">
             <canvas class="boat-art" data-type="${id}" aria-hidden="true"></canvas>
             <div class="boat-head"><h3>${esc(t.name)}</h3><span class="tag">${esc(t.tag)}</span></div>
             <p class="boat-blurb">${esc(t.blurb)}</p>
-            <dl class="boat-stats">${BOAT_STATS.map(([k, label]) => `<dt>${label}</dt><dd>${statBar(t.stats[k])}</dd>`).join('')}</dl>
+            ${boatStats(t, open ? upgradeLevels(save, id) : {})}
             ${action}
           </div>`;
       }).join('');
       const node = el(`<section class="screen dim" aria-label="Shipyard">
         <div class="sheet wide">
           <div class="sheet-head"><h2>Shipyard</h2><span class="eyebrow">★ ${have} / ${levels.length * 3}</span><button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="locker">Sail Locker</button><button class="btn small" data-act="back">Back</button></div>
-          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats, or unlock one now with black pearls. Each one handles the wind its own way.</p><div class="boat-grid">${cards}</div></div>
+          <div class="sheet-body"><p class="sheet-note">Earn stars on the voyages to unlock new boats, or unlock one now with black pearls. Each one handles the wind its own way, and coins upgrade her sails, keel and hull.</p><div class="boat-grid">${cards}</div></div>
         </div></section>`);
       click(node, '[data-boat]', (e, b) => {
         const t = BOAT_TYPES[b.dataset.boat];
@@ -1290,6 +1304,7 @@ export function createUI(root, levels, handlers) {
         ui.back();
       });
       click(node, '[data-buy]', (e, b) => unlockBoat(save, b.dataset.buy, () => ui.shipyard(save, true)));
+      click(node, '[data-upgrade]', (e, b) => ui.upgrades(save, b.dataset.upgrade));
       click(node, '[data-act=locker]', () => ui.locker(save));
       click(node, '[data-act=back]', () => ui.back());
       show('shipyard', node, restore ? { keep: true } : { push: true });
@@ -1297,6 +1312,58 @@ export function createUI(root, levels, handlers) {
         const type = BOAT_TYPES[c.dataset.type];
         paintBoat(c, type, boatLook(type, gear));
       });
+    },
+
+    // The boatyard: coins for one boat's sails, keel and hull.
+    upgrades(save, id, restore = false) {
+      const t = BOAT_TYPES[id];
+      const levels = upgradeLevels(save, id);
+      const all = PARTS.length * UPGRADE_STEPS;
+      const done = upgradeCount(save, id);
+      const pips = (n) => `<span class="pips" aria-hidden="true">${Array.from({ length: UPGRADE_STEPS }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+      const card = (p) => {
+        const n = levels[p.id];
+        const price = nextPrice(save, id, p.id);
+        const button =
+          price === null
+            ? '<button class="btn small" disabled>Done</button>'
+            : `<button class="btn small" data-part="${p.id}" aria-label="Upgrade the ${p.name.toLowerCase()} to step ${n + 1} for ${formatCoins(price)} coins">${priceTag({ coins: price })}</button>`;
+        const sub = price === null ? `${esc(p.label)} +${n}, fully upgraded` : `${esc(p.text)} Next: ${esc(p.step)}.`;
+        return `<div class="shop-item ${price === null ? 'built' : ''}"><span class="shop-art">${icon(p.icon, 28)}</span><span class="shop-text"><b>${esc(p.name)} ${pips(n)}</b><small>${sub}</small></span>${button}</div>`;
+      };
+      const node = el(`<section class="screen dim" aria-label="Boatyard">
+        <div class="sheet wide">
+          <div class="sheet-head"><h2>Boatyard</h2><span class="eyebrow">${done} / ${all}</span>${wallet(save)}<button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">
+            <div class="locker-top"><canvas class="locker-preview" aria-hidden="true"></canvas>
+              <div><b class="locker-fit">${esc(t.name)}</b>${boatStats(t, levels)}</div></div>
+            <div class="shop-grid">${PARTS.map(card).join('')}</div>
+            <p class="sheet-note">Each boat keeps her own upgrades, three steps for each part. They help on every voyage, the Open Sea and the regatta.</p>
+          </div>
+        </div></section>`);
+      click(node, '[data-part]', (e, b) => {
+        const p = PARTS.find((x) => x.id === b.dataset.part);
+        const price = { coins: nextPrice(save, id, p.id) };
+        if (!canAfford(save, price)) {
+          ui.toast(needMore(save, price));
+          return;
+        }
+        ui.confirm({
+          title: `Upgrade the ${p.name.toLowerCase()}?`,
+          text: `${p.text} Step ${upgradeLevel(save, id, p.id) + 1} of ${UPGRADE_STEPS}: ${p.step}.`,
+          ok: `Upgrade ${priceTag(price)}`,
+          onOk: () => {
+            const r = buyUpgrade(save, id, p.id);
+            if (!r) return;
+            handlers.onWallet();
+            ui.toast(r.level === UPGRADE_STEPS ? `${p.name} fully upgraded on the ${t.name}.` : `New ${p.name.toLowerCase()} fitted: ${p.label.toLowerCase()} +${r.level}.`, 'good', 2600);
+            ui.upgrades(save, id, true);
+          },
+        });
+      });
+      click(node, '[data-act=back]', () => ui.back());
+      show('upgrades', node, restore ? { keep: true } : { push: true });
+      paintBoat(node.querySelector('.locker-preview'), t, boatLook(t, fittedGear(save)));
     },
 
     locker(save) {

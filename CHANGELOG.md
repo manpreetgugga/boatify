@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.37.0] - 2026-10-30
+
+Boat upgrades: spend coins on your boats' sails, keel and hull.
+
+- **The boatyard.** Every boat in the Shipyard has an upgrade button. Each boat has three parts to improve, and each part has three steps: 150, 350 and 700 coins.
+- **What each part does.**
+  - **Sails** give more drive, for a little more speed.
+  - **Keel** cuts how much she slides sideways, so she makes better ground upwind.
+  - **Hull** carries more ballast, so she heels less in a gust.
+  - The Shipyard's stat bars show what you've added.
+- **Her own upgrades.** Each boat keeps hers. They help on every voyage, on the Open Sea and in the regatta, while the regatta fleet sails as before. Upgrades travel with your backup code.
+
 ## [0.36.0] - 2026-10-30
 
 Your harbor: coins build an island up into a harbor of your own.

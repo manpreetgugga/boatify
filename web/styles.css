@@ -364,6 +364,10 @@ button:focus-visible {
   color: var(--brass);
 }
 
+.sheet-head .eyebrow {
+  white-space: nowrap;
+}
+
 /* Voyages */
 
 .world-tabs {
@@ -722,6 +726,41 @@ button:focus-visible {
 
 .bar i.on {
   background: var(--ok);
+}
+
+.bar {
+  align-items: center;
+}
+
+.bar-plus {
+  margin-left: 4px;
+  font-family: var(--display);
+  font-size: calc(12px * var(--text, 1));
+  color: var(--brass);
+}
+
+.locker-top .boat-stats {
+  width: 250px;
+  max-width: 100%;
+  margin-top: 8px;
+}
+
+.pips {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.pips i {
+  width: 12px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(232, 244, 242, 0.18);
+}
+
+.pips i.on {
+  background: var(--brass);
 }
 
 .boat-card .btn {

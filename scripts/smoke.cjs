@@ -271,6 +271,21 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.locator('section[aria-label="Sail Locker"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Shipyard"].open');
 
+  step('boatyard: new sails for the sloop');
+  await tab.getByRole('button', { name: 'Upgrade the Driftwood Sloop, 0 of 9' }).click();
+  await tab.waitForSelector('section[aria-label="Boatyard"].open');
+  const coinsBefore = await tab.evaluate(() => window.__boatify.save.wallet.coins);
+  await tab.getByRole('button', { name: 'Upgrade the sails to step 1 for 150 coins' }).click();
+  await tab.locator('.confirm').getByRole('button', { name: /Upgrade/ }).click();
+  await tab.waitForSelector('section[aria-label="Boatyard"].open .eyebrow:text("1 / 9")');
+  const upgraded = await tab.evaluate(() => [window.__boatify.save.wallet.coins, window.__boatify.save.wallet.owned.includes('upgrade:sloop:sails:1')]);
+  if (upgraded[0] !== coinsBefore - 150 || !upgraded[1]) throw new Error(`boatyard ${JSON.stringify(upgraded)}`);
+  await tab.waitForTimeout(300);
+  await snap('11a-boatyard');
+  await tab.locator('section[aria-label="Boatyard"]').getByRole('button', { name: 'Back' }).click();
+  await tab.waitForSelector('section[aria-label="Shipyard"].open');
+  await tab.getByRole('button', { name: 'Upgrade the Driftwood Sloop, 1 of 9' }).waitFor();
+
   step('shop: videos coming soon, a gust jar, a trade and a boat');
   await tab.locator('section[aria-label="Shipyard"]').getByRole('button', { name: 'Back' }).click();
   await tab.waitForSelector('section[aria-label="Title"].open');

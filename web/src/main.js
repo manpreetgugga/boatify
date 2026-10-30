@@ -32,6 +32,7 @@ import { reviewDue, markReview } from './platform/social.js';
 import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js';
 import { voyagePay, seaPay, racePay, payOut, doubleOf, doublePay, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
 import { tallyOrders } from './data/orders.js';
+import { upgradeLevels } from './data/upgrades.js';
 import { ads, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/ads.js';
 
 // Things that thud rather than crack when you hit them.
@@ -297,7 +298,7 @@ function startDemo() {
   const fest = festivalOn(dateKey());
   const def = fest ? { ...plain, festival: fest.id, weather: { ...plain.weather, ...fest.weather } } : plain;
   demoIndex += 1;
-  game = createGame(def, { seed: demoIndex * 7, boat: selectedBoat(save) });
+  game = createGame(def, { seed: demoIndex * 7, boat: selectedBoat(save), upgrades: upgradeLevels(save, selectedBoat(save)) });
   game.tipsShown = new Set(def.tips.map((t, i) => i));
   autopilot = createAutopilot(game);
   demoTimer = 70;
@@ -335,7 +336,7 @@ function startLevel(ref) {
   windTaken = false;
   pending = null;
   const blackPearl = !def.race && (def.endless || blackPearlWaiting(save, def.id));
-  game = createGame(def, { boat: selectedBoat(save), guide: guideOn(), startJars: carried, blackPearl });
+  game = createGame(def, { boat: selectedBoat(save), upgrades: upgradeLevels(save, selectedBoat(save)), guide: guideOn(), startJars: carried, blackPearl });
   autopilot = botDriving ? createAutopilot(game) : null;
   guideTold = {};
   // No ghost on the open sea or in a regatta: no two runs share a course.
@@ -1192,6 +1193,7 @@ window.__boatify = {
       screen: ui.current,
       level: game && game.def.id,
       boat: game && game.boat.type.id,
+      upgrades: game && (game.boat.type.upgrades || null),
       status: game && game.status,
       time: game && game.time,
       x: game && game.boat.x,

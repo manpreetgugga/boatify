@@ -4,6 +4,7 @@
 import { clamp, dist, wrapAngle, angleDiff } from '../core/math.js';
 import { hashString } from '../core/rng.js';
 import { createBoat, stepBoat, boatSpeed, CAPSIZE_ANGLE, HEEL_WARNING, BOOST_DURATION, BOAT_TYPES } from '../physics/boat.js';
+import { withUpgrades } from '../data/upgrades.js';
 import { buildLevel, pearlCount, courseGoal } from './level.js';
 import { createWind, updateWind, sampleWind } from './wind.js';
 import { sampleWater } from './water.js';
@@ -72,15 +73,17 @@ const DAMAGE = {
   airship: 1.6,
 };
 
-// options: { boat, seed, guide, startJars, blackPearl } where `blackPearl` puts
-// this voyage's black pearl out (the open sea may then chart some of its own).
+// options: { boat, upgrades, seed, guide, startJars, blackPearl } where
+// `upgrades` is the boat's { sails, keel, hull } from the boatyard and
+// `blackPearl` puts this voyage's black pearl out (the open sea may then chart
+// some of its own).
 export function createGame(def, options = {}) {
   const level = buildLevel(def);
   if (options.blackPearl && !def.endless && !def.race) placeBlackPearl(def, level, hashString(def.id));
   // A course charted from a seed (a regatta) gets its own gusts and shifts too.
   const seed = hashString(def.windSeed || def.id) ^ (options.seed || 0);
   const wind = createWind(def.wind, seed, level.islands, { calms: level.calms, storms: level.storms });
-  const boat = createBoat(level.start.x, level.start.y, level.start.heading, BOAT_TYPES[options.boat] || BOAT_TYPES.sloop);
+  const boat = createBoat(level.start.x, level.start.y, level.start.heading, withUpgrades(BOAT_TYPES[options.boat] || BOAT_TYPES.sloop, options.upgrades));
   boat.trim = boat.trimTarget = 0.45;
   const game = {
     def,
