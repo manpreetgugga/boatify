@@ -990,13 +990,14 @@ button:focus-visible {
   background: var(--signal);
 }
 
-/* On a wide screen it sits in the open sea above and right of the menu. */
-@media (min-width: 860px) {
+/* On a phone held sideways or anything wider it sits in the open sea above
+   and right of the menu, smaller on a narrower screen, so it stays in view. */
+@media (min-width: 720px) {
   .title .harbor-view {
     position: absolute;
     right: calc(var(--inset-right) + 20px);
     top: calc(var(--inset-top) + 18px);
-    width: clamp(220px, calc(100vw - 680px), 320px);
+    width: clamp(150px, calc(100vw - 660px), 320px);
   }
 }
 

@@ -1908,4 +1908,5 @@ export const ES = {
   "Analytics": "Analytics",
   "Analytics and crash reports": "Analytics and crash reports",
   "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
+  "Harbor": "Puerto",
 };

@@ -768,6 +768,7 @@ export function createUI(root, levels, handlers) {
           </div>` : ''}
           <nav class="title-dock">
             ${tile('shipyard', 'anchor', t('Shipyard'), gearCount(save) > save.gearSeen)}
+            ${dailyOpen ? tile('harbor', 'home', t('Harbor'), !!(next && save.wallet.coins >= next.price), t('Your harbor, {n} of {of} built', { n: builtCount, of: HARBOR_TOTAL })) : ''}
             ${tile('shop', 'chest', t('Shop'), save.wallet.blackPearls && !save.sightings.shop)}
             ${tile('medals', 'trophy', t('Medals'), medalsEarned(save) > save.medalsSeen)}
             ${tile('atlas', 'map', t('Atlas'), atlasCount(save) > save.atlasSeen, t('Sea Atlas, {n} of {of}', { n: atlasCount(save), of: ATLAS_TOTAL }))}

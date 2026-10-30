@@ -84,7 +84,7 @@ through signing up for Play Console and publishing.
 9. **Drift Ice**: snow, icebergs and floes that drift across the channel.
 10. **Pirate Waters**: outsail a pirate brig, or lose it in the reef.
 
-Each voyage you haven't sailed yet has a line on its card hinting at what's out there, and the title screen passes on harbor talk about something you haven't found yet. The title keeps the menu short: Set sail and Voyages, a row of chips for the daily voyage, Open Sea, regatta and orders, and a dock of icons for the rest.
+Each voyage you haven't sailed yet has a line on its card hinting at what's out there, and the title screen passes on harbor talk about something you haven't found yet. The title keeps the menu short: Set sail and Voyages, a row of chips for the daily voyage, Open Sea, regatta and orders, and a dock of icons for the rest, the harbor among them; the harbor's picture stays in the top corner on any phone held sideways.
 
 Finish under the gold time for three stars. Collect pearls, gust jars, repair
 crates and messages in bottles along the way.

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.1] - 2026-10-31
+
+Your harbor is back in view.
+
+- **On every phone.** On a phone narrower than about 860 points the harbor's picture had slipped below the bottom of the title screen. It now sits in the top corner on any screen held sideways, smaller where there's less room.
+- **A Harbor tile.** The title's dock has a Harbor tile too, with a dot when your coins cover the next piece, so building is always a tap away.
+
 ## [0.42.0] - 2026-10-31
 
 Anonymous analytics and crash reports, so the game can get better where players get stuck.
