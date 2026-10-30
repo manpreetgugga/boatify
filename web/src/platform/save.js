@@ -60,6 +60,7 @@ export const DEFAULT_SETTINGS = {
   colorblind: false,
   reduceMotion: null, // null: follow the phone's own setting
   textSize: 1,
+  reminders: true, // reminders on the phone at 9 am, 6 pm and 9 pm (Android)
 };
 
 function blank() {
@@ -82,6 +83,7 @@ function blank() {
     orders: null, // today's orders from the harbourmaster (data/orders.js)
     seenIntro: false,
     seenFilm: false, // the prologue has played through or been skipped
+    remindersAsked: false, // the phone has been asked to allow reminders
   };
 }
 

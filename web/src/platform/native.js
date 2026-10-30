@@ -31,7 +31,39 @@ export function appVersion() {
   return null;
 }
 
-// handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}) }
+// Reminders on the phone (Android only). The shell keeps the config
+// ({ on, times, messages }, data/reminders.js) and draws from it itself.
+export const canRemind = !!(bridge && bridge.setReminders);
+
+export function setReminders(config) {
+  try {
+    if (canRemind) bridge.setReminders(JSON.stringify(config));
+  } catch {
+    // No reminders, then.
+  }
+}
+
+// Whether the phone lets the app show notifications at all.
+export function remindersAllowed() {
+  try {
+    return canRemind && !!bridge.remindersAllowed();
+  } catch {
+    return false;
+  }
+}
+
+// Asks the phone to allow notifications; the answer comes back through
+// handlers.reminders(allowed). Once the phone has stopped asking, withSettings
+// opens the app's notification settings instead.
+export function askReminders(withSettings = false) {
+  try {
+    if (canRemind) bridge.askReminders(!!withSettings);
+  } catch {
+    // Nothing to ask.
+  }
+}
+
+// handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed) }
 export function installNativeHooks(handlers) {
   window.BoatifyNative = {
     onBack() {
@@ -50,6 +82,9 @@ export function installNativeHooks(handlers) {
     },
     setInsets(top, right, bottom, left) {
       handlers.insets({ top, right, bottom, left });
+    },
+    onReminders(allowed) {
+      if (handlers.reminders) handlers.reminders(!!allowed);
     },
   };
   document.addEventListener('visibilitychange', () => {

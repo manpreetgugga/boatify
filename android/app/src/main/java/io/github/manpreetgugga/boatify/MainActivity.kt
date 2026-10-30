@@ -1,14 +1,20 @@
 package io.github.manpreetgugga.boatify
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
@@ -24,7 +30,7 @@ import androidx.webkit.WebViewAssetLoader
 
 // Hosts the bundled web game full screen. The game is served from the APK's
 // assets through WebViewAssetLoader, so it runs offline; only the ads
-// (AdsBridge) use the network.
+// (AdsBridge) use the network. Reminders (Reminders.kt) are set from here.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var ads: AdsBridge
@@ -135,7 +141,53 @@ class MainActivity : Activity() {
         if (hasFocus) hideSystemBars()
     }
 
+    // Ask for notifications: the phone's own question while it will still ask,
+    // else, when the player turned reminders on in Settings, the app's
+    // notification settings.
+    private fun askForReminders(withSettings: Boolean) {
+        if (Reminders.allowed(this)) {
+            reportReminders()
+            return
+        }
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+        if (!granted && (!Reminders.askedBefore(this) || shouldShowRequestPermissionRationale(permission))) {
+            Reminders.markAsked(this)
+            requestPermissions(arrayOf(permission), ASK_REMINDERS)
+        } else if (withSettings) {
+            openNotificationSettings()
+        } else {
+            reportReminders()
+        }
+    }
+
+    private fun openNotificationSettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+        }
+    }
+
+    private fun reportReminders() {
+        val allowed = Reminders.allowed(this)
+        if (allowed) Reminders.schedule(this)
+        if (pageReady) {
+            webView.evaluateJavascript(
+                "window.BoatifyNative && window.BoatifyNative.onReminders && window.BoatifyNative.onReminders($allowed)",
+                null,
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == ASK_REMINDERS) reportReminders()
+    }
+
     override fun onPause() {
+        Reminders.setOpen(this, false)
         if (pageReady) webView.evaluateJavascript("window.BoatifyNative && window.BoatifyNative.onPause()", null)
         webView.onPause()
         ads.onHostPause()
@@ -144,6 +196,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Reminders.setOpen(this, true)
         webView.onResume()
         if (pageReady) webView.evaluateJavascript("window.BoatifyNative && window.BoatifyNative.onResume()", null)
         ads.onHostResume()
@@ -177,5 +230,22 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun version(): String = BuildConfig.VERSION_NAME
+
+        @JavascriptInterface
+        fun setReminders(json: String) {
+            Reminders.configure(applicationContext, json)
+        }
+
+        @JavascriptInterface
+        fun remindersAllowed(): Boolean = Reminders.allowed(applicationContext)
+
+        @JavascriptInterface
+        fun askReminders(withSettings: Boolean) {
+            runOnUiThread { askForReminders(withSettings) }
+        }
+    }
+
+    private companion object {
+        const val ASK_REMINDERS = 1
     }
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.0] - 2026-10-30
+
+Reminders from the harbor.
+
+- **A nudge at 9 am, 6 pm and 9 pm.** On Android, a short reminder comes three times a day, each one drawn at random from more than 150: sailing tips, the next voyage by name, a castaway still adrift, today's daily voyage and orders, and the worlds still to see. Mornings, evenings and nights each have their own lines too.
+- **Asked first.** After your first voyage home, the phone asks whether the game may send notifications. Turn reminders off or on again any time in **Settings → Reminders**.
+- **Never while you play.** No reminder comes while the game is open or within 45 minutes of it, a new one replaces any still unread, and the same line doesn't come round again soon. Lines about the daily voyage, orders, Open Sea and regatta wait until those are open.
+
 ## [0.31.0] - 2026-10-30
 
 A racing line for the regatta.

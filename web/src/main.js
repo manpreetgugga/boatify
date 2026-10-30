@@ -26,7 +26,8 @@ import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
-import { installNativeHooks, vibrate, exitApp, isAndroidApp } from './platform/native.js';
+import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders } from './platform/native.js';
+import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js';
 import { voyagePay, seaPay, racePay, payOut, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
 import { tallyOrders } from './data/orders.js';
 import { ads, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/ads.js';
@@ -141,6 +142,12 @@ function applySettings() {
   layout = null;
 }
 
+// The phone's reminders follow the setting and the voyage to sail next.
+function syncReminders() {
+  if (!canRemind) return;
+  setReminders({ on: save.settings.reminders !== false, times: REMINDER_TIMES, messages: remindersFor(save, CAMPAIGN) });
+}
+
 const input = createInput(canvas, {
   getLayout,
   getSettings: () => save.settings,
@@ -213,10 +220,16 @@ const ui = createUI(root, CAMPAIGN, {
       showTitle(false);
       ui.voyages(save);
     }),
-  onSettings: () => {
+  onSettings: (s, key) => {
     applySettings();
     writeSave(save);
+    if (key === 'reminders') {
+      if (save.settings.reminders && !remindersAllowed()) askReminders(true);
+      syncReminders();
+    }
   },
+  canRemind,
+  remindersAllowed,
   onReset: () => resetProgress(save),
   onSeenIntro: () => writeSave(save),
   onSeen: () => writeSave(save),
@@ -278,6 +291,7 @@ function showTitle(withMenu = true) {
   ui.clearToasts();
   startDemo();
   if (withMenu) ui.title(save);
+  syncReminders();
   // Chart today's course in the background so the daily voyage opens at once.
   if (isDailyUnlocked(save, CAMPAIGN) && !dailyPeek()) setTimeout(() => chartToday(), 2500);
 }
@@ -414,6 +428,12 @@ function showResults() {
   else if (game.race) ui.raceResults(pending.result, pending.improved, save);
   else ui.results(levelIndex, pending.result, pending.improved, save);
   if (pending.improved.pay.coins || pending.improved.pay.blackPearls) setTimeout(() => mode === 'results' && audio.sfx.coins(), 900);
+  // After the first voyage home, ask once whether the phone may send reminders.
+  if (canRemind && !save.remindersAsked && voyagesHome() > 0) {
+    save.remindersAsked = true;
+    writeSave(save);
+    if (save.settings.reminders && !remindersAllowed()) setTimeout(() => askReminders(), 1500);
+  }
 }
 
 function voyagesHome() {
@@ -963,8 +983,22 @@ installNativeHooks({
   pause: () => {
     pause();
     audio.suspend();
+    // Leaving the game: the reminders name the voyage to sail next.
+    syncReminders();
   },
-  resume: () => audio.resume(),
+  resume: () => {
+    audio.resume();
+    // Back from the phone's settings, perhaps with notifications turned on or off.
+    if (canRemind) ui.setToggle('reminders', !!save.settings.reminders && remindersAllowed());
+  },
+  // The phone's answer to askReminders.
+  reminders: (allowed) => {
+    save.settings.reminders = allowed;
+    writeSave(save);
+    syncReminders();
+    ui.setToggle('reminders', allowed);
+    ui.toast(allowed ? `Reminders on, at ${reminderTimes()}.` : 'No reminders, then. Settings can turn them on.');
+  },
   insets: ({ top, right, bottom, left }) => {
     const s = document.documentElement.style;
     s.setProperty('--native-inset-top', `${top}px`);

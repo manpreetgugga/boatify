@@ -21,6 +21,7 @@ import { CHEST, dayOrders, todaysOrders, swapOrder } from '../data/orders.js';
 import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
 import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
+import { reminderTimes } from '../data/reminders.js';
 import { icon } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -548,6 +549,12 @@ export function createUI(root, levels, handlers) {
   }
 
   const ui = {
+    // A Settings switch flipped from outside (the phone answering), if Settings is open.
+    setToggle(key, on) {
+      const b = root.querySelector(`.toggle[data-key="${key}"]`);
+      if (b) b.setAttribute('aria-checked', String(on));
+    },
+
     get current() {
       return current;
     },
@@ -1228,8 +1235,9 @@ export function createUI(root, levels, handlers) {
 
     settings(save) {
       const s = save.settings;
-      // Reduced motion may still be following the phone's own setting.
-      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : !!s[key]);
+      // Reduced motion may still be following the phone's own setting, and
+      // reminders are only on if the phone allows them too.
+      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : key === 'reminders' ? !!s.reminders && handlers.remindersAllowed() : !!s[key]);
       const toggle = (key, label, sub, invert = false) => `<div class="setting">
         <span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
         <button class="toggle" role="switch" data-key="${key}" data-invert="${invert}" aria-checked="${invert ? !value(key) : value(key)}" aria-label="${label}"></button></div>`;
@@ -1245,6 +1253,7 @@ export function createUI(root, levels, handlers) {
             ${toggle('sound', 'Sound effects', '')}
             ${toggle('music', 'Music', 'A quiet sea shanty-ish tune')}
             ${toggle('vibration', 'Vibration', 'Bumps, capsizes and pickups')}
+            ${handlers.canRemind ? toggle('reminders', 'Reminders', `A nudge from the harbor at ${reminderTimes()}`) : ''}
             <h3 class="setting-group">Sailing</h3>
             ${toggle('autoTrim', 'Trim the sail by hand', 'For experienced sailors: W / S or the right-hand slider', true)}
             ${toggle('leftHanded', 'Left-handed controls', 'Steer on the right, gust button on the left')}
@@ -1270,7 +1279,7 @@ export function createUI(root, levels, handlers) {
         const invert = b.dataset.invert === 'true';
         s[key] = !value(key);
         b.setAttribute('aria-checked', String(invert ? !s[key] : s[key]));
-        handlers.onSettings(s);
+        handlers.onSettings(s, key);
       });
       click(node, '.seg button', (e, b) => {
         const seg = b.parentElement;
