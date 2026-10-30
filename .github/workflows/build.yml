@@ -150,3 +150,5 @@ jobs:
           track: ${{ vars.PLAY_TRACK || 'alpha' }}
           status: completed
           whatsNewDirectory: out/whatsnew
+          # 5 makes the game ask for this update at once (web/src/platform/updates.js).
+          inAppUpdatePriority: ${{ vars.PLAY_UPDATE_PRIORITY || 0 }}

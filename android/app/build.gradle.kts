@@ -7,7 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Firebase Analytics and Crashlytics, off until the build has
+// Firebase Analytics, Crashlytics and Remote Config, off until the build has
 // app/google-services.json. CI writes it from the GOOGLE_SERVICES_JSON secret
 // for the Play bundle only; it is never committed. Without it the plugins
 // aren't applied, Firebase never starts and the page sees no analytics bridge.
@@ -167,8 +167,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.google.android.play:review:2.0.2")
+    implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.gms:play-services-games-v2:20.1.2")
     implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-config")
 }

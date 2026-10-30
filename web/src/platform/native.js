@@ -129,7 +129,7 @@ export function askReview() {
   }
 }
 
-// handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed), games(event) }
+// handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed), games(event), analytics(), update(info) }
 export function installNativeHooks(handlers) {
   window.BoatifyNative = {
     onBack() {
@@ -159,6 +159,10 @@ export function installNativeHooks(handlers) {
     // The consent form has been answered, so analytics' default may have changed.
     onAnalytics() {
       if (handlers.analytics) handlers.analytics();
+    },
+    // Google Play's news of an update (platform/updates.js).
+    onUpdate(info) {
+      if (handlers.update) handlers.update(info);
     },
   };
   document.addEventListener('visibilitychange', () => {

@@ -399,6 +399,14 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
     for (const l of b.levels.slice(0, 3)) b.save.levels[l.id] ||= { best: 999, stars: 1, pearls: 0, pearlsTotal: 5, rescued: 0, castaways: 0, runs: 1 };
     b.showTitle();
   });
+  // Once the daily voyage opens, the harbor is on the title twice over: its
+  // picture, in view, and a tile in the dock.
+  const harborShown = await tab.evaluate(() => {
+    const view = document.querySelector('section[aria-label="Title"].open .harbor-view');
+    const r = view && view.getBoundingClientRect();
+    return [!!(r && r.bottom > 0 && r.top < innerHeight), !!document.querySelector('section[aria-label="Title"].open .title-dock [data-act=harbor]')];
+  });
+  if (harborShown.join() !== 'true,true') throw new Error(`harbor on the title: picture in view, dock tile = ${harborShown}`);
   await tab.locator('section[aria-label="Title"].open [data-act=orders]').click();
   await tab.waitForSelector('section[aria-label="Orders"].open');
   const board = await tab.evaluate(() => {

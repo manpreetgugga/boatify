@@ -31,6 +31,10 @@ Google keeps the analytics for 2 months and crash reports for 90 days, on the de
 - **Your choice.** Turn it on or off at any time in the game's **Settings → Analytics and crash reports**. Where the law requires consent (for example in the European Economic Area, the UK and Switzerland), it stays off until you agree on Google's consent form or turn it on yourself.
 - The APK on the game's GitHub Releases page, and any build without Firebase, sends none of this.
 
+## Updates
+
+The Google Play version asks **Google Play** whether a newer version is out, so it can offer to download it (Play's in-app updates). With Firebase in the build it also fetches one setting from **Firebase Remote Config**, the oldest version that may still be played, using the same random installation ID as above. Nothing about you or your game is sent for this, and it is fetched whether or not analytics is on, because it only decides whether to ask you to update.
+
 ## Google Play Games (optional)
 
 The Google Play version of the game can use Google Play Games. Nothing is sent to it unless you sign in, in the game's **Settings → Google Play Games** or through Google Play Games itself. When you are signed in:

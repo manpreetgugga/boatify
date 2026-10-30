@@ -257,6 +257,19 @@ button:focus-visible {
   color: var(--brass);
 }
 
+/* An update from Google Play, in the harbor talk's place. */
+.update-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: -6px 0 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: calc(clamp(14px, 2.9vh, 17px) * var(--text, 1));
+  color: var(--foam);
+}
+
 /* Festival weeks tint the title's eyebrow and the festival line. */
 .title.halloween { --fest: #ff9a3c; }
 .title.diwali { --fest: #ffc93c; }
@@ -990,13 +1003,14 @@ button:focus-visible {
   background: var(--signal);
 }
 
-/* On a wide screen it sits in the open sea above and right of the menu. */
-@media (min-width: 860px) {
+/* On a phone held sideways or anything wider it sits in the open sea above
+   and right of the menu, smaller on a narrower screen, so it stays in view. */
+@media (min-width: 720px) {
   .title .harbor-view {
     position: absolute;
     right: calc(var(--inset-right) + 20px);
     top: calc(var(--inset-top) + 18px);
-    width: clamp(220px, calc(100vw - 680px), 320px);
+    width: clamp(150px, calc(100vw - 660px), 320px);
   }
 }
 
@@ -2091,6 +2105,21 @@ button:focus-visible {
 .setting .label small {
   color: var(--foam-dim);
   font-size: calc(13px * var(--text, 1));
+}
+
+.credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0 4px;
+  color: var(--foam-dim);
+  font-size: calc(13px * var(--text, 1));
+}
+
+.credit .studio-mark {
+  flex: none;
+  border-radius: 5px;
 }
 
 .setting-buttons {

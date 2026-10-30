@@ -4,6 +4,7 @@
 import { LEVELS } from './data/levels.js';
 import { CAMPAIGN, voyageDef, worldOf } from './data/worlds.js';
 import { track, applyAnalytics, analyticsOn, installErrorReports, worldReached } from './platform/analytics.js';
+import { installUpdates, onUpdateInfo, considerUpdate, checkForUpdate, applyUpdate, updateNotice } from './platform/updates.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { festivalOn, awardFestivalSail } from './data/festivals.js';
 import { createGame, stepGame, drainEvents, speedOf, PACE } from './world/game.js';
@@ -310,6 +311,8 @@ const ui = createUI(root, CAMPAIGN, {
   },
   onBackToTitle: () => showTitle(),
   onFilm: () => playFilm(),
+  updateNotice: () => updateNotice(),
+  onUpdate: () => applyUpdate(),
   onFilmDone: (helm) => finishFilm(helm),
   onBackTo: (name) => {
     if (name === 'voyages') ui.voyages(save);
@@ -356,6 +359,7 @@ function showTitle(withMenu = true) {
   ui.clearToasts();
   startDemo();
   if (withMenu) ui.title(save);
+  considerUpdate();
   if (cloudOffer) offerCloud();
   syncReminders();
   // Chart today's course in the background so the daily voyage opens at once.
@@ -1225,6 +1229,8 @@ installNativeHooks({
     audio.resume();
     // Back from the phone's settings, perhaps with notifications turned on or off.
     if (canRemind) ui.setToggle('reminders', !!save.settings.reminders && remindersAllowed());
+    // An update may have finished downloading while the game was away.
+    checkForUpdate();
   },
   // The phone's answer to askReminders.
   reminders: (allowed) => {
@@ -1235,6 +1241,7 @@ installNativeHooks({
     ui.toast(allowed ? t('Reminders on, at {times}.', { times: reminderTimes() }) : t('No reminders, then. Settings can turn them on.'));
   },
   games: (e) => gamesEvent(e),
+  update: (info) => onUpdateInfo(info),
   analytics: () => {
     applyAnalytics(save.settings);
     ui.setToggle('analytics', analyticsOn(save.settings));
@@ -1248,6 +1255,8 @@ installNativeHooks({
     readInsets();
   },
 });
+// Play's updates: asked about only on the title screen, never mid-voyage.
+installUpdates({ canAsk: () => mode === 'title', notice: (state) => ui.updateNotice(state) });
 
 window.addEventListener('resize', () => {
   resize(renderer);

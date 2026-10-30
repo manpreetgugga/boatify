@@ -1,0 +1,1 @@
+Anonymous analytics and crash reports help find where voyages are too hard and fix crashes: which voyages are started, finished or given up, and what went wrong in a crash. No names and no advertising id. Turn it off any time in Settings > Analytics and crash reports; where consent is required it stays off until you agree.

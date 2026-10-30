@@ -1908,4 +1908,10 @@ export const PT = {
   "Analytics": "Analytics",
   "Analytics and crash reports": "Analytics and crash reports",
   "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
+  "Harbor": "Porto",
+  "Made by {studio}": "Feito por {studio}",
+  "A new version is ready": "Uma nova versão está pronta",
+  "Restart to update": "Reiniciar para atualizar",
+  "This version is out of date": "Esta versão está desatualizada",
+  "Update": "Atualizar",
 };
