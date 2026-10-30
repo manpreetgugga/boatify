@@ -77,6 +77,7 @@ function blank() {
     medals: {}, // medal id -> day it was earned
     medalsSeen: 0, // how many medals the Medals screen last showed
     gearSeen: 0, // how many Sail Locker items the locker last showed
+    atlasSeen: 0, // how many Sea Atlas entries the atlas last showed
     sailed: [], // boats that have finished a voyage
     sightings: {}, // sea life the player has had the first-meeting tip for
     wallet: blankWallet(), // coins, black pearls and what they bought
@@ -121,6 +122,7 @@ export function cleanSave(data) {
     medals: isObj(data.medals) ? data.medals : {},
     medalsSeen: Number(data.medalsSeen) || 0,
     gearSeen: Number(data.gearSeen) || 0,
+    atlasSeen: Number(data.atlasSeen) || 0,
     sailed: Array.isArray(data.sailed) ? data.sailed : [],
     sightings: isObj(data.sightings) ? data.sightings : {},
     wallet: cleanWallet(data.wallet),

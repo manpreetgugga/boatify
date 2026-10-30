@@ -33,6 +33,7 @@ import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js
 import { voyagePay, seaPay, racePay, payOut, doubleOf, doublePay, blackPearlWaiting, jarsAboard, useJars, spend, canAfford, SECOND_WIND, SECOND_WIND_TIME } from './data/economy.js';
 import { tallyOrders } from './data/orders.js';
 import { upgradeLevels } from './data/upgrades.js';
+import { atlasInView, recordSighting, PAGE_REWARD } from './data/atlas.js';
 import { ads, installAds, watchVideo, videosLeft, countVoyage, breakDue, takeBreak, REWARDS } from './platform/ads.js';
 
 // Things that thud rather than crack when you hit them.
@@ -83,6 +84,7 @@ let carried = 0; // gust jars brought from the hold this voyage
 let windTaken = false; // a second wind already used this Open Sea run
 let onBreak = false; // the ad between voyages is playing
 let guideTold = {}; // which dolphin hints this voyage has explained
+let atlasTimer = 0; // till the next look round for Sea Atlas entries
 let cancelCountdown = null;
 let timeScale = 1;
 let hudOff = false; // the store art's clean frames
@@ -618,6 +620,29 @@ function firstSight(kind, text) {
   ui.toast(text, 'tip', 6000, true);
 }
 
+// Fill in the Sea Atlas with whatever the boat is near that it hasn't met.
+function lookRound() {
+  const ids = atlasInView(game, save);
+  if (!ids.length) return;
+  const met = [];
+  const filled = [];
+  for (const id of ids) {
+    const r = recordSighting(save, id);
+    if (!r) continue;
+    met.push(r.entry.name);
+    if (r.page) filled.push(r.page.name);
+  }
+  if (!met.length) return;
+  writeSave(save);
+  // A filled page says it all; otherwise name what's new.
+  if (filled.length) {
+    audio.sfx.pickup('blackPearl');
+    for (const name of filled) ui.toast(`Page filled: ${name}! +${PAGE_REWARD.coins} coins, +${PAGE_REWARD.blackPearls} black pearl`, 'atlas good', 5200);
+  } else {
+    ui.toast(`New in the Sea Atlas: ${met.join(', ')}`, 'atlas', 3400);
+  }
+}
+
 function handleEvents(events, live) {
   const fx = renderer.fx;
   const cam = renderer.cam;
@@ -929,6 +954,11 @@ function frame(now) {
       if (recorder) recordGhost(recorder, game);
       handleEvents(drainEvents(game), true);
       if (mode !== 'playing') break;
+    }
+    atlasTimer -= dt;
+    if (mode === 'playing' && atlasTimer <= 0) {
+      atlasTimer = 0.5;
+      lookRound();
     }
   } else if (mode === 'finishing') {
     // Let the boat coast into the harbor before the results card.

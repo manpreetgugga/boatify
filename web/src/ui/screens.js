@@ -15,6 +15,7 @@ import { isUnlocked, totalStars, isDailyUnlocked, currentStreak, DAILY_UNLOCK, i
 import { dateKey, dailyId } from '../data/daily.js';
 import { festivalOn, festivalById, nextWeek } from '../data/festivals.js';
 import { PARTS, UPGRADE_STEPS, upgradeLevel, upgradeLevels, upgradeCount, nextPrice, buyUpgrade } from '../data/upgrades.js';
+import { PAGES, ATLAS_TOTAL, PAGE_REWARD, hasMet, atlasCount, pageDone, pageRewarded } from '../data/atlas.js';
 import { ROWS, PIECES, HARBOR_TOTAL, ROW_PEARLS, harborBuilt, isBuilt, waitingOn, rowDone, buildPiece, nextPiece } from '../data/harbor.js';
 import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data/medals.js';
 import { pickRumor } from '../data/rumors.js';
@@ -704,6 +705,7 @@ export function createUI(root, levels, handlers) {
             <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">Shipyard</button>
             <button class="btn small ${save.wallet.blackPearls && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">Shop</button>
             <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">Medals</button>
+            <button class="btn small ${atlasCount(save) > save.atlasSeen ? 'fresh' : ''}" data-act="atlas" aria-label="Sea Atlas, ${atlasCount(save)} of ${ATLAS_TOTAL}">Atlas</button>
             <button class="btn small" data-act="logbook">Logbook</button>
             <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">Prologue</button>
             <button class="btn small" data-act="settings">Settings</button>
@@ -723,6 +725,7 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=shipyard]', () => ui.shipyard(save));
       click(node, '[data-act=shop]', () => ui.shop(save));
       click(node, '[data-act=medals]', () => ui.medals(save));
+      click(node, '[data-act=atlas]', () => ui.atlas(save));
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
       click(node, '[data-act=film]', () => handlers.onFilm());
@@ -1681,6 +1684,61 @@ export function createUI(root, levels, handlers) {
         save.medalsSeen = got;
         handlers.onSeen();
       }
+    },
+
+    // The Sea Atlas: one page at a time, with tabs for every page. It opens
+    // on the page that's furthest along without being full.
+    atlas(save, pageId = null) {
+      const open = (id) => PAGES.find((p) => p.id === id);
+      const page =
+        open(pageId) ||
+        [...PAGES].filter((p) => !pageDone(save, p.id) && atlasCount(save, p.id)).sort((a, b) => atlasCount(save, b.id) / b.entries.length - atlasCount(save, a.id) / a.entries.length)[0] ||
+        PAGES.find((p) => !pageDone(save, p.id)) ||
+        PAGES[0];
+      const met = atlasCount(save);
+      const tabs = PAGES.map((p) => {
+        const n = atlasCount(save, p.id);
+        const full = n === p.entries.length;
+        return `<button class="atlas-tab ${p.id === page.id ? 'on' : ''} ${full ? 'full' : ''}" data-page="${p.id}" style="--page:${p.color}" aria-pressed="${p.id === page.id}" aria-label="${esc(p.name)}, ${n} of ${p.entries.length}">${esc(p.name)} <small>${full ? '✓' : `${n}/${p.entries.length}`}</small></button>`;
+      }).join('');
+      const cards = page.entries
+        .map((e) =>
+          hasMet(save, e.id)
+            ? `<div class="atlas-card met"><span class="atlas-art">${icon(e.icon, 30)}</span><span class="atlas-text"><b>${esc(e.name)}</b><small>${esc(e.text)}</small></span></div>`
+            : `<div class="atlas-card"><span class="atlas-art" aria-hidden="true">${icon(e.icon, 30)}<i>?</i></span><span class="atlas-text"><b><span aria-hidden="true">???</span><span class="sr-only">Not met yet</span></b><small>${page.id === 'weather' ? 'Out in the weather somewhere.' : `Somewhere in ${esc(page.name)}.`}</small></span></div>`,
+        )
+        .join('');
+      const n = atlasCount(save, page.id);
+      const prize = `${PAGE_REWARD.coins} coins and ${PAGE_REWARD.blackPearls} black pearl`;
+      const foot = pageRewarded(save, page.id)
+        ? `<p class="atlas-foot done">${icon('star', 16)} Page filled. Reward collected: ${prize}.</p>`
+        : `<p class="atlas-foot"><span class="medal-meter"><i style="width:${Math.round((100 * n) / page.entries.length)}%"></i></span> Fill this page for ${prize}.</p>`;
+      const node = el(`<section class="screen dim" aria-label="Sea Atlas">
+        <div class="sheet wide atlas" style="--page:${page.color}">
+          <div class="sheet-head"><h2>Sea Atlas</h2><span class="eyebrow">${met} / ${ATLAS_TOTAL}</span><button class="btn small" data-act="back">Back</button></div>
+          <div class="sheet-body">
+            <p class="sheet-note">Sail near a creature or a sight and it's written in. Every page you fill pays ${prize}.</p>
+            <div class="atlas-tabs" role="group" aria-label="Pages">${tabs}</div>
+            <h3 class="atlas-title">${esc(page.name)} <small>${n} / ${page.entries.length}</small></h3>
+            <div class="atlas-grid">${cards}</div>
+            ${foot}
+          </div>
+        </div></section>`);
+      click(node, '[data-act=back]', () => ui.back());
+      click(node, '[data-page]', (e, b) => {
+        const scroll = node.querySelector('.atlas-tabs').scrollLeft;
+        const next = ui.atlas(save, b.dataset.page);
+        next.querySelector('.atlas-tabs').scrollLeft = scroll;
+        next.querySelector('.atlas-tab.on').focus({ preventScroll: true });
+      });
+      show('atlas', node, pageId ? { keep: true } : { push: true });
+      const tab = node.querySelector('.atlas-tab.on');
+      if (tab && !pageId) tab.scrollIntoView({ block: 'nearest', inline: 'center' });
+      if (save.atlasSeen !== met) {
+        save.atlasSeen = met;
+        handlers.onSeen();
+      }
+      return node;
     },
 
     logbook(save) {

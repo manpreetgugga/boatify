@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.38.0] - 2026-10-30
+
+The Sea Atlas: a book of everything you meet at sea.
+
+- **Fill it in as you sail.** Sail near a creature or a sight and it's written into the Atlas: dolphins, whales, the kraken, whirlpools, the pirate brig, and in each world its lair, its drifters and its islands, from the steam vents of the Volcano Isles to the airships of the Sky Sea. Fog, night, squalls, calms, currents and the northern lights count too. Fifty-two entries over twelve pages.
+- **A reward for every page.** Fill a page and it pays 300 coins and a black pearl, once.
+- **Open the Atlas from the title screen.** One page at a time, with a tab for each page and a dot when there's something new. Entries you haven't met show as question marks, with where to look. The Atlas travels with your backup code.
+
 ## [0.37.0] - 2026-10-30
 
 Boat upgrades: spend coins on your boats' sails, keel and hull.

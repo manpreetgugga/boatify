@@ -413,6 +413,32 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   if (!strip.includes('Bring a castaway home') || !orders.done.includes('rescue') || orders.progress.voyages !== 1) throw new Error(`orders after the rescue: ${strip} / ${JSON.stringify(orders)}`);
   step('the rescue finished an order: "Bring a castaway home"');
 
+  step('sea atlas: a steam vent met in the Volcano Isles is written in');
+  const volcano = await tab.evaluate(() => window.__boatify.campaign.findIndex((c) => c.world === 'volcano' && (window.__boatify.voyageDef(c.id).krakens || []).length));
+  await tab.evaluate((i) => window.__boatify.startLevel(i), volcano);
+  await tab.waitForFunction(() => window.__boatify.state().mode === 'playing', null, { timeout: 8000 });
+  await tab.evaluate(() => {
+    window.__boatify.setAutopilot(false);
+    window.__boatify.setTimeScale(1);
+  });
+  if (!(await tab.evaluate(() => window.__boatify.lookAt('lair', 60)))) throw new Error('no lair to sail up to');
+  await tab.waitForFunction(() => window.__boatify.save.wallet.owned.includes('atlas:vent'), null, { timeout: 4000 });
+  await tab.locator('.toast.atlas', { hasText: 'Steam vent' }).waitFor();
+  await snap('17-atlas-toast');
+  await tab.evaluate(() => window.__boatify.showTitle());
+  await tab.waitForSelector('section[aria-label="Title"].open');
+  const met = await tab.evaluate(() => window.__boatify.save.wallet.owned.filter((k) => k.startsWith('atlas:')).length);
+  await tab.getByRole('button', { name: `Sea Atlas, ${met} of 52` }).click();
+  await tab.waitForSelector('section[aria-label="Sea Atlas"].open');
+  await tab.locator('section[aria-label="Sea Atlas"]').getByRole('button', { name: /^Volcano Isles, \d of 4$/ }).click();
+  await tab.locator('.atlas-title', { hasText: 'Volcano Isles' }).waitFor();
+  if ((await tab.locator('.atlas-card.met', { hasText: 'Steam vent' }).count()) !== 1) throw new Error('the steam vent is not in the atlas');
+  step(`${met} of 52 in the atlas, the steam vent among them`);
+  await tab.waitForTimeout(300);
+  await snap('18-atlas');
+  await tab.locator('section[aria-label="Sea Atlas"]').getByRole('button', { name: 'Back' }).click();
+  await tab.waitForSelector('section[aria-label="Title"].open');
+
   await browser.close();
   if (errors.length) {
     console.error(errors.join('\n'));
