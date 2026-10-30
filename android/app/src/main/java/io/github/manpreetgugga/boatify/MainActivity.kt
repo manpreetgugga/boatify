@@ -35,10 +35,12 @@ import com.google.android.play.core.review.ReviewManagerFactory
 // assets through WebViewAssetLoader, so it runs offline; only the ads
 // (AdsBridge) use the network. Reminders (Reminders.kt) are set from here,
 // and the share sheet, the clipboard (for backup codes) and Google Play's
-// rating box are reached from here.
+// rating box are reached from here. Google Play Games (GamesBridge) only
+// starts when the build has a Play Games app id.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var ads: AdsBridge
+    private var games: GamesBridge? = null
     private var clipboard: ClipboardManager? = null
     private var insets = intArrayOf(0, 0, 0, 0)
     private var pageReady = false
@@ -71,6 +73,9 @@ class MainActivity : Activity() {
             addJavascriptInterface(Bridge(), "BoatifyAndroid")
             ads = AdsBridge(this@MainActivity, this)
             addJavascriptInterface(ads, "BoatifyAds")
+            if (BuildConfig.PLAY_GAMES_APP_ID.isNotEmpty()) {
+                games = GamesBridge(this@MainActivity, this).also { addJavascriptInterface(it, "BoatifyGames") }
+            }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     loader.shouldInterceptRequest(request.url)
@@ -109,6 +114,11 @@ class MainActivity : Activity() {
         hideSystemBars()
         webView.loadUrl("https://${WebViewAssetLoader.DEFAULT_DOMAIN}/assets/www/index.html")
         ads.start()
+        try {
+            games?.start()
+        } catch (e: RuntimeException) {
+            // A Play Games set-up problem leaves the game playable without it.
+        }
     }
 
     private fun hideSystemBars() {
