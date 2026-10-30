@@ -31,7 +31,7 @@ import { holdsBlackPearl } from '../world/blackpearls.js';
 import { LEVELS } from '../data/levels.js';
 import { WORLDS, getWorld, voyageDef, voyageLabel } from '../data/worlds.js';
 import { reminderTimes } from '../data/reminders.js';
-import { icon } from './icons.js';
+import { icon, studioMark } from './icons.js';
 import { t, N_, ordinal, shortDate, nameOf, blurbOf, LANGS, currentLang } from '../i18n/index.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -46,6 +46,13 @@ function chip(act, ic, label, fresh, name = '') {
   return `<button class="btn small chip ${fresh ? 'fresh' : ''}" data-act="${act}"${name ? ` aria-label="${esc(name)}"` : ''}>${icon(ic, 18)}<span>${label}</span></button>`;
 }
 
+// Google Play's news on the title, in place of the harbor talk: a downloaded
+// update waiting for a restart, or an urgent one turned down.
+function updateLine(state) {
+  return state === 'restart'
+    ? `<p class="update-line" role="status"><span>${t('A new version is ready')}</span><button class="btn small" data-act="update">${t('Restart to update')}</button></p>`
+    : `<p class="update-line" role="status"><span>${t('This version is out of date')}</span><button class="btn small" data-act="update">${t('Update')}</button></p>`;
+}
 function tile(act, ic, label, fresh, name = '') {
   return `<button class="dock-tile ${fresh ? 'fresh' : ''}" data-act="${act}"${name ? ` aria-label="${esc(name)}"` : ''}>${icon(ic, 22)}<span>${esc(label)}</span></button>`;
 }
@@ -743,6 +750,7 @@ export function createUI(root, levels, handlers) {
       const talk = fest && dailyOpen && !isGearUnlocked(save, sail)
         ? `<p class="rumor festive"><span>${esc(t('{fest} week', { fest: t(fest.name) }))}</span> ${esc(t("Sail today's {fest} voyage home to win the {sail} sail.", { fest: t(fest.name), sail: t(sail.name) }))}</p>`
         : `<p class="rumor"><span>${t('Harbor talk')}</span> ${esc(pickRumor(save, levels))}</p>`;
+      const notice = handlers.updateNotice ? handlers.updateNotice() : null;
       // Your harbor, once the daily voyage opens; a dot when coins cover the next piece.
       const next = dailyOpen && nextPiece(save);
       const builtCount = harborBuilt(save).length;
@@ -754,7 +762,7 @@ export function createUI(root, levels, handlers) {
           <div class="eyebrow">${fest ? esc(t('{fest} week', { fest: t(fest.name) })) : t('A sailing voyage')}</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
           <p class="tagline">${t("A squall took your oar. Now only the wind can carry you from <b>A</b> to <b>B</b>. Read it. Ride it. Don't capsize.")}</p>
-          ${talk}
+          ${notice ? updateLine(notice) : talk}
           <div class="title-buttons">
             <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? t('Set sail') : t('Start voyage')}</button>
             <button class="btn" data-act="voyages">${t('Voyages')}</button>
@@ -794,9 +802,25 @@ export function createUI(root, levels, handlers) {
       click(node, '[data-act=logbook]', () => ui.logbook(save));
       click(node, '[data-act=settings]', () => ui.settings(save));
       click(node, '[data-act=film]', () => handlers.onFilm());
+      click(node, '[data-act=update]', () => handlers.onUpdate());
       show('title', node);
       const view = node.querySelector('.harbor-view canvas');
       if (view) showHarbor(view, save, handlers.motionReduced());
+    },
+
+    // Play's update news arrived while the title is up: swap it in for the
+    // harbor talk (or take it away again).
+    updateNotice(state) {
+      const title = root.querySelector('section.title');
+      const old = title && (title.querySelector('.update-line') || title.querySelector('.rumor'));
+      if (!old) return;
+      if (!state) {
+        if (old.classList.contains('update-line')) old.remove();
+        return;
+      }
+      const line = el(updateLine(state));
+      click(line, '[data-act=update]', () => handlers.onUpdate());
+      old.replaceWith(line);
     },
 
     // Your harbor: what's built, and what coins can build next.
@@ -1657,6 +1681,7 @@ export function createUI(root, levels, handlers) {
               <button class="btn small" data-act="backup">${t('Show')}</button></div>
             <div class="setting"><span class="label"><b>${t('Reset progress')}</b><small>${t('Clears times, stars, medals and the logbook')}</small></span>
               <button class="btn small" data-act="reset">${t('Reset')}</button></div>
+            <p class="credit">${studioMark(20)}<span>${t('Made by {studio}', { studio: 'MSG Studios' })} · v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></p>
           </div>
         </div></section>`);
       click(node, '.toggle', (e, b) => {

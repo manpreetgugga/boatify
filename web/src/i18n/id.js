@@ -1909,4 +1909,9 @@ export const ID = {
   "Analytics and crash reports": "Analytics and crash reports",
   "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
   "Harbor": "Pelabuhan",
+  "Made by {studio}": "Dibuat oleh {studio}",
+  "A new version is ready": "Versi baru sudah siap",
+  "Restart to update": "Mulai ulang untuk memperbarui",
+  "This version is out of date": "Versi ini sudah usang",
+  "Update": "Perbarui",
 };

@@ -306,7 +306,9 @@ The file is written at build time and never committed (`.gitignore`).
    not ephemeral, and **optional** (the Settings switch). **App
    interactions**, **Diagnostics** and **Device or other IDs** are already
    there for AdMob and already list Analytics, so they stay as they are
-   (required, because AdMob needs them).
+   (required, because AdMob needs them), except that **Device or other IDs**
+   also gets **App functionality**: Remote Config (In-app updates, below)
+   fetches with Firebase's installation ID.
 
 **How far players get.** Firebase console → **Analytics → Events →
 `voyage_complete`**, add `world` and `level` as custom dimensions (**Custom
@@ -330,6 +332,56 @@ for ads (`AndroidManifest.xml`). Where Google's consent form applies, it stays
 off until the player agrees (storing on the device and measuring, TCF purposes
 1 and 8) or turns on **Settings → Analytics and crash reports**; elsewhere it
 is on until they turn it off.
+
+## In-app updates
+
+A copy installed by Google Play checks for a newer version each time it
+opens or comes back to the front (`UpdateBridge.kt`, `web/src/platform/updates.js`).
+The GitHub APK, a sideloaded build and the browser never do.
+
+- **Normally** the update downloads in the background (Play's *flexible*
+  update) after one tap on Play's own box, asked at most once a day and only on
+  the title screen, never mid-voyage. When it's down, the title's harbor talk
+  becomes **A new version is ready · Restart to update**.
+- **Urgently**, Play's full-screen *immediate* update opens on the title, once
+  a launch. If the player turns it down, the title says **This version is out
+  of date · Update**. A version is urgent when either:
+  - **its Play priority is 5.** Play Console's web page can't set it; the
+    Play Developer API can. With `PLAY_SERVICE_ACCOUNT_JSON` set (above), set
+    the repository variable `PLAY_UPDATE_PRIORITY` to `5` (**Settings →
+    Secrets and variables → Actions → Variables**) before pushing the version
+    that must go out at once, and back to `0` afterwards. Manual uploads always
+    have priority 0.
+  - **Remote Config says so** (needs Firebase, above). Firebase console →
+    **Remote Config → Create configuration → Add parameter**: key
+    `min_version_code`, data type **Number**, default value the version code
+    of the oldest version you still allow (for 0.43.0 that's `4300`; the code
+    is `major*10000 + minor*100 + patch`) → **Publish changes**. Every older
+    version that Play can update asks at once, within an hour (the app fetches
+    at most hourly). Set it back to `0` to stop. Don't set it above the version
+    that's live on the player's track, or they're asked for an update Play
+    can't give (the game then says nothing, but it's pointless).
+
+**Testing it with internal app sharing.** In-app updates only work for apps
+installed by Play, so a debug build from Android Studio never sees one.
+
+1. Play Console → **Setup → Internal app sharing**, add yourself to the
+   uploaders, and on the phone turn on **Play Store → Settings → About → tap
+   Play Store version 7 times**, then **General → Internal app sharing**.
+2. Upload the current version's `.aab` (from the GitHub release) on
+   <https://play.google.com/console/internal-app-sharing>, open its link on the
+   phone and install it.
+3. Upload a bundle with a *higher* version code the same way, open its link,
+   but **don't** tap Update; just go back.
+4. Open No Paddle: on the title, Play's box offers the update; accept, keep
+   playing, and once it's down the title says **Restart to update**.
+5. For the urgent path, put the newer version code in Remote Config's
+   `min_version_code` (or uninstall and repeat with a bundle uploaded with
+   priority 5 through the API) and reopen the game: Play's full-screen update
+   opens at once.
+
+The once-a-day limit is kept in the page's storage (`boatify.updateAsked`);
+clearing the app's storage resets it, along with your progress.
 
 ## Play and the APK don't mix
 

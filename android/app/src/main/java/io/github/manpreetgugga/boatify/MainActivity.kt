@@ -37,12 +37,14 @@ import com.google.firebase.FirebaseApp
 // (AdsBridge) use the network. Reminders (Reminders.kt) are set from here,
 // and the share sheet, the clipboard (for backup codes) and Google Play's
 // rating box are reached from here. Google Play Games (GamesBridge) only
-// starts when the build has a Play Games app id.
+// starts when the build has a Play Games app id, and in-app updates
+// (UpdateBridge) only for a copy Google Play installed.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var ads: AdsBridge
     private var games: GamesBridge? = null
     private var analytics: AnalyticsBridge? = null
+    private var updates: UpdateBridge? = null
     private var clipboard: ClipboardManager? = null
     private var insets = intArrayOf(0, 0, 0, 0)
     private var pageReady = false
@@ -85,6 +87,13 @@ class MainActivity : Activity() {
                     ads.onConsent = { analytics?.consentChanged() }
                 } catch (e: RuntimeException) {
                     // A Firebase set-up problem leaves the game playable without it.
+                }
+            }
+            if (UpdateBridge.fromPlay(this@MainActivity)) {
+                try {
+                    updates = UpdateBridge(this@MainActivity, this).also { addJavascriptInterface(it, "BoatifyUpdates") }
+                } catch (e: RuntimeException) {
+                    // No in-app updates, then; Play still updates the app itself.
                 }
             }
             webViewClient = object : WebViewClient() {
@@ -228,6 +237,12 @@ class MainActivity : Activity() {
         }
     }
 
+    // Play's update screen closed: updated, or turned down.
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == UpdateBridge.REQUEST) updates?.onResult(resultCode)
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == ASK_REMINDERS) reportReminders()
@@ -250,6 +265,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        updates?.destroy()
         ads.destroy()
         webView.destroy()
         super.onDestroy()

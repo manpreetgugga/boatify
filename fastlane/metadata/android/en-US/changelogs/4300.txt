@@ -1,0 +1,1 @@
+Updates from inside the game: when a new version is out, it downloads in the background after one tap, and the title screen offers Restart to update. It only asks on the title screen, never mid-voyage, and at most once a day. Urgent fixes open Google Play's update screen straight away. The foot of Settings now shows who makes the game: MSG Studios.

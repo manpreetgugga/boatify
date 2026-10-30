@@ -95,7 +95,7 @@ Requires Node 18+. No dependencies to install.
 
 ```sh
 npm start           # play the dev build at http://localhost:5173
-npm test            # the prologue film, dolphin guides, harbor talk and secret medals, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas and the Regatta Cup, castaways, medals, daily orders, reminders, sharing and doubling coins, backup codes, Play Games leaderboards and cloud save, analytics events and crash reports, languages and the store listings, festival weeks, the harbor, boat upgrades, the Sea Atlas, the Sail Locker, accessibility, save and bundle tests
+npm test            # the prologue film, dolphin guides, harbor talk and secret medals, physics, wind, boats, floes, pirates, levels and daily courses (the autopilot sails them), the Open Sea, regattas and the Regatta Cup, castaways, medals, daily orders, reminders, sharing and doubling coins, backup codes, Play Games leaderboards and cloud save, analytics events and crash reports, in-app updates, languages and the store listings, festival weeks, the harbor, boat upgrades, the Sea Atlas, the Sail Locker, accessibility, save and bundle tests
 npm run build       # dist/index.html: the whole game in one file
 npm run smoke       # browser playtest with Playwright (needs Playwright installed)
 npm run store-art   # redraw the Play store icon, feature graphic and screenshots (Playwright)
@@ -107,15 +107,16 @@ The game is plain JavaScript modules in `web/src`:
 - `world/`: game simulation, wind field, water, drifting ice, collisions, voyages, autopilot
 - `render/`: canvas renderer (ocean, islands, boat, effects, lighting, HUD)
 - `input/`, `audio/`, `ui/`, `platform/`: controls, WebAudio sound, menus, saves and the Android bridge
-- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `data/festivals.js` and `render/festive.js`: festival weeks and their decorations; `data/harbor.js` and `render/harbor.js`: your harbor and its pieces; `data/upgrades.js`: boat upgrades; `data/atlas.js`: the Sea Atlas; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta courses and their fleet; `data/cup.js`: the Regatta Cup; `world/castaways.js`: castaways and hauling them aboard; `world/guide.js`: dolphins that show a stuck or lost sailor the way; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/orders.js`: the harbourmaster's daily orders; `data/reminders.js`: the phone's reminders; `platform/social.js`: share texts and when to ask for a rating; `platform/backup.js`: backup codes; `platform/games.js`: Google Play Games; `platform/analytics.js`: anonymous analytics and crash reports (Firebase, off until set up); `data/rumors.js`: the title screen's harbor talk; `data/locker.js`: the Sail Locker's sails and hull paints
+- `data/levels.js`: the voyages; `data/daily.js`: the daily course generator; `data/festivals.js` and `render/festive.js`: festival weeks and their decorations; `data/harbor.js` and `render/harbor.js`: your harbor and its pieces; `data/upgrades.js`: boat upgrades; `data/atlas.js`: the Sea Atlas; `world/opensea.js`: the endless Open Sea; `world/regatta.js`: the regatta courses and their fleet; `data/cup.js`: the Regatta Cup; `world/castaways.js`: castaways and hauling them aboard; `world/guide.js`: dolphins that show a stuck or lost sailor the way; `world/prologue.js` and `render/film.js`: the prologue film's script and camera; `data/medals.js`: the medals; `data/orders.js`: the harbourmaster's daily orders; `data/reminders.js`: the phone's reminders; `platform/social.js`: share texts and when to ask for a rating; `platform/backup.js`: backup codes; `platform/games.js`: Google Play Games; `platform/analytics.js`: anonymous analytics and crash reports (Firebase, off until set up); `platform/updates.js`: Google Play's in-app updates; `data/rumors.js`: the title screen's harbor talk; `data/locker.js`: the Sail Locker's sails and hull paints
 - `i18n/`: the languages. `t('English')` looks text up in the chosen language's table (`hi.js`, `es.js`, `pt.js`, `id.js`, keyed by the English and filling in `{names}`), and `N_()` marks English kept in the data to be translated when shown. `tests/i18n.test.mjs` finds every string the game shows and checks each table has it, with the same `{names}` and markup.
 
 ### Android
 
 `android/` is a small Kotlin WebView shell. Gradle runs `scripts/build.mjs` to
 bundle the game into the APK's assets, so the game works offline; only the
-ads (AdMob, in `AdsBridge.kt`) and, when it's set up, Google Play Games
-(`GamesBridge.kt`) use the network.
+ads (AdMob, in `AdsBridge.kt`), Google Play's in-app updates (`UpdateBridge.kt`,
+only in a copy Play installed) and, when they're set up, Google Play Games
+(`GamesBridge.kt`) and Firebase use the network.
 
 ```sh
 cd android
@@ -128,6 +129,9 @@ pre-release for each new version in `package.json`, with the Play bundle
 signing and `docs/PLAY_STORE.md` for Google Play.
 
 ## Credits
+
+No Paddle is made by **MSG Studios**. The studio's logo and brand files are in
+[docs/brand/](docs/brand/).
 
 Barlow and Barlow Condensed fonts by Jeremy Tribby, SIL Open Font License
 (`web/fonts/OFL.txt`). Everything else, including the sound, is generated in code.

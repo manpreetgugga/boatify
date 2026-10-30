@@ -57,3 +57,8 @@ export function icon(name, size = 24) {
 }
 
 export const ICONS = Object.keys(PATHS);
+
+// The MSG Studios mark (docs/brand): two hills and the sun, in the studio's own colours.
+export function studioMark(size = 20) {
+  return `<svg class="studio-mark" viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true"><rect width="120" height="120" rx="30" fill="#10202B"/><path d="M32 88V62A14 14 0 0 1 60 62V88M60 62A14 14 0 0 1 88 62V88" fill="none" stroke="#F4F6F3" stroke-width="13" stroke-linecap="round"/><circle cx="60" cy="33" r="8.5" fill="#F4A300"/></svg>`;
+}

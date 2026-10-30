@@ -1909,4 +1909,9 @@ export const HI = {
   "Analytics and crash reports": "Analytics and crash reports",
   "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
   "Harbor": "बंदरगाह",
+  "Made by {studio}": "{studio} की पेशकश",
+  "A new version is ready": "नया संस्करण तैयार है",
+  "Restart to update": "अपडेट के लिए फिर से खोलें",
+  "This version is out of date": "यह संस्करण पुराना हो गया है",
+  "Update": "अपडेट करें",
 };

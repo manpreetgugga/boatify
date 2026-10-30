@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.43.0] - 2026-10-31
+
+The game keeps itself up to date, and says who made it.
+
+- **Updates from inside the game.** The Google Play version checks for a newer version when it opens. A normal update downloads in the background after one tap on Play's box, asked at most once a day and only on the title screen, never mid-voyage. When it's ready, the title's harbor talk becomes "A new version is ready" with a Restart to update button.
+- **Urgent updates.** An update marked urgent (Play priority 5, or a minimum version set in Firebase Remote Config) opens Play's full-screen update on the title, once a launch. Turned down, the title says the version is out of date, with an Update button. The APK from the Releases page never asks.
+- **Made by MSG Studios.** The foot of Settings shows the studio's mark, "Made by MSG Studios" and the version. The studio's logo files and Play developer page images are in docs/brand.
+- docs/PLAY_STORE.md explains how to test updates with internal app sharing and how to set the minimum version; the privacy policy says what checking for updates sends.
+
 ## [0.42.1] - 2026-10-31
 
 Your harbor is back in view.

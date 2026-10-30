@@ -1909,4 +1909,9 @@ export const ES = {
   "Analytics and crash reports": "Analytics and crash reports",
   "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
   "Harbor": "Puerto",
+  "Made by {studio}": "Hecho por {studio}",
+  "A new version is ready": "Hay una versión nueva lista",
+  "Restart to update": "Reiniciar para actualizar",
+  "This version is out of date": "Esta versión está desactualizada",
+  "Update": "Actualizar",
 };
