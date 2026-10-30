@@ -7,6 +7,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Firebase Analytics and Crashlytics, off until the build has
+// app/google-services.json. CI writes it from the GOOGLE_SERVICES_JSON secret
+// for the Play bundle only; it is never committed. Without it the plugins
+// aren't applied, Firebase never starts and the page sees no analytics bridge.
+val firebaseOn = file("google-services.json").exists()
+if (firebaseOn) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
 // The web game's package.json is the single source of the version number.
 val repoRoot: File = rootDir.parentFile
 val appVersion = (JsonSlurper().parse(repoRoot.resolve("package.json")) as Map<*, *>)["version"] as String
@@ -86,6 +96,7 @@ android {
         versionName = appVersion
         buildConfigField("String", "ADMOB_TEST_DEVICES", quoted(testDevices.joinToString(",")))
         buildConfigField("String", "PLAY_GAMES_APP_ID", quoted(playGamesAppId))
+        buildConfigField("boolean", "FIREBASE", firebaseOn.toString())
         playGamesBoards.forEach { (name, id) -> buildConfigField("String", "PLAY_GAMES_BOARD_$name", quoted(id)) }
         // A string resource, as Play Games wants: a bare number in the manifest would be read as a number.
         resValue("string", "play_games_app_id", playGamesAppId)
@@ -157,4 +168,7 @@ dependencies {
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.google.android.play:review:2.0.2")
     implementation("com.google.android.gms:play-services-games-v2:20.1.2")
+    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
 }

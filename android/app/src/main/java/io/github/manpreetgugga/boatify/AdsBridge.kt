@@ -31,6 +31,9 @@ class AdsBridge(private val activity: Activity, private val webView: WebView) {
     private val consent = UserMessagingPlatform.getConsentInformation(activity)
     private val testDevices = BuildConfig.ADMOB_TEST_DEVICES.split(",").filter { it.isNotBlank() }
     private var started = false
+
+    // Told each time the consent answer may have changed (analytics follows it).
+    var onConsent: (() -> Unit)? = null
     private var destroyed = false
     private var showing: Showing? = null
 
@@ -133,6 +136,7 @@ class AdsBridge(private val activity: Activity, private val webView: WebView) {
     private fun consentChanged() {
         if (destroyed) return
         privacyRequired = consent.privacyOptionsRequirementStatus == PrivacyOptionsRequirementStatus.REQUIRED
+        onConsent?.invoke()
         if (started || !consent.canRequestAds()) return
         started = true
         MobileAds.setRequestConfiguration(RequestConfiguration.Builder().setTestDeviceIds(testDevices).build())

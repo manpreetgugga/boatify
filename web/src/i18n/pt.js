@@ -1905,4 +1905,7 @@ export const PT = {
   "Tacking, trim and gusts, step by step": "Cambar, regular a vela e as rajadas, passo a passo",
   "The film of the squall that took your oar": "O filme da borrasca que levou o seu remo",
   "Watch the prologue": "Ver o prólogo",
+  "Analytics": "Analytics",
+  "Analytics and crash reports": "Analytics and crash reports",
+  "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
 };

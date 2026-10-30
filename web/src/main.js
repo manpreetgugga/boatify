@@ -2,13 +2,15 @@
 // results, wiring simulation events to sound, haptics, particles and toasts.
 
 import { LEVELS } from './data/levels.js';
-import { CAMPAIGN, voyageDef } from './data/worlds.js';
+import { CAMPAIGN, voyageDef, worldOf } from './data/worlds.js';
+import { track, applyAnalytics, analyticsOn, installErrorReports, worldReached } from './platform/analytics.js';
 import { dailyVoyage, chartDaily, chartedDaily, dateKey, DAILY_VERSION } from './data/daily.js';
 import { festivalOn, awardFestivalSail } from './data/festivals.js';
 import { createGame, stepGame, drainEvents, speedOf, PACE } from './world/game.js';
 import { openSeaDef, reviveRun } from './world/opensea.js';
 import { regattaDef, fleetFor } from './world/regatta.js';
-import { t, N_, ordinal, setLang } from './i18n/index.js';
+import { t, N_, ordinal, setLang, currentLang } from './i18n/index.js';
+import { toMeters } from './physics/sailing.js';
 import { startCup, cupCourse, scoreCupRace, cupPay, CUP_RACES } from './data/cup.js';
 import { compassPoint } from './core/math.js';
 import { BOAT_TYPES } from './physics/boat.js';
@@ -65,6 +67,9 @@ const probe = document.getElementById('inset-probe');
 const save = loadSave();
 // The ads, if the app has them.
 installAds();
+// Anonymous analytics and crash reports, if the app has them and the player allows.
+applyAnalytics(save.settings);
+installErrorReports(window, () => (game && game.def ? String(game.def.id) : ''));
 // Medals added in an update go straight to players who already earned them.
 if (awardMedals(save, LEVELS).length) writeSave(save);
 const renderer = createRenderer(canvas);
@@ -225,11 +230,13 @@ const ui = createUI(root, CAMPAIGN, {
   onPlay: (i) => moveOn(() => startLevel(i)),
   onResume: () => resume(),
   onRestart: () => startLevel(levelIndex),
-  onQuit: () =>
+  onQuit: () => {
+    if (game && mode !== 'results') track('voyage_quit', { ...voyageInfo(game.def), time: game.time });
     moveOn(() => {
       showTitle(false);
       ui.voyages(save);
-    }),
+    });
+  },
   // From the last race of a cup to the cup's page.
   onCup: () => moveOn(openCup),
   onSettings: (s, key) => {
@@ -240,7 +247,11 @@ const ui = createUI(root, CAMPAIGN, {
       syncReminders();
     }
     // The phone's reminders are written out ahead, so they're redone in the new language.
-    if (key === 'lang') syncReminders();
+    if (key === 'lang') {
+      syncReminders();
+      track('language', { lang: currentLang() });
+    }
+    if (key === 'analytics') applyAnalytics(save.settings);
   },
   canRemind,
   remindersAllowed,
@@ -253,13 +264,19 @@ const ui = createUI(root, CAMPAIGN, {
     audio.sfx.coins();
     return true;
   },
-  onShare: (text) => share(text),
+  onShare: (text) => {
+    track('share', { what: mode === 'results' ? 'results' : 'game' });
+    return share(text);
+  },
   onReset: () => resetProgress(save),
   // Backup codes: copied out, pasted in, and a restored save starts the game afresh.
   onCopy: (text) => copyText(text),
   canPaste,
   onPaste: () => pasteText(),
-  onRestore: (restored, from) => restoreFrom(restored, from),
+  onRestore: (restored, from) => {
+    track('backup_used', { how: from || 'code' });
+    restoreFrom(restored, from);
+  },
   // Google Play Games, when the app has it (platform/games.js).
   games: () => (hasGames() ? gamesState() : null),
   onGamesSignIn: () => gamesSignIn(),
@@ -364,6 +381,9 @@ function startLevel(ref) {
   game = createGame(def, { boat: selectedBoat(save), upgrades: upgradeLevels(save, selectedBoat(save)), guide: guideOn(), startJars: carried, blackPearl });
   autopilot = botDriving ? createAutopilot(game) : null;
   guideTold = {};
+  const info = voyageInfo(def);
+  track('voyage_start', info);
+  if (info.mode === 'voyage') worldReached(info.world, CAMPAIGN.some((e) => e.world === info.world && save.levels[e.id] && save.levels[e.id].best != null));
   // No ghost on the open sea or in a regatta: no two runs share a course.
   const fresh = def.endless || def.race;
   recorder = fresh ? null : createRecorder(game);
@@ -475,11 +495,32 @@ function settleVoyage(result) {
     }
   }
   if (ordersOpen) payOrders(improved, result);
+  trackVoyageEnd(result, improved);
   countVoyage(save, voyagesHome());
   writeSave(save);
   sendScores();
   backUpToCloud();
   return { improved, result };
+}
+
+// What a voyage is, for analytics: its id, its world and the kind of sailing.
+function voyageInfo(def) {
+  const kind = def.endless ? 'sea' : def.cup ? 'cup' : def.race ? 'regatta' : def.daily ? 'daily' : 'voyage';
+  const w = kind === 'voyage' ? worldOf(def.id) : null;
+  return { level: String(def.id), world: w ? w.id : kind, mode: kind };
+}
+
+function trackVoyageEnd(result, improved) {
+  if (game.sea) {
+    track('open_sea_end', { distance: Math.round(toMeters(result.distance)), gates: result.gates });
+  } else if (game.race) {
+    track('regatta_finish', { place: result.place, fleet: result.fleet });
+    if (improved.cup && improved.cup.done) track('cup_finish', { place: improved.cup.place, fleet: improved.cup.fleet });
+  } else {
+    track('voyage_complete', { ...voyageInfo(game.def), stars: result.stars, time: result.time, bumps: result.collisions });
+    const fest = game.def.daily && festivalOn(game.def.daily);
+    if (fest) track('festival_voyage', { festival: fest.id });
+  }
 }
 
 // Today's orders done on this voyage go on its bill, the chest's black pearl too.
@@ -1095,7 +1136,10 @@ function offerCloud() {
   const found = cloudOffer;
   cloudOffer = null;
   ui.cloudFound(found, {
-    onBring: () => restoreFrom(found.save, 'cloud'),
+    onBring: () => {
+      track('backup_used', { how: 'cloud' });
+      restoreFrom(found.save, 'cloud');
+    },
     onKeep: () => {
       cloudSeen();
       backUpToCloud(true);
@@ -1191,6 +1235,10 @@ installNativeHooks({
     ui.toast(allowed ? t('Reminders on, at {times}.', { times: reminderTimes() }) : t('No reminders, then. Settings can turn them on.'));
   },
   games: (e) => gamesEvent(e),
+  analytics: () => {
+    applyAnalytics(save.settings);
+    ui.setToggle('analytics', analyticsOn(save.settings));
+  },
   insets: ({ top, right, bottom, left }) => {
     const s = document.documentElement.style;
     s.setProperty('--native-inset-top', `${top}px`);

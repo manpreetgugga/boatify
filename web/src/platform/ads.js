@@ -5,6 +5,8 @@
 // `nativeAds` speaks to it. Anywhere else (the browser, the tests) the game
 // runs on the 'none' provider: the Shop says "Coming soon" and no ad plays.
 
+import { track } from './analytics.js';
+
 // Rewarded videos: where they are offered, what they give, and how many a
 // day each one allows.
 export const REWARDS = {
@@ -121,6 +123,7 @@ export async function watchVideo(save, reward, today, now = Date.now()) {
   seen.seen[reward.id] = (seen.seen[reward.id] || 0) + 1;
   seen.last = now;
   if (reward.blackPearls) save.wallet.blackPearls += reward.blackPearls;
+  track('rewarded_ad_watched', { reward: reward.id });
   return { ok: true, blackPearls: reward.blackPearls };
 }
 

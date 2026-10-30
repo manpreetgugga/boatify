@@ -273,6 +273,64 @@ collects the player's Play Games profile and game activity when they sign in.
 Answer per Google's current notes for Play Games Services, and keep "no
 accounts" true: the game has none of its own.
 
+## Firebase Analytics and Crashlytics (optional)
+
+The game can send anonymous events and crash reports to Firebase, so you can
+see how far players get and fix crashes. It is off until CI has your
+`google-services.json`: without it the Firebase plugins aren't applied,
+Firebase never starts, the game sends nothing and Settings shows no switch.
+Only the Play bundle (`.aab`) gets it; the APK on GitHub Releases never does.
+The file is written at build time and never committed (`.gitignore`).
+
+1. **Create the Firebase project.** <https://console.firebase.google.com> →
+   **Add project**, name it No Paddle. Google Analytics: **on**, with a new
+   Analytics account (data sharing settings: leave Google's "Benchmarking" and
+   the like off if you prefer).
+2. **Add the Android app.** In the project: **Add app → Android**, package name
+   `io.github.manpreetgugga.boatify`, nickname No Paddle. Skip the SHA-1.
+3. **Download `google-services.json`** from that screen (or later from
+   **Project settings → Your apps**). Keep it out of the repository.
+4. **Give it to GitHub as a secret**, base64-encoded. PowerShell:
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("google-services.json")) | Set-Clipboard`,
+   then **Settings → Secrets and variables → Actions → New repository secret**,
+   name `GOOGLE_SERVICES_JSON`, paste.
+5. **Turn on Crashlytics.** Firebase console → **Crashlytics → Enable**. Do
+   this before the next version: the Play bundle's build uploads its R8 mapping
+   file to Crashlytics so crash stacks read as the real code.
+6. **The next version's bundle has Firebase.** Install it from your closed
+   test, sail a voyage, and within a few minutes you'll see events in
+   **Analytics → Realtime** (it takes up to a day for the reports).
+7. **Update Data safety** in Play Console (step 6 above). Add **Crash logs**
+   (App info and performance): *collected*, not shared (Firebase works for
+   you, as a service provider), for **Analytics** and **App functionality**,
+   not ephemeral, and **optional** (the Settings switch). **App
+   interactions**, **Diagnostics** and **Device or other IDs** are already
+   there for AdMob and already list Analytics, so they stay as they are
+   (required, because AdMob needs them).
+
+**How far players get.** Firebase console → **Analytics → Events →
+`voyage_complete`**, add `world` and `level` as custom dimensions (**Custom
+definitions → Create custom dimension**, event scope, for `level`, `world`,
+`stars`, `mode`), then **Explore → Funnel exploration** with steps
+`voyage_start` → `voyage_complete`, broken down by `world`, and a free-form
+table of `voyage_complete` by `level`. `world_reached` shows how many players
+make it to each world; `voyage_quit` by `level` shows where they give up.
+
+The events (all in `web/src/platform/analytics.js`, with only these fields):
+`voyage_start` (level, world, mode), `voyage_complete` (level, world, stars,
+time, bumps), `voyage_quit` (level, world, mode, time), `world_reached`
+(world), `open_sea_end` (distance in metres, gates), `regatta_finish` (place,
+fleet), `cup_finish` (place, fleet), `festival_voyage` (festival),
+`rewarded_ad_watched` (reward), `share` (what), `backup_used` (how) and
+`language` (lang). Script errors in the game go to Crashlytics as non-fatal
+reports with the voyage they happened on.
+
+**Consent.** Analytics never collects the advertising id and never works
+for ads (`AndroidManifest.xml`). Where Google's consent form applies, it stays
+off until the player agrees (storing on the device and measuring, TCF purposes
+1 and 8) or turns on **Settings → Analytics and crash reports**; elsewhere it
+is on until they turn it off.
+
 ## Play and the APK don't mix
 
 The APKs on the Releases page are signed with the public development key, the

@@ -156,6 +156,10 @@ export function installNativeHooks(handlers) {
     onGames(event) {
       if (handlers.games) handlers.games(event);
     },
+    // The consent form has been answered, so analytics' default may have changed.
+    onAnalytics() {
+      if (handlers.analytics) handlers.analytics();
+    },
   };
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) handlers.pause();

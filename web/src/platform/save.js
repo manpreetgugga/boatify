@@ -64,6 +64,7 @@ export const DEFAULT_SETTINGS = {
   textSize: 1,
   reminders: true, // reminders on the phone at 9 am, 6 pm and 9 pm (Android)
   lang: 'auto', // 'auto' follows the phone, else one of i18n's LANGS
+  analytics: null, // anonymous analytics and crash reports; null: what the law allows here
 };
 
 function blank() {

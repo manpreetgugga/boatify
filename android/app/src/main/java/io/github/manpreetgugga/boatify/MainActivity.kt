@@ -30,6 +30,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import com.google.android.play.core.review.ReviewManagerFactory
+import com.google.firebase.FirebaseApp
 
 // Hosts the bundled web game full screen. The game is served from the APK's
 // assets through WebViewAssetLoader, so it runs offline; only the ads
@@ -41,6 +42,7 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var ads: AdsBridge
     private var games: GamesBridge? = null
+    private var analytics: AnalyticsBridge? = null
     private var clipboard: ClipboardManager? = null
     private var insets = intArrayOf(0, 0, 0, 0)
     private var pageReady = false
@@ -75,6 +77,15 @@ class MainActivity : Activity() {
             addJavascriptInterface(ads, "BoatifyAds")
             if (BuildConfig.PLAY_GAMES_APP_ID.isNotEmpty()) {
                 games = GamesBridge(this@MainActivity, this).also { addJavascriptInterface(it, "BoatifyGames") }
+            }
+            // Firebase only in a build that has it, and only if it started.
+            if (BuildConfig.FIREBASE && FirebaseApp.getApps(this@MainActivity).isNotEmpty()) {
+                try {
+                    analytics = AnalyticsBridge(this@MainActivity, this).also { addJavascriptInterface(it, "BoatifyAnalytics") }
+                    ads.onConsent = { analytics?.consentChanged() }
+                } catch (e: RuntimeException) {
+                    // A Firebase set-up problem leaves the game playable without it.
+                }
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =

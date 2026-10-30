@@ -1905,4 +1905,7 @@ export const ID = {
   "Tacking, trim and gusts, step by step": "Putar haluan, menyetel layar, dan embusan, langkah demi langkah",
   "The film of the squall that took your oar": "Film badai yang merenggut dayungmu",
   "Watch the prologue": "Tonton prolog",
+  "Analytics": "Analytics",
+  "Analytics and crash reports": "Analytics and crash reports",
+  "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
 };

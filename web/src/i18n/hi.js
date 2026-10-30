@@ -1905,4 +1905,7 @@ export const HI = {
   "Tacking, trim and gusts, step by step": "मुड़ना, पाल सँभालना और झोंके, एक-एक कदम",
   "The film of the squall that took your oar": "उस तूफ़ान की फ़िल्म जो तुम्हारा चप्पू ले गया",
   "Watch the prologue": "प्रस्तावना देखो",
+  "Analytics": "Analytics",
+  "Analytics and crash reports": "Analytics and crash reports",
+  "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.": "Anonymous: how far players get, and what went wrong in a crash. Nothing about you.",
 };

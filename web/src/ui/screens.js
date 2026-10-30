@@ -22,6 +22,7 @@ import { MEDALS, isEarned, isSealed, medalsEarned, medalProgress } from '../data
 import { pickRumor } from '../data/rumors.js';
 import { SAILS, HULLS, GEAR_TOTAL, boatLook, fittedGear, gearCount, isGearUnlocked, medalFor, rewardFor } from '../data/locker.js';
 import { formatCoins, canAfford, shortOf, buyJar, tradeBlackPearl, buyBoat, buyGear, BOAT_PRICES, JAR_PRICE, JAR_HOLD, TRADE_COINS, SECOND_WIND, SECOND_WIND_TIME } from '../data/economy.js';
+import { hasAnalytics, analyticsOn } from '../platform/analytics.js';
 import { ads, REWARDS, watchVideo, videosLeft } from '../platform/ads.js';
 import { shareText } from '../platform/social.js';
 import { backupCode, readBackup } from '../platform/backup.js';
@@ -1596,7 +1597,7 @@ export function createUI(root, levels, handlers) {
       const s = save.settings;
       // Reduced motion may still be following the phone's own setting, and
       // reminders are only on if the phone allows them too.
-      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : key === 'reminders' ? !!s.reminders && handlers.remindersAllowed() : !!s[key]);
+      const value = (key) => (key === 'reduceMotion' ? handlers.motionReduced() : key === 'reminders' ? !!s.reminders && handlers.remindersAllowed() : key === 'analytics' ? analyticsOn(s) : !!s[key]);
       const toggle = (key, label, sub, invert = false) => `<div class="setting">
         <span class="label"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span>
         <button class="toggle" role="switch" data-key="${key}" data-invert="${invert}" aria-checked="${invert ? !value(key) : value(key)}" aria-label="${label}"></button></div>`;
@@ -1643,6 +1644,8 @@ export function createUI(root, levels, handlers) {
             <div class="setting"><span class="label"><b>${t('Cloud save')}</b><small>${t('Your progress is copied to the cloud as you sail')}</small></span>
               <span class="setting-buttons"><button class="btn small" data-act="cloud-load">${t('Load')}</button><button class="btn small" data-act="cloud-save">${t('Save')}</button></span></div>` : `<div class="setting"><span class="label"><b>${t('Leaderboards and cloud save')}</b><small>${t('Sign in with Google Play Games')}</small></span>
               <button class="btn small primary" data-act="games-in">${t('Sign in')}</button></div>`}` : ''}
+            ${hasAnalytics() ? `<h3 class="setting-group">${t('Analytics')}</h3>
+            ${toggle('analytics', t('Analytics and crash reports'), t('Anonymous: how far players get, and what went wrong in a crash. Nothing about you.'))}` : ''}
             <h3 class="setting-group">${t('Help')}</h3>
             <div class="setting"><span class="label"><b>${t('How to sail')}</b><small>${t('Tacking, trim and gusts, step by step')}</small></span>
               <button class="btn small" data-act="howto">${t('Open')}</button></div>

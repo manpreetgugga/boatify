@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.42.0] - 2026-10-31
+
+Anonymous analytics and crash reports, so the game can get better where players get stuck.
+
+- **How far players get.** With Firebase on, the game sends a few anonymous events: a voyage started, finished (voyage, world, stars, time, bumps) or given up, a new world reached, an Open Sea run's distance, regatta and cup places, festival voyages, videos watched for a reward, sharing, backup codes and the language. Only those, each with only its listed fields: no names, no free text, never the advertising id, and nothing for ads.
+- **Crash reports.** Crashlytics reports crashes in the app, and errors in the game itself go as non-fatal reports with the voyage they happened on.
+- **Your choice.** Settings has an Analytics and crash reports switch. Where consent law applies it stays off until you agree on the consent form or turn it on; elsewhere it's on until you turn it off.
+- **Off until it's set up.** Firebase needs a google-services.json, given to the Play build as a secret (docs/PLAY_STORE.md). Without it, and in the APK from the Releases page, nothing is sent and Settings shows no switch. The privacy policy says what's collected and why.
+
 ## [0.41.1] - 2026-10-31
 
 A calmer title screen.

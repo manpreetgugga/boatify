@@ -1,8 +1,8 @@
 # Privacy policy
 
-_No Paddle (Android app `io.github.manpreetgugga.boatify`). Last updated 30 October 2026._
+_No Paddle (Android app `io.github.manpreetgugga.boatify`). Last updated 31 October 2026._
 
-No Paddle has no accounts of its own and no analytics, and the developer collects no personal data. The game itself is inside the app and works offline. It shows ads from **Google AdMob**, and those ads use the internet. If you choose to, you can sign in to **Google Play Games**. Google, not the developer, collects the information described below.
+No Paddle has no accounts of its own, and the developer never collects your name, email address, contacts or anything else that says who you are. The game itself is inside the app and works offline. It shows ads from **Google AdMob**, it can send **anonymous analytics and crash reports** through **Google Firebase** (you can turn this off), and if you choose to you can sign in to **Google Play Games**. These use the internet and are run by Google, as described below.
 
 ## Ads
 
@@ -17,6 +17,19 @@ Google uses this to show ads, to measure them, to prevent fraud and, if you agre
 
 - **Your choice.** Where the law requires it (for example in the European Economic Area, the UK and Switzerland), the game asks for your consent with Google's consent form before any ad loads. You can change your answer at any time in the game's **Settings → Ad privacy**.
 - **Advertising ID.** You can reset or delete your advertising ID in your phone's settings (**Settings → Google → Ads** on most Android phones). Without it, ads are not personalized.
+
+## Analytics and crash reports
+
+The Google Play version of the game can send anonymous usage statistics (**Google Analytics for Firebase**) and crash reports (**Firebase Crashlytics**) so the developer can see how far players get, which voyages are too hard, and fix what breaks. It sends:
+
+- **game events**: a voyage started, finished (which voyage and world, the stars, the time and the bumps) or given up; a new world reached; how far an Open Sea run went; your place in a regatta or a cup; a festival voyage sailed; a video watched for a reward; sharing the game; using a backup code; the language you chose;
+- **crash reports**: what went wrong and where in the game's code, which voyage you were on, the app version, and the phone's model, Android version and free memory;
+- with them, a **random ID** Firebase makes for this installation of the app. Your **advertising ID is never collected** for analytics, and none of this is used for ads or sold. Firebase uses your **IP address** to work out your country, without keeping it.
+
+Google keeps the analytics for 2 months and crash reports for 90 days, on the developer's behalf: <https://firebase.google.com/support/privacy>.
+
+- **Your choice.** Turn it on or off at any time in the game's **Settings → Analytics and crash reports**. Where the law requires consent (for example in the European Economic Area, the UK and Switzerland), it stays off until you agree on Google's consent form or turn it on yourself.
+- The APK on the game's GitHub Releases page, and any build without Firebase, sends none of this.
 
 ## Google Play Games (optional)
 
@@ -37,7 +50,7 @@ This is handled by Google under your Google account and Google's privacy policy:
 ## Permissions
 
 - **Vibration**, for short buzzes when the boat bumps into something or picks something up, or you win a star or a medal (you can turn it off in Settings).
-- **Internet and network state**, for the ads.
+- **Internet and network state**, for the ads, the analytics and crash reports, and Google Play Games.
 - **Advertising ID**, for the ads, as described above.
 
 ## Children
