@@ -1072,7 +1072,7 @@ const HOME = {
   name: 'Home Waters',
   theme: 'home',
   accent: '#8fd8ea',
-  blurb: 'Where it all began: the islands and reefs you know, and a few things you would rather not.',
+  blurb: 'The way home: the islands and reefs you know, and a few things you would rather not.',
   voyages: LEVELS,
 };
 

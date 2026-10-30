@@ -18,6 +18,12 @@ test('voyage ids are unique and data is complete', () => {
   }
 });
 
+test('Home Waters is the way home: only its last voyage ends there', () => {
+  const home = LEVELS.filter((def) => def.finish.kind === 'home');
+  assert.deepEqual(home.map((def) => def.id), [LEVELS.at(-1).id]);
+  for (const def of LEVELS) assert.ok(['harbor', 'lighthouse', 'home'].includes(def.finish.kind), `${def.id} finish`);
+});
+
 for (const def of LEVELS) {
   test(`${def.id}: marks sit in open water inside the chart`, () => {
     const level = buildLevel(def);

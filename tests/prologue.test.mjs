@@ -36,6 +36,16 @@ test('the film plays through, every shot in order, without a scratch on her', ()
   assert.ok(captions.slice(0, -1).every((c) => c.length > 10), 'every shot but the title card says something');
 });
 
+test('it opens on home, then cuts to her far out, rowing for it', () => {
+  assert.equal(SHOTS[0].id, 'home');
+  assert.match(SHOTS[0].caption, /^Home/);
+  assert.equal(PROLOGUE.finish.kind, 'home');
+  const strokes = seen.events.filter((e) => e.type === 'stroke');
+  assert.ok(strokes.every((e) => e.t >= SHOTS[1].at), 'no oar strokes heard over the home shot');
+  assert.ok(seen.at.home.every((s) => s.oar === 'held'));
+  assert.ok(PROLOGUE.finish.x - PROLOGUE.start.x > 1000, 'home is far away');
+});
+
 test('rowing out, the oar strokes; in the squall the sea takes it', () => {
   const strokes = seen.events.filter((e) => e.type === 'stroke');
   assert.ok(strokes.length >= 5 && strokes.every((e) => e.t < OAR_LOST));
@@ -79,7 +89,8 @@ test('the chart lays a way to B from wherever she is', () => {
 });
 
 test('shots are found by time, and the film can be ended early', () => {
-  assert.equal(shotAt(0).id, 'dawn');
+  assert.equal(shotAt(0).id, 'home');
+  assert.equal(shotAt(SHOTS[1].at).id, 'dawn');
   assert.equal(shotAt(OAR_LOST).id, 'lost');
   assert.equal(shotAt(999).id, 'title');
   const f = createFilm();

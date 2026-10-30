@@ -1,9 +1,10 @@
-// The prologue: a short film for a first launch. Dawn, and a sloop rowing out
-// of harbor; a squall that takes the oar; then the wind doing what it does
-// (head to wind the sail flaps, across it she flies); and last the chart, A
-// to B, with what lies between. Stuck head to wind, the boat is shown the way
-// by dolphins, as a lost sailor is in the game. It runs the real boat, wind
-// and weather, with a script at the helm.
+// The prologue: a short film for a first launch. It opens on home, a
+// lighthouse isle where the lamp is lit and someone waits; then cuts to a
+// sloop far out at dawn, rowing for it; a squall that takes the oar; then the
+// wind doing what it does (head to wind the sail flaps, across it she flies);
+// and last the chart, the way home, with what lies between. Stuck head to
+// wind, the boat is shown the way by dolphins, as a lost sailor is in the
+// game. It runs the real boat, wind and weather, with a script at the helm.
 
 import { DEG, angleDiff, clamp, fromBearing, smoothstep, wrapAngle } from '../core/math.js';
 import { blob, rockField } from './shapes.js';
@@ -16,8 +17,10 @@ export const PROLOGUE = {
   id: 'prologue',
   name: 'Prologue',
   size: [1600, 1000],
-  start: { x: 230, y: 600, heading: 90 },
-  finish: { x: 1440, y: 280, r: 50, kind: 'harbor' },
+  // She rows through the opening shot too, off camera, so starts a little
+  // further back.
+  start: { x: 210, y: 600, heading: 90 },
+  finish: { x: 1440, y: 280, r: 50, kind: 'home', marked: false },
   wind: { from: FROM, speed: 1, gust: 0.1, shift: 0, period: 60 },
   islands: [
     { pts: blob(110, 420, 80, 5, 0.3), kind: 'sand' },
@@ -33,29 +36,30 @@ export const PROLOGUE = {
 
 // When each shot starts, and what it says.
 export const SHOTS = [
-  { id: 'dawn', at: 0, caption: 'Dawn. Not a breath of wind.' },
-  { id: 'oar', at: 4.5, caption: 'You had a boat, a sail and one good oar.' },
-  { id: 'squall', at: 9, caption: 'Then the squall hit…' },
-  { id: 'lost', at: 13, caption: '…and the sea took the oar.' },
-  { id: 'wind', at: 18, caption: 'No paddle now. Only the wind.' },
-  { id: 'irons', at: 23.5, caption: 'Point her into the wind, and the sail just flaps.' },
-  { id: 'reach', at: 30, caption: 'Follow the dolphins across it, and she flies.' },
-  { id: 'chart', at: 36.5, caption: 'Somewhere out there is B, and home.' },
-  { id: 'dangers', at: 41, caption: 'Past the reefs, the squalls… and whatever stirs in the fog.' },
-  { id: 'title', at: 47.5, caption: '' },
+  { id: 'home', at: 0, caption: 'Home. The lamp is lit, and someone is waiting.' },
+  { id: 'dawn', at: 5.5, caption: 'Dawn, far out at sea. Time to row home.' },
+  { id: 'oar', at: 10, caption: 'You had a boat, a sail and one good oar.' },
+  { id: 'squall', at: 14.5, caption: 'Then the squall hit…' },
+  { id: 'lost', at: 18.5, caption: '…and the sea took the oar.' },
+  { id: 'wind', at: 23.5, caption: 'No paddle now. Only the wind to take you home.' },
+  { id: 'irons', at: 29, caption: 'Point her into the wind, and the sail just flaps.' },
+  { id: 'reach', at: 35.5, caption: 'Follow the dolphins across it, and she flies.' },
+  { id: 'chart', at: 42, caption: 'Home is out there, ten voyages away.' },
+  { id: 'dangers', at: 46.5, caption: 'Past the reefs, the squalls… and whatever stirs in the fog.' },
+  { id: 'title', at: 53, caption: '' },
 ];
-export const FILM_END = 56;
-export const OAR_LOST = 13.1;
-export const GUIDE_AT = 25.5; // in irons, and the dolphins come to show the way
-const FLASHES = [10.6, OAR_LOST, 15.4];
+export const FILM_END = 61.5;
+export const OAR_LOST = 18.6;
+export const GUIDE_AT = 31; // in irons, and the dolphins come to show the way
+const FLASHES = [16.1, OAR_LOST, 20.9];
 const STROKE = 1.6; // seconds per stroke of the oar
 
 // What the chart shot points out, in the order it points.
 export const CALLOUTS = [
-  { x: 770, y: 470, text: 'Reefs', at: 41.4 },
-  { x: 1030, y: 720, text: 'Whirlpools', at: 42.4 },
-  { x: 1190, y: 390, text: 'Squalls', at: 43.4 },
-  { x: 1290, y: 640, text: '?', at: 44.6, fog: true },
+  { x: 770, y: 470, text: 'Reefs', at: 46.9 },
+  { x: 1030, y: 720, text: 'Whirlpools', at: 47.9 },
+  { x: 1190, y: 390, text: 'Squalls', at: 48.9 },
+  { x: 1290, y: 640, text: '?', at: 50.1, fog: true },
 ];
 export const ROUTE = [
   [620, 560],
@@ -69,10 +73,10 @@ const SQUALL_PARK = { x: 1190, y: 390, r: 200 };
 // The heading each stretch of the film steers for, as a compass bearing, and
 // which way to come round when it is dead astern (-1 to port).
 function course(t) {
-  if (t < 9.4) return { bearing: 90 };
-  if (t < 21.5) return { bearing: FROM + 180 }; // run before the squall
-  if (t < 30) return { bearing: FROM, turn: -1 }; // head to wind, in irons
-  return { bearing: FROM + 90 }; // a beam reach, off toward B
+  if (t < 14.9) return { bearing: 90 }; // rowing for home
+  if (t < 27) return { bearing: FROM + 180 }; // run before the squall
+  if (t < 35.5) return { bearing: FROM, turn: -1 }; // head to wind, in irons
+  return { bearing: FROM + 90 }; // a beam reach, off toward home
 }
 
 export function shotAt(t) {
@@ -124,21 +128,21 @@ export function stepFilm(film, dt, visual = 1.7) {
   film.shotTime = t - shot.at;
 
   // Wind and weather: a flat calm, the squall, then a steady breeze.
-  const squall = smoothstep(9, 10.6, t) * (1 - smoothstep(16, 20, t));
-  wind.speed = t < 9 ? 1 : 1 + 12 * smoothstep(9, 11, t) - 2 * smoothstep(16, 20, t);
+  const squall = smoothstep(14.5, 16.1, t) * (1 - smoothstep(21.5, 25.5, t));
+  wind.speed = t < 14.5 ? 1 : 1 + 12 * smoothstep(14.5, 16.5, t) - 2 * smoothstep(21.5, 25.5, t);
   wind.gustiness = 0.1 + 0.25 * squall;
   level.weather.rain = 0.85 * squall;
   level.weather.dark = 0.3 * squall;
   const storm = level.storms[0];
   const dx = Math.cos(wind.angle);
   const dy = Math.sin(wind.angle);
-  if (t >= 9 && !film.squallFrom) film.squallFrom = { x: boat.x - dx * 300, y: boat.y - dy * 300 };
-  if (film.squallFrom && t < 30) {
+  if (t >= 14.5 && !film.squallFrom) film.squallFrom = { x: boat.x - dx * 300, y: boat.y - dy * 300 };
+  if (film.squallFrom && t < 35.5) {
     // The cell sweeps down the wind and over the boat.
-    const k = clamp((t - 9) / 11, 0, 1) * 760;
+    const k = clamp((t - 14.5) / 11, 0, 1) * 760;
     storm.x = film.squallFrom.x + dx * k;
     storm.y = film.squallFrom.y + dy * k;
-  } else if (t >= 30) {
+  } else if (t >= 35.5) {
     Object.assign(storm, SQUALL_PARK);
   }
   for (const at of FLASHES) {
@@ -173,12 +177,13 @@ export function stepFilm(film, dt, visual = 1.7) {
     const phase = (t % STROKE) / STROKE;
     oar.sweep = Math.sin(phase * Math.PI * 2);
     oar.dip = phase < 0.5 ? 1 : 0;
-    if (t < 9) {
+    if (t < 14.5) {
       const pull = 3 + 1.8 * Math.max(0, Math.sin(phase * Math.PI * 2));
       boat.vx = Math.cos(boat.heading) * pull;
       boat.vy = Math.sin(boat.heading) * pull;
     }
-    if (Math.floor(t0 / STROKE) !== Math.floor(t / STROKE) && t < OAR_LOST) film.events.push({ type: 'stroke' });
+    // (Not heard while the camera is on home.)
+    if (Math.floor(t0 / STROKE) !== Math.floor(t / STROKE) && shot.id !== 'home' && t < OAR_LOST) film.events.push({ type: 'stroke' });
     if (t >= OAR_LOST) {
       // A gust and a sea over the side, and the oar goes flying.
       const lock = oarlock(boat, visual);

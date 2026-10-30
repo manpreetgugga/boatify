@@ -1,5 +1,5 @@
 // The prologue's camera and the marks it draws over the sea: the oar, the
-// wind, the no-go wedge, the fast reach, and on the chart the way to B with
+// wind, the no-go wedge, the fast reach, and on the chart the way home with
 // what lies on it. Captions, the letterbox and the title card are DOM (see
 // ui/screens.js).
 
@@ -8,10 +8,13 @@ import { boatSpeed } from '../physics/boat.js';
 import { toKnots } from '../physics/sailing.js';
 import { CALLOUTS, ROUTE, oarlock } from '../world/prologue.js';
 import { baseScale } from './camera.js';
+import { homeIsle } from './terrain.js';
 import { VISUAL } from './boat.js';
 import { C, font } from './palette.js';
 
 const WIDE = ['chart', 'dangers', 'title'];
+// Shots that open with a cut rather than the camera gliding over.
+const CUTS = ['dawn'];
 // The skipper, sat in the cockpit.
 export const SKIPPER = [{ shirt: '#2f6fb3', skin: '#e8b48c' }];
 
@@ -26,6 +29,11 @@ function aim(film, w, h) {
     return { x: L.width / 2, y: L.height / 2, zoom: fit / base, rate: 1.1 };
   }
   switch (shot.id) {
+    case 'home': {
+      // Close on the isle, easing in.
+      const isle = homeIsle(game.level.finish);
+      return { x: isle.x - 10, y: isle.y + 4, zoom: 1.45 + 0.3 * clamp(shotTime / 5.5, 0, 1), rate: 0.8 };
+    }
     case 'dawn':
       return { x: b.x + 14, y: b.y - 4, zoom: 1.5 - 0.15 * clamp(shotTime / 4.5, 0, 1), rate: 0.8 };
     case 'oar':
@@ -46,6 +54,7 @@ function aim(film, w, h) {
 
 export function snapFilmCamera(cam, film, w, h) {
   const a = aim(film, w, h);
+  cam.shot = film.shot.id;
   cam.w = w;
   cam.h = h;
   cam.x = a.x;
@@ -54,6 +63,10 @@ export function snapFilmCamera(cam, film, w, h) {
 }
 
 export function updateFilmCamera(cam, film, dt, w, h) {
+  if (cam.shot !== film.shot.id) {
+    cam.shot = film.shot.id;
+    if (CUTS.includes(cam.shot)) return snapFilmCamera(cam, film, w, h);
+  }
   const a = aim(film, w, h);
   cam.w = w;
   cam.h = h;
@@ -223,7 +236,7 @@ function drawReach(ctx, cam, film, fade) {
   label(ctx, cam, `${kn} kn`, boat.x - Math.cos(h) * 30, boat.y - Math.sin(h) * 30 + 12, { size: 18, color: `rgba(232, 244, 242, ${fade.toFixed(3)})` });
 }
 
-// The way to B, drawn out from the boat a stretch at a time.
+// The way home, drawn out from the boat a stretch at a time.
 function drawRoute(ctx, cam, film, from) {
   const pts = [[from.x, from.y], ...ROUTE];
   const lens = [];
@@ -260,7 +273,7 @@ function drawRoute(ctx, cam, film, from) {
     ctx.arc(home.x, home.y, home.r + p * 60, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    label(ctx, cam, 'B · HOME', home.x, home.y - home.r - 26 / cam.scale, { size: 16, pill: `rgba(140, 50, 10, ${(0.85 * arrive).toFixed(3)})`, color: `rgba(255, 240, 230, ${arrive.toFixed(3)})` });
+    label(ctx, cam, 'HOME', home.x, home.y - home.r - 26 / cam.scale, { size: 16, pill: `rgba(140, 50, 10, ${(0.85 * arrive).toFixed(3)})`, color: `rgba(255, 240, 230, ${arrive.toFixed(3)})` });
   }
 }
 
@@ -343,7 +356,7 @@ export function drawFilmWorld(ctx, cam, film, time) {
 
 // Screen-space light: a warm dawn that the squall washes out.
 export function drawFilmLight(ctx, film, w, h) {
-  const dawn = 1 - smoothstep(7, 10, film.t);
+  const dawn = 1 - smoothstep(12.5, 15.5, film.t);
   if (dawn > 0) {
     // The sun just up in the east, below the letterbox.
     const sx = w * 0.82;

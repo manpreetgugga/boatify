@@ -111,6 +111,19 @@ function dayLabel(key) {
 
 const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
 
+// Where a voyage ends: a harbor, a lighthouse, or home itself.
+const goalOf = (def) => (def.finish.kind === 'home' ? 'home' : `the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'}`);
+const ARRIVED = { home: 'Home at last', lighthouse: 'Lighthouse reached', harbor: 'Harbor reached' };
+
+// The Home Waters panel counts down the voyages left on the way home.
+function wayHome(save, levels, at, accent) {
+  const done = at.filter((i) => (save.levels[levels[i].id] || {}).best != null).length;
+  const left = at.length - done;
+  const line = !left ? 'You made it home. Now the wider seas are calling.' : left === 1 ? 'One more voyage, and you are home.' : done ? `Home is ${left} voyages away.` : `Your oar is lost and home is ${left} voyages away.`;
+  const dots = at.map((i, n) => `<i class="${n < done ? 'on' : ''}"></i>`).join('');
+  return `<div class="way-home ${left ? '' : 'made-it'}" style="--accent:${accent}"><p>${esc(line)}</p><span class="track" aria-hidden="true">${dots}${icon('home', 16)}</span></div>`;
+}
+
 // Comparison with the previous best, or nothing on a first run.
 const BOAT_STATS = [
   ['speed', 'Speed'],
@@ -615,7 +628,7 @@ export function createUI(root, levels, handlers) {
         <div class="film-card" hidden>
           <div class="eyebrow">A sailing voyage</div>
           <h1 class="logo" aria-label="No Paddle">NO <span>PADDLE</span></h1>
-          <p class="tagline">Only the wind.</p>
+          <p class="tagline">Only the wind, and the way home.</p>
           <button class="btn primary" data-act="helm">Take the helm</button>
         </div>
         <div class="film-bar bottom"><p class="film-caption" aria-live="polite"></p></div>
@@ -703,7 +716,7 @@ export function createUI(root, levels, handlers) {
         .join('');
       const panels = worlds
         .map(({ w, at }) => `<div class="world-panel" role="tabpanel" data-world="${w.id}" ${w.id === tab ? '' : 'hidden'}>
-            ${w.id === 'home' ? '' : `<p class="world-blurb" style="--accent:${w.accent}">${esc(w.blurb)}</p>`}
+            ${w.id === 'home' ? wayHome(save, levels, at, w.accent) : `<p class="world-blurb" style="--accent:${w.accent}">${esc(w.blurb)}</p>`}
             <div class="voyage-grid">${w.id === 'home' ? dailyCard + seaCard + raceCard : ''}${at.map((i) => card(levels[i], i)).join('')}</div>
           </div>`)
         .join('');
@@ -768,7 +781,7 @@ export function createUI(root, levels, handlers) {
               <div class="eyebrow">Conditions</div>
               <dl class="facts">
                 <dt>Wind</dt><dd>${windSentence(def)}</dd>
-                <dt>Goal</dt><dd>Reach the ${def.finish.kind === 'lighthouse' ? 'lighthouse' : 'harbor'} at <b style="color:var(--signal)">B</b></dd>
+                <dt>Goal</dt><dd>Reach ${goalOf(def)} at <b style="color:var(--signal)">B</b></dd>
                 <dt>Pearls</dt><dd>${pearls}</dd>
                 ${holdsBlackPearl(def) ? `<dt>Black pearl</dt><dd>${save.wallet.found[def.id] ? '<span style="color:var(--gem)">brought home ✓</span>' : 'One lies near the danger'}</dd>` : ''}
                 ${save.wallet.jars ? `<dt>Gust jars</dt><dd>${save.wallet.jars} from the hold</dd>` : ''}
@@ -936,7 +949,7 @@ export function createUI(root, levels, handlers) {
       const streak = def.daily ? currentStreak(save, def.daily) : 0;
       const node = el(`<section class="screen dim" aria-label="Voyage complete">
         <div class="sheet narrow results-sheet">
-          <div class="sheet-head"><h2>${def.finish.kind === 'lighthouse' ? 'Lighthouse reached' : 'Harbor reached'}</h2></div>
+          <div class="sheet-head">${def.finish.kind === 'home' ? `<div class="arrived"><h2>${ARRIVED.home}</h2><p class="homecoming">The lamp was lit all along, and someone was waiting.</p></div>` : `<h2>${ARRIVED[def.finish.kind] || ARRIVED.harbor}</h2>`}</div>
           <div class="sheet-body">
             <div class="result-stars">${stars(0)}</div>
             <div class="stat-rows">

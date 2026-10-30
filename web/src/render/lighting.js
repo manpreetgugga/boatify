@@ -94,7 +94,7 @@ export function drawLighting(ctx, light, game, cam, time, w, h) {
   hole(l, fx, fy, (f.r + 40) * k, 0.8);
 
   let beam = null;
-  if (f.kind === 'lighthouse') {
+  if (f.kind === 'lighthouse' || f.kind === 'home') {
     const [lx, ly] = toS(...lighthouseLamp(f));
     const a = time * 1.2;
     const len = 900 * k;

@@ -541,6 +541,8 @@ export function drawMarks(ctx, game, cam, time) {
 
   if (level.endless) return;
   const f = level.finish;
+  // The prologue's home is a place, not yet a mark on a chart.
+  if (f.marked === false) return drawHome(ctx, f, time);
   const pulse = 0.5 + 0.5 * Math.sin(time * 2.5);
   ctx.fillStyle = `rgba(255, 107, 53, ${0.08 + 0.06 * pulse})`;
   ctx.beginPath();
@@ -555,7 +557,8 @@ export function drawMarks(ctx, game, cam, time) {
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.lineDashOffset = 0;
-  if (f.kind === 'lighthouse') drawLighthouse(ctx, f, time);
+  if (f.kind === 'lighthouse') drawLighthouse(ctx, ...lighthouseLamp(f), time);
+  else if (f.kind === 'home') drawHome(ctx, f, time);
   else drawHarbor(ctx, f, time);
   ctx.fillStyle = C.signal;
   ctx.font = font(26, 800, undefined, true);
@@ -661,9 +664,10 @@ function drawHarbor(ctx, f, time) {
   ctx.restore();
 }
 
-function drawLighthouse(ctx, f, time) {
+function drawLighthouse(ctx, x, y, time, s = 1) {
   ctx.save();
-  ctx.translate(f.x + f.r * 0.55, f.y - f.r * 0.55);
+  ctx.translate(x, y);
+  ctx.scale(s, s);
   ctx.fillStyle = C.rock;
   ctx.beginPath();
   ctx.arc(0, 0, 14, 0, Math.PI * 2);
@@ -695,5 +699,137 @@ function drawLighthouse(ctx, f, time) {
 }
 
 export function lighthouseLamp(f) {
+  if (f.kind === 'home') {
+    const isle = homeIsle(f);
+    return [isle.x + isle.r * 0.42, isle.y - isle.r * 0.45];
+  }
   return [f.x + f.r * 0.55, f.y - f.r * 0.55];
+}
+
+// Home: a green isle on the far side of the harbor ring, the one the prologue
+// opens on. Where it sits, and how big.
+export function homeIsle(f) {
+  return { x: f.x + f.r * 0.32, y: f.y - f.r * 0.22, r: f.r * 0.56 };
+}
+
+// The isle with its beach, the lighthouse on the point, the cottage with a
+// light in the window, and a jetty out into the harbor where someone waits
+// with a lantern, waving.
+function drawHome(ctx, f, time) {
+  const { x, y, r } = homeIsle(f);
+  const shape = (k) => {
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const wob = 1 + 0.07 * Math.sin(a * 3 + 1) + 0.04 * Math.sin(a * 5);
+      ctx.lineTo(x + Math.cos(a) * r * k * wob, y + Math.sin(a) * r * k * wob * 0.9);
+    }
+    ctx.closePath();
+  };
+  // The jetty, from the beach out toward the middle of the ring.
+  const jx = x - r * 1.75;
+  const jy = y + r * 0.2;
+  ctx.fillStyle = '#7a5434';
+  ctx.fillRect(jx, jy - 3, x - r * 0.6 - jx, 6);
+  ctx.fillStyle = '#a77a4c';
+  for (let px = jx; px < x - r * 0.6; px += 4.5) ctx.fillRect(px, jy - 3, 3, 6);
+  // Surf, beach, grass.
+  shape(1.08);
+  ctx.strokeStyle = 'rgba(232, 244, 242, 0.7)';
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+  ctx.fillStyle = C.sand;
+  ctx.fill();
+  shape(0.78);
+  ctx.fillStyle = C.grass;
+  ctx.fill();
+  ctx.fillStyle = C.grassDark;
+  for (const [u, v, s] of [[-0.35, -0.42, 5], [0.05, 0.45, 4], [0.5, 0.2, 4.5], [-0.55, 0.25, 3.5]]) {
+    ctx.beginPath();
+    ctx.arc(x + u * r, y + v * r, s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The cottage: light spilling from the door, a red roof, smoke curling up.
+  const hx = x - r * 0.22;
+  const hy = y + r * 0.28;
+  const flicker = 0.85 + 0.15 * Math.sin(time * 7) * Math.sin(time * 3.1);
+  const glow = ctx.createRadialGradient(hx - 9, hy + 7, 0, hx - 9, hy + 7, 16);
+  glow.addColorStop(0, `rgba(255, 214, 120, ${(0.75 * flicker).toFixed(3)})`);
+  glow.addColorStop(1, 'rgba(255, 214, 120, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(hx - 9, hy + 7, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(-0.15);
+  ctx.fillStyle = 'rgba(20, 40, 10, 0.35)';
+  ctx.fillRect(-9, -4, 20, 14);
+  ctx.fillStyle = '#c0392b';
+  ctx.fillRect(-11, -8, 20, 8);
+  ctx.fillStyle = '#962a1e';
+  ctx.fillRect(-11, 0, 20, 8);
+  ctx.strokeStyle = '#6e1e14';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-11, 0);
+  ctx.lineTo(9, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#7a6a5a';
+  ctx.fillRect(3, -6.5, 3.4, 3.4);
+  ctx.fillStyle = '#ffd678';
+  ctx.fillRect(-12, 2, 1.6, 4);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(240, 240, 240, 0.5)';
+  for (let i = 0; i < 4; i++) {
+    const t = (time * 0.6 + i / 4) % 1;
+    ctx.beginPath();
+    ctx.arc(hx + 5 + t * 12, hy - 6 - t * 11, 1.5 + t * 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawLighthouse(ctx, ...lighthouseLamp(f), time, 0.7);
+  drawWaiting(ctx, jx + 2, jy, time);
+}
+
+// Someone at the end of the jetty, seen from above: a lantern held out, the
+// other arm waving.
+function drawWaiting(ctx, x, y, time) {
+  const glow = ctx.createRadialGradient(x - 4, y + 3, 0, x - 4, y + 3, 14);
+  const k = 0.8 + 0.2 * Math.sin(time * 9) * Math.sin(time * 4.3);
+  glow.addColorStop(0, `rgba(255, 220, 130, ${(0.85 * k).toFixed(3)})`);
+  glow.addColorStop(1, 'rgba(255, 220, 130, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x - 4, y + 3, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(0, 10, 18, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(1.2, 1.2, 3, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // The waving arm sweeps to and fro.
+  const wave = Math.sin(time * 6) * 0.6;
+  ctx.strokeStyle = '#3a7d6e';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0, -1.6);
+  ctx.lineTo(-2.2 + Math.cos(-1.9 + wave) * 4, -1.6 + Math.sin(-1.9 + wave) * 4);
+  ctx.moveTo(0, 1.6);
+  ctx.lineTo(-4, 3);
+  ctx.stroke();
+  ctx.fillStyle = '#3a7d6e';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 2.2, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#6b4a2e';
+  ctx.beginPath();
+  ctx.arc(0, 0, 1.7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff1b8';
+  ctx.beginPath();
+  ctx.arc(-4.4, 3.2, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }

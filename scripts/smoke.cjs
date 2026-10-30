@@ -37,14 +37,17 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   await tab.waitForSelector('section[aria-label="Prologue"].open');
   if ((await tab.evaluate(() => window.__boatify.state().mode)) !== 'film') throw new Error('no prologue on a first launch');
   await tab.waitForTimeout(1200);
-  await snap('00a-film-dawn');
+  await snap('00a-film-home');
   const caption = () => tab.evaluate(() => document.querySelector('.film-caption').textContent);
+  if (!(await caption()).includes('Home')) throw new Error(`the prologue opens on "${await caption()}"`);
   for (const [t, name, says] of [
-    [11.5, '00b-film-squall', 'squall'],
-    [15, '00c-film-oar-lost', 'took the oar'],
-    [26.5, '00d-film-irons', 'flaps'],
-    [33.5, '00e-film-reach', 'flies'],
-    [45.5, '00f-film-chart', 'fog'],
+    [7.5, '00a-film-dawn', 'row home'],
+    [17, '00b-film-squall', 'squall'],
+    [20.5, '00c-film-oar-lost', 'took the oar'],
+    [32, '00d-film-irons', 'flaps'],
+    [39, '00e-film-reach', 'flies'],
+    [44.5, '00f-film-chart', 'ten voyages'],
+    [51, '00f-film-dangers', 'fog'],
   ]) {
     await tab.evaluate((s) => window.__boatify.filmSeek(s), t);
     await tab.waitForTimeout(500);
@@ -54,7 +57,7 @@ const page = path.resolve(__dirname, '..', 'dist', 'index.html');
   }
   const reel = await tab.evaluate(() => window.__boatify.state().film);
   if (reel.oar !== 'adrift' || !reel.route) throw new Error(`prologue ${JSON.stringify(reel)}`);
-  await tab.evaluate(() => window.__boatify.filmSeek(49));
+  await tab.evaluate(() => window.__boatify.filmSeek(54.5));
   await tab.locator('.film-card.in').waitFor();
   await tab.waitForTimeout(1300);
   await snap('00g-film-title');

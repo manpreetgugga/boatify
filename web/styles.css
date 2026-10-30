@@ -415,6 +415,59 @@ button:focus-visible {
   color: var(--foam-dim);
 }
 
+.way-home {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent, var(--foam-faint));
+}
+
+.way-home p {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: calc(16px * var(--text, 1));
+  color: var(--foam-dim);
+}
+
+.way-home .track {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--foam-faint);
+}
+
+.way-home .track i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+
+.way-home .track i.on {
+  background: var(--accent, var(--signal));
+  border-color: var(--accent, var(--signal));
+}
+
+.way-home.made-it .track {
+  color: var(--signal);
+}
+
+.arrived {
+  flex: 1;
+}
+
+.homecoming {
+  margin: 2px 0 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: calc(15px * var(--text, 1));
+  color: var(--foam-dim);
+}
+
 .voyage-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

@@ -37,7 +37,7 @@ through signing up for Play Console and publishing.
 | Pause | Pause button or back | P or Esc |
 | Restart, mute, toggle trim | | R, M, T |
 
-- **The prologue.** The first time you launch, a short film tells the story: a calm dawn, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, until dolphins show the way across it and she flies), and last the chart from A to B with the reefs, whirlpools, squalls and the fog in between. Skip it any time, or watch it again from the title screen's Prologue button.
+- **The prologue.** The first time you launch, a short film tells the story: home, a lighthouse isle where someone waits, then you far out at dawn rowing for it, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, until dolphins show the way across it and she flies), and last the chart home, ten voyages away, with the reefs, whirlpools, squalls and the fog in between. Home Waters is that way home: its last voyage ends there. Skip it any time, or watch it again from the title screen's Prologue button.
 - **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the compass shows where the sail stops working.
 - **Beam reach is fastest.** Wind from the side gives the most speed; dead downwind is slower than you'd think.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".

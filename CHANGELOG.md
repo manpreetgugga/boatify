@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.30.0] - 2026-10-30
+
+A reason to sail: the way home.
+
+- **The prologue opens on home.** A small lighthouse isle at dawn: a cottage with smoke from the chimney, the lamp lit, and someone on the jetty with a lantern, waiting. Then it cuts to you far out at sea, rowing for it, before the squall takes your oar. The chart at the end marks home, ten voyages away, and the title card reads "Only the wind, and the way home."
+- **Home Waters is the way home.** Its panel counts down the voyages left, with a dot for each one sailed, and the last voyage, Pirate Waters, now ends at home itself, past Skull Rock.
+- **A homecoming.** Reach it and the results read "Home at last. The lamp was lit all along, and someone was waiting." Then the wider seas call, starting with Volcano Isles.
+- The briefing now says "Reach home at B" for that voyage, and Lost Oar and Into the Wind say where they really go: the first harbor and the lighthouse.
+
 ## [0.29.0] - 2026-10-29
 
 Quicker sailing.
