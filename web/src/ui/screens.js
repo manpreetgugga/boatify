@@ -35,6 +35,20 @@ import { t, N_, ordinal, shortDate, nameOf, blurbOf, LANGS, currentLang } from '
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+// The title keeps "How to sail" for the first few voyages; after that it lives
+// in Settings, with the prologue.
+export const HOWTO_ON_TITLE = 3;
+
+// The title's ways to sail, as small chips, and the rest of the menu as a dock
+// of icons. `label` is given escaped (it may hold markup); `name` reads it aloud.
+function chip(act, ic, label, fresh, name = '') {
+  return `<button class="btn small chip ${fresh ? 'fresh' : ''}" data-act="${act}"${name ? ` aria-label="${esc(name)}"` : ''}>${icon(ic, 18)}<span>${label}</span></button>`;
+}
+
+function tile(act, ic, label, fresh, name = '') {
+  return `<button class="dock-tile ${fresh ? 'fresh' : ''}" data-act="${act}"${name ? ` aria-label="${esc(name)}"` : ''}>${icon(ic, 22)}<span>${esc(label)}</span></button>`;
+}
+
 // The purse: coins and black pearls, as shown in a sheet's head or on the title.
 function wallet(save) {
   const w = save.wallet;
@@ -743,21 +757,22 @@ export function createUI(root, levels, handlers) {
           <div class="title-buttons">
             <button class="btn primary" data-act="play" data-autofocus>${save.stats.voyages ? t('Set sail') : t('Start voyage')}</button>
             <button class="btn" data-act="voyages">${t('Voyages')}</button>
-            <button class="btn" data-act="howto">${t('How to sail')}</button>
+            ${save.stats.voyages < HOWTO_ON_TITLE ? `<button class="btn" data-act="howto">${t('How to sail')}</button>` : ''}
           </div>
-          <div class="title-buttons">
-            ${orders ? `<button class="btn small ${orders.seen || orders.done.length === orders.picks.length ? '' : 'fresh'}" data-act="orders" aria-label="${t('Orders, {n} of {of} done', { n: orders.done.length, of: orders.picks.length })}">${t('Orders')} <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span></button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${sailedToday ? '' : 'fresh'}" data-act="daily">${fest ? esc(t('{fest} voyage', { fest: t(fest.name) })) : t('Daily voyage')}</button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${save.openSea.runs ? '' : 'fresh'}" data-act="sea">${t('Open Sea')}</button>` : ''}
-            ${dailyOpen ? `<button class="btn small ${save.regatta.races ? '' : 'fresh'}" data-act="regatta">${t('Regatta')}</button>` : ''}
-            <button class="btn small ${gearCount(save) > save.gearSeen ? 'fresh' : ''}" data-act="shipyard">${t('Shipyard')}</button>
-            <button class="btn small ${save.wallet.blackPearls && !save.sightings.shop ? 'fresh' : ''}" data-act="shop">${t('Shop')}</button>
-            <button class="btn small ${medalsEarned(save) > save.medalsSeen ? 'fresh' : ''}" data-act="medals">${t('Medals')}</button>
-            <button class="btn small ${atlasCount(save) > save.atlasSeen ? 'fresh' : ''}" data-act="atlas" aria-label="${t('Sea Atlas, {n} of {of}', { n: atlasCount(save), of: ATLAS_TOTAL })}">${t('Atlas')}</button>
-            <button class="btn small" data-act="logbook">${t('Logbook')}</button>
-            <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film">${t('Prologue')}</button>
-            <button class="btn small" data-act="settings">${t('Settings')}</button>
-          </div>
+          ${dailyOpen ? `<div class="title-modes">
+            ${chip('daily', 'sun', fest ? esc(t('{fest} voyage', { fest: t(fest.name) })) : t('Daily voyage'), !sailedToday)}
+            ${chip('sea', 'horizon', t('Open Sea'), !save.openSea.runs)}
+            ${chip('regatta', 'fleet', t('Regatta'), !save.regatta.races)}
+            ${orders ? chip('orders', 'bottle', `${t('Orders')} <span class="btn-tally">${orders.done.length}/${orders.picks.length}</span>`, !orders.seen && orders.done.length < orders.picks.length, t('Orders, {n} of {of} done', { n: orders.done.length, of: orders.picks.length })) : ''}
+          </div>` : ''}
+          <nav class="title-dock">
+            ${tile('shipyard', 'anchor', t('Shipyard'), gearCount(save) > save.gearSeen)}
+            ${tile('shop', 'chest', t('Shop'), save.wallet.blackPearls && !save.sightings.shop)}
+            ${tile('medals', 'trophy', t('Medals'), medalsEarned(save) > save.medalsSeen)}
+            ${tile('atlas', 'map', t('Atlas'), atlasCount(save) > save.atlasSeen, t('Sea Atlas, {n} of {of}', { n: atlasCount(save), of: ATLAS_TOTAL }))}
+            ${tile('logbook', 'book', t('Logbook'), false)}
+            ${tile('settings', 'gear', t('Settings'), !save.seenFilm)}
+          </nav>
           <div class="title-meta">${wallet(save)}<span>★ <b>${totalStars(save)}</b> / ${levels.length * 3}</span><span>${esc(voyageLabel(levels[resume].id) || t('Voyage {n}', { n: resume + 1 }))}</span><span>${t('Medals')} <b>${medalsEarned(save)}</b> / ${MEDALS.length}</span>${streak ? `<span>${t('Streak')} <b>${streak}</b></span>` : ''}<span>v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></div>
           ${harbor}
         </div>
@@ -1628,6 +1643,11 @@ export function createUI(root, levels, handlers) {
             <div class="setting"><span class="label"><b>${t('Cloud save')}</b><small>${t('Your progress is copied to the cloud as you sail')}</small></span>
               <span class="setting-buttons"><button class="btn small" data-act="cloud-load">${t('Load')}</button><button class="btn small" data-act="cloud-save">${t('Save')}</button></span></div>` : `<div class="setting"><span class="label"><b>${t('Leaderboards and cloud save')}</b><small>${t('Sign in with Google Play Games')}</small></span>
               <button class="btn small primary" data-act="games-in">${t('Sign in')}</button></div>`}` : ''}
+            <h3 class="setting-group">${t('Help')}</h3>
+            <div class="setting"><span class="label"><b>${t('How to sail')}</b><small>${t('Tacking, trim and gusts, step by step')}</small></span>
+              <button class="btn small" data-act="howto">${t('Open')}</button></div>
+            <div class="setting"><span class="label"><b>${t('Prologue')}</b><small>${t('The film of the squall that took your oar')}</small></span>
+              <button class="btn small ${save.seenFilm ? '' : 'fresh'}" data-act="film" aria-label="${t('Watch the prologue')}">${t('Watch')}</button></div>
             <h3 class="setting-group">${t('Progress')}</h3>
             <div class="setting"><span class="label"><b>${t('Backup code')}</b><small>${t('Move your progress to another phone')}</small></span>
               <button class="btn small" data-act="backup">${t('Show')}</button></div>
@@ -1667,6 +1687,8 @@ export function createUI(root, levels, handlers) {
       });
       click(node, '[data-act=share]', () => shareOut(shareText('game')));
       click(node, '[data-act=backup]', () => ui.backup(save));
+      click(node, '[data-act=howto]', () => ui.howto(save));
+      click(node, '[data-act=film]', () => handlers.onFilm());
       click(node, '[data-act=games-in]', () => handlers.onGamesSignIn());
       click(node, '[data-act=boards]', () => handlers.onLeaderboards());
       click(node, '[data-act=cloud-save]', async (e, b) => {

@@ -1901,4 +1901,8 @@ export const ID = {
   "Bring it here": "Bawa ke sini",
   "Keep this phone's": "Pakai yang di ponsel ini",
   "Show": "Buka",
+  "Help": "Bantuan",
+  "Tacking, trim and gusts, step by step": "Putar haluan, menyetel layar, dan embusan, langkah demi langkah",
+  "The film of the squall that took your oar": "Film badai yang merenggut dayungmu",
+  "Watch the prologue": "Tonton prolog",
 };

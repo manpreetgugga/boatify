@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-const DIR = new URL('../fastlane/metadata/android/', import.meta.url).pathname;
+const DIR = fileURLToPath(new URL('../fastlane/metadata/android/', import.meta.url));
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const [a, b, c] = pkg.version.split('.').map(Number);
 const CODE = a * 10000 + b * 100 + c;

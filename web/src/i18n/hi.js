@@ -1901,4 +1901,8 @@ export const HI = {
   "Bring it here": "यहाँ ले आओ",
   "Keep this phone's": "इसी फ़ोन की रखो",
   "Show": "खोलो",
+  "Help": "मदद",
+  "Tacking, trim and gusts, step by step": "मुड़ना, पाल सँभालना और झोंके, एक-एक कदम",
+  "The film of the squall that took your oar": "उस तूफ़ान की फ़िल्म जो तुम्हारा चप्पू ले गया",
+  "Watch the prologue": "प्रस्तावना देखो",
 };

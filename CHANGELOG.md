@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.41.1] - 2026-10-31
+
+A calmer title screen.
+
+- **Fewer buttons.** Set sail and Voyages stay big. The daily voyage, the Open Sea, the regatta and the orders share one row of small chips, each with an icon, once the daily voyage opens. The Shipyard, Shop, Medals, Atlas, Logbook and Settings are a row of icons with a word under each.
+- **Help moved to Settings.** How to sail stays on the title for your first three voyages, then lives in Settings under Help, with the Prologue.
+- Tests now read file paths the same way on Windows as on Linux.
+
 ## [0.41.0] - 2026-10-30
 
 Google Play Games: leaderboards and your progress in the cloud.

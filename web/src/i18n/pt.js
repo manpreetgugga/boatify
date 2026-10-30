@@ -1901,4 +1901,8 @@ export const PT = {
   "Bring it here": "Trazer para cá",
   "Keep this phone's": "Manter o deste celular",
   "Show": "Abrir",
+  "Help": "Ajuda",
+  "Tacking, trim and gusts, step by step": "Cambar, regular a vela e as rajadas, passo a passo",
+  "The film of the squall that took your oar": "O filme da borrasca que levou o seu remo",
+  "Watch the prologue": "Ver o prólogo",
 };

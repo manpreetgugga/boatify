@@ -1901,4 +1901,8 @@ export const ES = {
   "Bring it here": "Traerlo aquí",
   "Keep this phone's": "Quedarme con el de este teléfono",
   "Show": "Abrir",
+  "Help": "Ayuda",
+  "Tacking, trim and gusts, step by step": "Virar, ajustar la vela y las rachas, paso a paso",
+  "The film of the squall that took your oar": "La película de la borrasca que se llevó tu remo",
+  "Watch the prologue": "Ver el prólogo",
 };

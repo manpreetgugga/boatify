@@ -37,7 +37,7 @@ through signing up for Play Console and publishing.
 | Pause | Pause button or back | P or Esc |
 | Restart, mute, toggle trim | | R, M, T |
 
-- **The prologue.** The first time you launch, a short film tells the story: home, a lighthouse isle where someone waits, then you far out at dawn rowing for it, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, until dolphins show the way across it and she flies), and last the chart home, ten voyages away, with the reefs, whirlpools, squalls and the fog in between. Home Waters is that way home: its last voyage ends there. Skip it any time, or watch it again from the title screen's Prologue button.
+- **The prologue.** The first time you launch, a short film tells the story: home, a lighthouse isle where someone waits, then you far out at dawn rowing for it, a squall that takes your oar, then the wind showing what it does (head to wind the sail just flaps, until dolphins show the way across it and she flies), and last the chart home, ten voyages away, with the reefs, whirlpools, squalls and the fog in between. Home Waters is that way home: its last voyage ends there. Skip it any time, or watch it again from Settings → Help.
 - **The no-go zone.** You can't sail straight into the wind. The shaded wedge on the compass shows where the sail stops working.
 - **Beam reach is fastest.** Wind from the side gives the most speed; dead downwind is slower than you'd think.
 - **Zig-zag upwind.** Sail about 45° off the wind, then tack through it. Keep speed up or you'll stall "in irons".
@@ -84,7 +84,7 @@ through signing up for Play Console and publishing.
 9. **Drift Ice**: snow, icebergs and floes that drift across the channel.
 10. **Pirate Waters**: outsail a pirate brig, or lose it in the reef.
 
-Each voyage you haven't sailed yet has a line on its card hinting at what's out there, and the title screen passes on harbor talk about something you haven't found yet.
+Each voyage you haven't sailed yet has a line on its card hinting at what's out there, and the title screen passes on harbor talk about something you haven't found yet. The title keeps the menu short: Set sail and Voyages, a row of chips for the daily voyage, Open Sea, regatta and orders, and a dock of icons for the rest.
 
 Finish under the gold time for three stars. Collect pearls, gust jars, repair
 crates and messages in bottles along the way.

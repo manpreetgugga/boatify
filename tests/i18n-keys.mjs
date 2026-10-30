@@ -2,6 +2,7 @@
 // text passed to t() or marked N_() in the code, and the names, blurbs, tips
 // and lines kept in the game's data, which are put through t() when shown.
 
+import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import * as atlas from '../web/src/data/atlas.js';
@@ -24,7 +25,7 @@ import * as boat from '../web/src/physics/boat.js';
 import { beaufort } from '../web/src/physics/sailing.js';
 import { compassPoint } from '../web/src/core/math.js';
 
-const SRC = new URL('../web/src/', import.meta.url).pathname;
+const SRC = fileURLToPath(new URL('../web/src/', import.meta.url));
 
 // Fields of the data that are shown to the player.
 const SHOWN = new Set(['name', 'blurb', 'text', 'note', 'notes', 'line', 'lines', 'teaser', 'riddle', 'unit', 'title', 'tag', 'step', 'tip', 'tips', 'caption', 'legs', 'home', 'label', 'names']);
