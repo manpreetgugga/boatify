@@ -1,0 +1,1 @@
+Anonymous analytics and crash reports are now on, so we can see where voyages get too hard and fix crashes faster. You can turn them off in Settings.

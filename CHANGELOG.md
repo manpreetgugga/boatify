@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.43.1] - 2026-11-05
+
+Analytics and crash reports are switched on in the Google Play version.
+
+- **Firebase is set up.** The Play build now has its Firebase config, so the anonymous events and crash reports added in 0.42.0 are sent, and Settings shows the Analytics and crash reports switch. Nothing else changes: the same few events, the same consent rules, and the APK from the Releases page still sends nothing.
+
 ## [0.43.0] - 2026-10-31
 
 The game keeps itself up to date, and says who made it.
