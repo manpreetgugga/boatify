@@ -129,6 +129,35 @@ export function askReview() {
   }
 }
 
+// The game's page on Google Play, to rate it: the Play Store app on a phone,
+// the web page in a browser.
+export function openStore(link) {
+  try {
+    if (bridge && bridge.openStore) {
+      bridge.openStore();
+      return;
+    }
+    window.open(link, '_blank', 'noopener');
+  } catch {
+    // Nowhere to open it.
+  }
+}
+
+// An email to the developer, in the phone's mail app. The Android shell adds
+// the phone's Android version and model under the body, and shows `fallback`
+// when there's no mail app.
+export function sendFeedback(address, subject, body, fallback) {
+  try {
+    if (bridge && bridge.sendFeedback) {
+      bridge.sendFeedback(address, subject, body, fallback);
+      return;
+    }
+    window.location.href = `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  } catch {
+    // No mail, then.
+  }
+}
+
 // handlers: { back(): boolean, pause(), resume(), insets({top,right,bottom,left}), reminders(allowed), games(event), analytics(), update(info) }
 export function installNativeHooks(handlers) {
   window.BoatifyNative = {

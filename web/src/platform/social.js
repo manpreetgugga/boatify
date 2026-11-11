@@ -7,7 +7,16 @@ import { t, N_, ordinal } from '../i18n/index.js';
 
 export const PLAY_LINK = 'https://play.google.com/store/apps/details?id=io.github.manpreetgugga.boatify';
 
-const PITCH = N_('No Paddle, a sailing game where only the wind can carry you home.');
+// Settings → Send feedback writes here.
+export const FEEDBACK_EMAIL = 'manpreetsingh4501@gmail.com';
+
+// The feedback email's subject and the line under the player's words: the
+// version and language, so a bug report says where it happened.
+export function feedbackMail(version, lang) {
+  return { subject: 'No Paddle feedback', body: `\n\n\n---\nNo Paddle v${version || 'dev'} · ${lang}` };
+}
+
+const PITCH =N_('No Paddle, a sailing game where only the wind can carry you home.');
 
 // The text for a Share button. kind: 'game' (Settings), 'voyage', 'sea' or 'race'.
 export function shareText(kind, info = {}) {

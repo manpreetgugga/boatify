@@ -1,6 +1,6 @@
 // Google Play store art, made from the game itself: the 512 px icon (drawn
 // from the launcher icon's vector drawables), the 1024x500 feature graphic and
-// screenshots for phones and 7" and 10" tablets. Writes them into
+// captioned screenshots for phones and 7" and 10" tablets. Writes them into
 // fastlane/metadata/android/en-US/images/. Needs Playwright, like the smoke
 // test, and a fresh bundle: `npm run store-art` builds it first.
 //
@@ -58,6 +58,42 @@ async function sailTo(tab, level, time) {
   await tab.waitForTimeout(600);
 }
 
+// What each screenshot shows, over it on the store: a line in brass and a
+// headline. English only, like the rest of the store art.
+const CAPTIONS = {
+  '1-title': ['A sailing game', 'Your oar is gone. Sail home by the wind.'],
+  '2-prologue': ['The story', 'A squall took your oar. Now the wind is all you have.'],
+  '3-dolphins': ['Learn as you sail', 'Stuck head to wind? Dolphins show you the way.'],
+  '4-pirates': ['Pirate Waters', "Outsail the pirate brig. It can't sail into the wind."],
+  '5-kraken': ['Kraken Fog', 'Something sleeps under the boiling water.'],
+  '6-storm': ['Storm Front', 'Ride the gusts through squalls and lightning.'],
+  '7-ice': ['Drift Ice', 'Weave between the floes with the penguins.'],
+  '8-voyages': ['110 voyages in 11 worlds', 'A daily voyage, regattas and the endless Open Sea.'],
+};
+
+// The game's picture, a little smaller, on the deep sea with its caption above.
+async function framed(browser, shot, [eyebrow, headline], width, height) {
+  const frame = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 2 });
+  const band = Math.round(height * 0.19);
+  const h = height - band - Math.round(height * 0.04);
+  const w = Math.round((h * width) / height);
+  const fonts = path.join(root, 'web', 'fonts');
+  const font = (file, weight, style = 'normal') =>
+    `@font-face{font-family:'Barlow Condensed';font-weight:${weight};font-style:${style};src:url(data:font/woff2;base64,${fs.readFileSync(path.join(fonts, file)).toString('base64')})}`;
+  await frame.setContent(`<style>${font('barlow-condensed-700.woff2', 700)}${font('barlow-condensed-800i.woff2', 800, 'italic')}
+    html,body{margin:0;width:${width}px;height:${height}px;overflow:hidden;background:radial-gradient(ellipse at 50% 0%,#0f4c5c 0%,#0b2a3c 55%,#06141d 100%)}
+    .cap{position:absolute;left:0;right:0;top:0;height:${band}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${Math.round(band * 0.04)}px;font-family:'Barlow Condensed',sans-serif;text-align:center}
+    .eye{font-weight:700;font-size:${Math.round(band * 0.17)}px;letter-spacing:0.16em;text-transform:uppercase;color:#d9a441}
+    .head{font-weight:800;font-style:italic;font-size:${Math.round(band * 0.34)}px;line-height:1;color:#e8f4f2;text-shadow:0 2px 0 rgba(0,0,0,0.3)}
+    img{position:absolute;left:${Math.round((width - w) / 2)}px;top:${band}px;width:${w}px;height:${h}px;border-radius:${Math.round(height * 0.025)}px;box-shadow:0 8px 30px rgba(0,0,0,0.5),0 0 0 2px rgba(232,244,242,0.14)}</style>
+    <div class="cap"><div class="eye">${eyebrow}</div><div class="head">${headline}</div></div>
+    <img src="data:image/png;base64,${shot.toString('base64')}">`);
+  await frame.waitForFunction(() => document.querySelector('img').complete && document.fonts.status === 'loaded');
+  const out = await frame.screenshot({ type: 'jpeg', quality: 86 });
+  await frame.close();
+  return out;
+}
+
 const SHOTS = [
   ['1-title', async (tab) => tab.waitForTimeout(2500)],
   [
@@ -113,9 +149,10 @@ async function screenshots(browser, device) {
   for (const [name, setUp] of SHOTS) {
     const tab = await open(browser, width, height);
     await setUp(tab);
-    await tab.screenshot({ path: path.join(out, `${name}.jpg`), type: 'jpeg', quality: 82 });
+    const shot = await tab.screenshot({ type: 'png' });
     if (tab.errors.length) throw new Error(`${device} ${name}: ${tab.errors.join('; ')}`);
     await tab.context().close();
+    fs.writeFileSync(path.join(out, `${name}.jpg`), await framed(browser, shot, CAPTIONS[name], width, height));
     console.log(`- ${dir}/${name}.jpg`);
   }
 }
@@ -185,7 +222,7 @@ async function feature(browser) {
   const wanted = process.argv.slice(2);
   const want = (name) => !wanted.length || wanted.includes(name);
   fs.mkdirSync(images, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
   if (want('icon')) await icon(browser);
   if (want('feature')) await feature(browser);
   for (const device of Object.keys(DEVICES)) if (want(device)) await screenshots(browser, device);

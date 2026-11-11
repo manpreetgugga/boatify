@@ -1,0 +1,1 @@
+New in Settings: Rate No Paddle opens the game on Google Play, and Send feedback writes an email to the developer. Tell a friend is at the top too. On the title screen, the back button now asks before closing the game; you can turn that off in Settings.

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.44.0] - 2026-11-11
+
+Changes from the closed test's feedback.
+
+- **Rate, share and write to us from Settings.** A new Share and feedback group at the top of Settings: Tell a friend (the share sheet, as before), Rate No Paddle (opens the game's page in the Play Store) and Send feedback (an email to the developer in the phone's mail app, with the game's version, the Android version and the phone's model under it). Google Play's own rating box still only appears after a three-star finish, at most three times and a month apart.
+- **Back on the title asks first.** On Android, the back button on the title screen asks "Leave No Paddle?" (Leave or Stay) instead of closing at once. Back again, or Stay, keeps you in. Settings → Ask before closing turns the question off.
+- **Store screenshots with captions.** Each screenshot sits in a frame with a line saying what it shows: the dolphins that guide you, the pirate brig, the kraken, the storm, the ice and the 110 voyages.
+
 ## [0.43.1] - 2026-11-05
 
 Analytics and crash reports are switched on in the Google Play version.

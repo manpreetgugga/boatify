@@ -32,8 +32,8 @@ import { createUI, TEXT_SIZES } from './ui/screens.js';
 import { awardMedals } from './data/medals.js';
 import { boatLook, fittedGear } from './data/locker.js';
 import { loadSave, writeSave, recordResult, recordSeaRun, recordRace, resetProgress, restoreSave, loadGhost, storeGhost, markDaily, currentStreak, loadDailyCourse, storeDailyCourse, isDailyUnlocked, selectedBoat, unlockedBoats, nextZoom, nearestZoom, zoomName } from './platform/save.js';
-import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders, share, canReview, askReview, copyText, canPaste, pasteText } from './platform/native.js';
-import { reviewDue, markReview } from './platform/social.js';
+import { installNativeHooks, vibrate, exitApp, isAndroidApp, canRemind, setReminders, remindersAllowed, askReminders, share, canReview, askReview, copyText, canPaste, pasteText, openStore, sendFeedback } from './platform/native.js';
+import { reviewDue, markReview, PLAY_LINK, FEEDBACK_EMAIL, feedbackMail } from './platform/social.js';
 import { hasGames, gamesState, gamesEvent, onGamesChange, signIn as gamesSignIn, showLeaderboards, submitScore, cloudSave, cloudLoad, gameScores, newScores, cloudChoice, loadCloudMemo, storeCloudMemo, cloudDue } from './platform/games.js';
 import { backupCode, readBackup, summarize } from './platform/backup.js';
 import { REMINDER_TIMES, remindersFor, reminderTimes } from './data/reminders.js';
@@ -269,6 +269,12 @@ const ui = createUI(root, CAMPAIGN, {
     track('share', { what: mode === 'results' ? 'results' : 'game' });
     return share(text);
   },
+  onRate: () => openStore(PLAY_LINK),
+  onFeedback: () => {
+    const mail = feedbackMail(globalThis.BOATIFY_VERSION, currentLang());
+    sendFeedback(FEEDBACK_EMAIL, mail.subject, mail.body, t('No email app found. Write to {email}', { email: FEEDBACK_EMAIL }));
+  },
+  canExit: isAndroidApp,
   onReset: () => resetProgress(save),
   // Backup codes: copied out, pasted in, and a restored save starts the game afresh.
   onCopy: (text) => copyText(text),
@@ -1213,7 +1219,17 @@ function onBack() {
     ui.voyages(save);
     return true;
   }
-  return ui.back();
+  if (ui.back()) return true;
+  // On the title, Back closes the app: ask first, unless the player said not to.
+  if (!isAndroidApp || !save.settings.confirmExit) return false;
+  ui.confirm({
+    title: t('Leave No Paddle?'),
+    text: t('Your progress is saved. You can turn this question off in Settings.'),
+    ok: t('Leave'),
+    no: t('Stay'),
+    onOk: () => exitApp(),
+  });
+  return true;
 }
 
 installNativeHooks({

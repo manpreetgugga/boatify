@@ -1639,11 +1639,19 @@ export function createUI(root, levels, handlers) {
         <div class="sheet narrow">
           <div class="sheet-head"><h2>${t('Settings')}</h2><button class="btn small" data-act="back">${t('Back')}</button></div>
           <div class="sheet-body">
+            <h3 class="setting-group">${t('Share and feedback')}</h3>
+            <div class="setting"><span class="label"><b>${t('Tell a friend')}</b><small>${t('Send them the link to No Paddle')}</small></span>
+              <button class="btn small" data-act="share">${icon('share', 16)} ${t('Share')}</button></div>
+            <div class="setting"><span class="label"><b>${t('Rate No Paddle')}</b><small>${t('Stars and a review on Google Play help other sailors find it')}</small></span>
+              <button class="btn small" data-act="rate">${icon('star', 16)} ${t('Rate')}</button></div>
+            <div class="setting"><span class="label"><b>${t('Send feedback')}</b><small>${t('Ideas, bugs, anything: an email to the developer')}</small></span>
+              <button class="btn small" data-act="feedback">${icon('bottle', 16)} ${t('Write')}</button></div>
             <h3 class="setting-group">${t('Sound and feel')}</h3>
             ${toggle('sound', t('Sound effects'), '')}
             ${toggle('music', t('Music'), t('A quiet sea shanty-ish tune'))}
             ${toggle('vibration', t('Vibration'), t('Bumps, capsizes and pickups'))}
             ${handlers.canRemind ? toggle('reminders', t('Reminders'), t('A nudge from the harbor at {times}', { times: reminderTimes() })) : ''}
+            ${handlers.canExit ? toggle('confirmExit', t('Ask before closing'), t('The back button on the title screen checks first')) : ''}
             <h3 class="setting-group">${t('Sailing')}</h3>
             ${toggle('autoTrim', t('Trim the sail by hand'), t('For experienced sailors: W / S or the right-hand slider'), true)}
             ${toggle('leftHanded', t('Left-handed controls'), t('Steer on the right, gust button on the left'))}
@@ -1660,9 +1668,6 @@ export function createUI(root, levels, handlers) {
             ${ads().privacyRequired() ? `<h3 class="setting-group">${t('Privacy')}</h3>
             <div class="setting"><span class="label"><b>${t('Ad privacy')}</b><small>${t('Change what you agreed to for ads')}</small></span>
               <button class="btn small" data-act="privacy">${t('Options')}</button></div>` : ''}
-            <h3 class="setting-group">${t('Friends')}</h3>
-            <div class="setting"><span class="label"><b>${t('Tell a friend')}</b><small>${t('Send them the link to No Paddle')}</small></span>
-              <button class="btn small" data-act="share">${icon('share', 16)} ${t('Share')}</button></div>
             ${games ? `<h3 class="setting-group">${t('Google Play Games')}</h3>
             ${games.signedIn ? `<div class="setting"><span class="label"><b>${t('Leaderboards')}</b><small>${games.name ? t('Signed in as {name}', { name: esc(games.name) }) : t('Signed in')}</small></span>
               <button class="btn small" data-act="boards">${t('Show')}</button></div>
@@ -1715,6 +1720,8 @@ export function createUI(root, levels, handlers) {
         }
       });
       click(node, '[data-act=share]', () => shareOut(shareText('game')));
+      click(node, '[data-act=rate]', () => handlers.onRate());
+      click(node, '[data-act=feedback]', () => handlers.onFeedback());
       click(node, '[data-act=backup]', () => ui.backup(save));
       click(node, '[data-act=howto]', () => ui.howto(save));
       click(node, '[data-act=film]', () => handlers.onFilm());

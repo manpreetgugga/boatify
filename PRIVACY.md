@@ -1,6 +1,6 @@
 # Privacy policy
 
-_No Paddle (Android app `io.github.manpreetgugga.boatify`). Last updated 31 October 2026._
+_No Paddle (Android app `io.github.manpreetgugga.boatify`). Last updated 11 November 2026._
 
 No Paddle has no accounts of its own, and the developer never collects your name, email address, contacts or anything else that says who you are. The game itself is inside the app and works offline. It shows ads from **Google AdMob**, it can send **anonymous analytics and crash reports** through **Google Firebase** (you can turn this off), and if you choose to you can sign in to **Google Play Games**. These use the internet and are run by Google, as described below.
 
@@ -34,6 +34,10 @@ Google keeps the analytics for 2 months and crash reports for 90 days, on the de
 ## Updates
 
 The Google Play version asks **Google Play** whether a newer version is out, so it can offer to download it (Play's in-app updates). With Firebase in the build it also fetches one setting from **Firebase Remote Config**, the oldest version that may still be played, using the same random installation ID as above. Nothing about you or your game is sent for this, and it is fetched whether or not analytics is on, because it only decides whether to ask you to update.
+
+## Feedback emails
+
+Settings → Send feedback opens your own mail app with a message to the developer. Nothing is sent unless you send it. Under your words it adds the game's version and language, your Android version and your phone's model, so a bug report says where it happened; you can delete them before sending. The developer uses these emails only to answer you and improve the game.
 
 ## Google Play Games (optional)
 

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { loadSave } from '../web/src/platform/save.js';
 import { doubleOf, doublePay, payOut } from '../web/src/data/economy.js';
 import { setAdsProvider, watchVideo, videosLeft, REWARDS } from '../web/src/platform/ads.js';
-import { PLAY_LINK, shareText, REVIEW, reviewDue, markReview } from '../web/src/platform/social.js';
+import { PLAY_LINK, shareText, REVIEW, reviewDue, markReview, FEEDBACK_EMAIL, feedbackMail } from '../web/src/platform/social.js';
+import { readFileSync } from 'node:fs';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -89,4 +90,21 @@ test('the rating box waits for a few voyages and a three-star finish, a month ap
   markReview(save, now + 62 * DAY);
   assert.equal(save.review.asked, REVIEW.most);
   assert.equal(reviewDue(save, { stars: 3, finished: 50 }, now + 400 * DAY), false);
+});
+
+test('feedback goes to one address and says which version it came from', () => {
+  assert.match(FEEDBACK_EMAIL, /^[^@\s]+@[^@\s]+\.[a-z]+$/);
+  const mail = feedbackMail('0.44.0', 'hi');
+  assert.equal(mail.subject, 'No Paddle feedback');
+  assert.match(mail.body, /^\n+---\nNo Paddle v0\.44\.0 · hi$/, 'room to write first, then the version');
+  assert.match(feedbackMail(undefined, 'en').body, /vdev/);
+});
+
+test('Back on the title asks before closing, unless turned off', () => {
+  assert.equal(loadSave().settings.confirmExit, true);
+  const main = readFileSync(new URL('../web/src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /!isAndroidApp \|\| !save\.settings\.confirmExit\) return false/);
+  assert.match(main, /onOk: \(\) => exitApp\(\)/);
+  const kt = readFileSync(new URL('../android/app/src/main/java/io/github/manpreetgugga/boatify/MainActivity.kt', import.meta.url), 'utf8');
+  for (const fn of ['fun openStore()', 'fun sendFeedback(', 'market://details?id=']) assert.ok(kt.includes(fn), `the shell has ${fn}`);
 });

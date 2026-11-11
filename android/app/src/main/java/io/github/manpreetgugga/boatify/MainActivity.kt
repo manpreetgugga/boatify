@@ -23,6 +23,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import android.window.OnBackInvokedDispatcher
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -237,6 +238,38 @@ class MainActivity : Activity() {
         }
     }
 
+    // The game's page in the Play Store app, else on the web, to rate it.
+    private fun openStorePage() {
+        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+            .setPackage("com.android.vending")
+        try {
+            startActivity(market)
+        } catch (e: ActivityNotFoundException) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
+            } catch (e: ActivityNotFoundException) {
+                // No store and no browser.
+            }
+        }
+    }
+
+    // An email to the developer in the phone's mail app, with the version of
+    // Android and the phone's model under the player's words. With no mail
+    // app, the address goes on the clipboard and `fallback` says where to write.
+    private fun writeFeedback(address: String, subject: String, body: String, fallback: String) {
+        val device = "Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
+        val mail = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
+            .putExtra(Intent.EXTRA_EMAIL, arrayOf(address))
+            .putExtra(Intent.EXTRA_SUBJECT, subject)
+            .putExtra(Intent.EXTRA_TEXT, "$body\n$device")
+        try {
+            startActivity(mail)
+        } catch (e: ActivityNotFoundException) {
+            clipboard?.setPrimaryClip(ClipData.newPlainText("No Paddle feedback", address))
+            Toast.makeText(this, fallback, Toast.LENGTH_LONG).show()
+        }
+    }
+
     // Play's update screen closed: updated, or turned down.
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -315,6 +348,16 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun askReview() {
             runOnUiThread { askForReview() }
+        }
+
+        @JavascriptInterface
+        fun openStore() {
+            runOnUiThread { openStorePage() }
+        }
+
+        @JavascriptInterface
+        fun sendFeedback(address: String, subject: String, body: String, fallback: String) {
+            runOnUiThread { writeFeedback(address.take(200), subject.take(200), body.take(2000), fallback.take(300)) }
         }
 
         // Backup codes go out through the clipboard and come back the same way.
