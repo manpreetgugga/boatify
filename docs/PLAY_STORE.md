@@ -123,7 +123,7 @@ list). Answers for this game:
   and **Fraud prevention, security, and compliance**.
 - **Health apps:** the app has no health features.
 - **Closed testing:** the Google Group `testers-community@googlegroups.com`
-  (as for the other MSG Studios apps), all countries.
+  (as for the other Kpstn Studios apps), all countries.
 - **Government, financial, health and news apps:** No / none.
 
 ## 7. Store listing

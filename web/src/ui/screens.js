@@ -1686,7 +1686,7 @@ export function createUI(root, levels, handlers) {
               <button class="btn small" data-act="backup">${t('Show')}</button></div>
             <div class="setting"><span class="label"><b>${t('Reset progress')}</b><small>${t('Clears times, stars, medals and the logbook')}</small></span>
               <button class="btn small" data-act="reset">${t('Reset')}</button></div>
-            <p class="credit">${studioMark(20)}<span>${t('Made by {studio}', { studio: 'MSG Studios' })} · v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></p>
+            <p class="credit">${studioMark(20)}<span>${t('Made by {studio}', { studio: 'Kpstn Studios' })} · v${esc(globalThis.BOATIFY_VERSION || 'dev')}</span></p>
           </div>
         </div></section>`);
       click(node, '.toggle', (e, b) => {

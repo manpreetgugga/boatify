@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.44.1] - 2026-11-11
+
+The studio has a new name.
+
+- **Made by Kpstn Studios.** The foot of Settings now says "Made by Kpstn Studios", the studio's new name (it was MSG Studios). The mark next to it is unchanged.
+
 ## [0.44.0] - 2026-11-11
 
 Changes from the closed test's feedback.
