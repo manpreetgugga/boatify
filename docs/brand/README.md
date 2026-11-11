@@ -1,4 +1,10 @@
-# MSG Studios brand
+# Kpstn Studios brand
+
+The studio was renamed from MSG Studios to **Kpstn Studios** on 2026-11-11.
+The files below were drawn for the old name: the mark's hills are an m, and
+the wordmark and lockups spell "msg studios". Until new ones are drawn, use
+the mark on its own and write the name in text; don't use the wordmark,
+lockups or Play developer page images.
 
 The studio's logo files, first drawn on 2026-10-31. The full brand
 book (colours, type, voice and how to use the logo) is the **MSG Studios**
@@ -14,8 +20,8 @@ design system artifact on claude.ai; these are its source files.
 | `play-developer-header-4096x2304.png` | Play Console → Developer page → header image (4096 × 2304). |
 
 Colours: night `#10202B`, paper `#F4F6F3`, marigold `#F4A300`, lagoon
-`#0E6F6B`. Write the name **MSG Studios**. Keep a clear space of half the
+`#0E6F6B`. Write the name **Kpstn Studios**. Keep a clear space of half the
 mark's height around it; don't recolour, outline or stretch it.
 
 Inside No Paddle the studio appears once, at the foot of Settings: the mark and
-"Made by MSG Studios".
+"Made by Kpstn Studios".
