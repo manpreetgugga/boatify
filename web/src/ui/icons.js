@@ -58,7 +58,7 @@ export function icon(name, size = 24) {
 
 export const ICONS = Object.keys(PATHS);
 
-// The studio's mark (docs/brand, drawn when it was MSG Studios): two hills and the sun, in its own colours.
+// The Kpstn Studios mark (docs/brand): a stone peak with its capstone on top, in the studio's own colours.
 export function studioMark(size = 20) {
-  return `<svg class="studio-mark" viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true"><rect width="120" height="120" rx="30" fill="#10202B"/><path d="M32 88V62A14 14 0 0 1 60 62V88M60 62A14 14 0 0 1 88 62V88" fill="none" stroke="#F4F6F3" stroke-width="13" stroke-linecap="round"/><circle cx="60" cy="33" r="8.5" fill="#F4A300"/></svg>`;
+  return `<svg class="studio-mark" viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true"><rect width="120" height="120" rx="30" fill="#10202B"/><path d="M28 92L60 54L92 92" fill="none" stroke="#F4F6F3" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M60 24L72 38H48Z" fill="#F4A300" stroke="#F4A300" stroke-width="6" stroke-linejoin="round"/></svg>`;
 }

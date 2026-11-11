@@ -130,7 +130,7 @@ signing and `docs/PLAY_STORE.md` for Google Play.
 
 ## Credits
 
-No Paddle is made by **Kpstn Studios** (formerly MSG Studios). The logo and brand files are in
+No Paddle is made by **Kpstn Studios** (formerly MSG Studios). The studio's logo and brand files are in
 [docs/brand/](docs/brand/).
 
 Barlow and Barlow Condensed fonts by Jeremy Tribby, SIL Open Font License

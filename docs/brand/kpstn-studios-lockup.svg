@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 536 120" width="1072" height="240" role="img" aria-label="Kpstn Studios">
+  <rect width="120" height="120" rx="30" fill="#10202B"/>
+  <path d="M28 92L60 54L92 92" fill="none" stroke="#F4F6F3" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 24L72 38H48Z" fill="#F4A300" stroke="#F4A300" stroke-width="6" stroke-linejoin="round"/>
+  <g transform="translate(146 21.48) scale(1.15)">
+  <path d="M3.5 14V60M22.5 30L3.5 49M11 41.5L23.5 60M32.5 30V78M32.5 45A15 15 0 1 1 32.5 45.01M84.75 32.68A7.5 7.5 0 1 0 79 45A7.5 7.5 0 1 1 73.25 57.32M101.5 18V60M95.5 30H108.5M117.5 60V41A11 11 0 0 1 139.5 41V60M169.75 32.68A7.5 7.5 0 1 0 164 45A7.5 7.5 0 1 1 158.25 57.32M186.5 18V60M180.5 30H193.5M202.5 30V49A11 11 0 0 0 224.5 49M224.5 30V60M263.5 45A15 15 0 1 1 263.5 44.99M263.5 14V60M272.5 30V60M311.5 45A15 15 0 1 1 311.5 44.99M333.75 32.68A7.5 7.5 0 1 0 328 45A7.5 7.5 0 1 1 322.25 57.32" fill="none" stroke="#10202B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="272.5" cy="18.5" r="5" fill="#F4A300"/>
+  </g>
+</svg>

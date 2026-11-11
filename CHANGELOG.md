@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.44.2] - 2026-11-11
+
+The studio's new mark.
+
+- **The Kpstn Studios mark.** Next to "Made by Kpstn Studios" at the foot of Settings, the old m under a sun is now the studio's new mark: a stone peak with a marigold capstone on top. The logo files and Play developer page images in docs/brand are redrawn to match.
+
 ## [0.44.1] - 2026-11-11
 
 The studio has a new name.
