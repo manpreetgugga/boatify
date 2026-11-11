@@ -65,10 +65,31 @@ This is handled by Google under your Google account and Google's privacy policy:
 
 The game is not directed at children under 13, and the developer does not knowingly collect information from anyone.
 
+## Who is responsible, and why the data is used
+
+The game is published by Gugga Manpreet Singh Karamveer, an individual trading as **Kpstn Studios**, Pune, India, who is responsible (the "controller") for the information described here. Contact details are under Contact below.
+
+In the European Economic Area, the UK and Switzerland, the legal bases for using this information are:
+
+- **Ads**, and whether they are personalised: your consent, given on Google's consent form.
+- **Analytics and crash reports**: your consent. They stay off until you agree on the consent form or turn them on in Settings.
+- **Google Play Games**: providing what you asked for, when you choose to sign in.
+- **Feedback emails**: answering you, because you wrote to us.
+- **Update check** (the oldest version that may still be played): our legitimate interest in keeping the game working.
+
+Google may process this information on servers outside your country, including in the United States, using approved safeguards such as the European Commission's Standard Contractual Clauses.
+
+## Your rights
+
+Depending on where you live (for example under the GDPR, the UK GDPR or California law), you can ask to access, correct or delete information about you, to get a copy of it, or to object to or restrict its use, and you can withdraw your consent at any time in the game's settings without affecting what was done before. Because the developer doesn't know who you are, the quickest steps are the game's settings described above, resetting your advertising ID, or uninstalling the game. For anything else, contact us and we will reply within 30 days. In the EEA or the UK you can also complain to your local data protection authority.
+
+- **India (Digital Personal Data Protection Act, 2023):** for questions or grievances about your personal data, our grievance contact is Gugga Manpreet Singh Karamveer, at the developer email shown on the game's Google Play page. We respond within 30 days.
+- **United States:** we do not sell your personal information. Personalised ads from Google AdMob can count as "sharing" under some state laws; you can stop them by deleting your advertising ID in your phone's settings.
+
 ## Changes
 
 If this policy changes, the new version will be posted here with a new date.
 
 ## Contact
 
-Questions about this policy: open an issue at <https://github.com/manpreetgugga/boatify/issues>.
+Questions about this policy: open an issue at <https://github.com/manpreetgugga/boatify/issues>, or, for a private request, use the developer email shown on the game's Google Play page.
