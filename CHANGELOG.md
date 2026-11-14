@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.44.3] - 2026-11-14
+
+Up-to-date Android libraries, ahead of the Google Play launch.
+
+- **Current androidx libraries.** Google Play services brought in androidx.activity 1.0.0 and androidx.fragment 1.1.0, which Play Console flags as outdated SDKs. The app now asks for activity 1.12.4 and fragment 1.8.9, which also lifts androidx.core to 1.16.0 and savedstate, collection, annotation, tracing and profileinstaller with it. Nothing changes in play.
+
 ## [0.44.2] - 2026-11-11
 
 The studio's new mark.

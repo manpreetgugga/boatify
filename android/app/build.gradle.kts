@@ -164,6 +164,10 @@ androidComponents {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.webkit:webkit:1.12.1")
+    // Play services bring in activity 1.0.0 and fragment 1.1.0, which Play
+    // Console flags as outdated SDKs; these pins lift both to current versions.
+    implementation("androidx.activity:activity:1.12.4")
+    implementation("androidx.fragment:fragment:1.8.9")
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.google.android.play:review:2.0.2")
