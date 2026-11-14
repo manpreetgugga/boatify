@@ -22,3 +22,10 @@ google-services.json
 
 # Local playtest output
 playtest/
+
+# IDE settings
+.idea/
+
+# Rendered marketing output (rebuilt by marketing/reels/make_reels.py and make_audio.py)
+marketing/reels/out/
+marketing/reels/_stills-*.png
