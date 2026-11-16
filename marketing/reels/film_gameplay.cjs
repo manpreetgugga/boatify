@@ -143,7 +143,9 @@ const SCENES = {
   // Into the Wind: home is dead upwind, so the autopilot zig-zags.
   tack: { seconds: 16, follow: 0.8, setUp: (tab) => sailTo(tab, 2, 6) },
   // Pirate Waters: the brig on your tail, cannonballs landing in red rings.
-  pirates: { seconds: 11, follow: 0.45, setUp: (tab) => sailTo(tab, 9, 52) },
+  // On the Normal view, with the window on the camera's centre (which leans
+  // toward the brig as it closes), so both boats fit under the words.
+  pirates: { seconds: 11, follow: 0, low: 0.62, zoom: 1, setUp: (tab) => sailTo(tab, 9, 52) },
   // Storm Front: rain, squalls and a lightning strike.
   storm: { seconds: 4, follow: 0.8, setUp: (tab) => sailTo(tab, 6, 40) },
   // Kraken Fog: hove to right over the lair as the water boils.
