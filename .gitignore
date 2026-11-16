@@ -29,3 +29,4 @@ playtest/
 # Rendered marketing output (rebuilt by marketing/reels/make_reels.py and make_audio.py)
 marketing/reels/out/
 marketing/reels/_stills-*.png
+marketing/reels/__pycache__/

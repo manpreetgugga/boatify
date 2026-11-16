@@ -1,3 +1,68 @@
+BIO
+Paste in the profile's bio and its link field.
+
+⛵ No Paddle: Sail by the Wind
+Out now, free on Google Play 👇
+https://play.google.com/store/apps/details?id=io.github.manpreetgugga.boatify&referrer=utm_source%3Dinstagram%26utm_medium%3Dbio
+
+(The referrer part is optional: it makes the installs from the bio show up as
+"instagram" in Play Console's store listing acquisition report. Use
+utm_source%3Dyoutube, %3Dfacebook and so on for other profiles.)
+
+
+LAUNCH REELS - out/launch-<name>.mp4, real gameplay (make_launch_reels.py)
+Each has a different hook; post one every day or two and keep the one that
+does best for later. Cover: out/launch-<name>-cover.jpg (the hook frame).
+
+--- 1. out/launch-oar.mp4
+
+Your oar's gone. Now what? 🌬️⛵
+In No Paddle the wind is your only engine. Point into it and you stop dead, so you learn to read it… with a little help from the dolphins 🐬
+Out now, free on Google Play. Link in bio 🔗
+Would you make it home? 👇
+
+#NoPaddle #SailingGame #AndroidGames #IndieGame #MobileGame #Gamedev #Sailing #OutNow #KpstnStudios
+
+--- 2. out/launch-upwind.mp4
+
+You can't sail straight into the wind. So how do you get home when it's dead ahead? ⛵
+Zig-zag. Sailors call it tacking, and in No Paddle you'll be doing it through storms, reefs and whirlpools.
+Out now, free on Google Play. Link in bio 🔗
+Did you know this one? 👇
+
+#NoPaddle #Sailing #LearnToSail #SailingGame #AndroidGames #IndieGame #MobileGame #Gamedev #OutNow
+
+--- 3. out/launch-pirates.mp4
+
+No engine. No oar. And a pirate brig on your tail 🏴‍☠️
+Their ship can't sail into the wind. Yours can. Use it.
+No Paddle is out now, free on Google Play. Link in bio 🔗
+Run or fight? (You can't fight.) 👇
+
+#NoPaddle #Pirates #PirateGame #SailingGame #AndroidGames #IndieGame #MobileGame #Gamedev #OutNow
+
+--- 4. out/launch-worlds.mp4
+
+This sailing game gets weird 👀
+110 voyages across 11 worlds: volcanoes, a harbor city, an alien sea, a dino lagoon, a sunken city, a ghost sea, a toy bay, a sea in the sky… and not one paddle.
+Out now, free on Google Play. Link in bio 🔗
+Which world are you sailing to first? 👇
+
+#NoPaddle #SailingGame #AndroidGames #IndieGame #MobileGame #Gamedev #CozyGames #OutNow #KpstnStudios
+
+--- 5. out/launch-kraken.mp4
+
+Rule one: don't stop over the bubbles 🫧🐙
+Rule two: the penguins are always fine 🐧
+No Paddle, a sailing game where only the wind gets you home. Out now, free on Google Play. Link in bio 🔗
+Tag the friend who'd stop over the bubbles 👇
+
+#NoPaddle #Kraken #SailingGame #AndroidGames #IndieGame #MobileGame #Gamedev #OutNow #KpstnStudios
+
+Where a link works in the post itself (YouTube Shorts, Facebook), add:
+https://play.google.com/store/apps/details?id=io.github.manpreetgugga.boatify
+
+
 TEASER - out/teaser.mp4  (launch post: No Paddle is out on Google Play; cover: out/teaser-cover.png)
 
 A squall took your oar. Now only the wind can carry you home.
