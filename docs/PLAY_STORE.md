@@ -8,6 +8,13 @@ signed in to your own Google account. Never give anyone your password.
 Plan on about three weeks: a few days for Google to check your identity, then
 14 days of closed testing before you can publish to everyone.
 
+**Status:** done. No Paddle passed its closed test and has been live on the
+production track since November 2026:
+<https://play.google.com/store/apps/details?id=io.github.manpreetgugga.boatify>.
+Steps 1 to 8 are kept as a record and for the next app. For new versions, see
+[Each new version](#each-new-version) and
+[Releasing to production](#releasing-to-production).
+
 ## What you need
 
 - A Google account (a new one just for publishing is a good idea).
@@ -172,7 +179,39 @@ everyone.
    1.2.3 is 10203.
 3. Push. CI publishes the release with the APK and the `.aab`.
 4. In Play Console, create a release on your track and upload the `.aab`, or
-   let GitHub do it (below).
+   let GitHub do it (below). Players only get it once it's on **Production**.
+
+## Releasing to production
+
+Players get a new version from the production track only. There are two ways
+to get it there:
+
+- **Through testing first (the default).** CI uploads each new version to the
+  closed testing track (`alpha`). Install it from the testers' opt-in link and
+  play it; when it's good, Play Console → **Test and release → Testing →
+  Closed testing → Releases → Promote release → Production**, give it a
+  rollout percentage, and send it for review.
+- **Straight to production.** Let CI upload there itself:
+  1. Play Console → **Users and permissions**, open the service account
+     (`…@….iam.gserviceaccount.com`), **App permissions → No Paddle** and tick
+     **Release to production, exclude devices, and use Play App Signing** too.
+     Save.
+  2. On GitHub, set the repository variable `PLAY_TRACK` to `production`
+     (**Settings → Secrets and variables → Actions → Variables**).
+
+  From then on each new version on `main` goes to every player once Google's
+  review passes, with no test step in between. Delete the variable to go back
+  to the closed track.
+
+Either way, Google reviews every production release (usually hours, up to a
+few days), and the version code must be higher than the last one on Play.
+CI's uploads go out to everyone at once; promoting by hand lets you start at,
+say, 20% and raise it once the crash reports look clean. A bad version can be
+stopped in Play Console with **Production → Releases → Halt rollout**, so it
+reaches no more phones; then fix it and ship a new version code. Play never
+moves players back to an older version code.
+
+To force everyone onto the fixed version, see [In-app updates](#in-app-updates).
 
 ## Let GitHub upload to Play
 
@@ -200,7 +239,8 @@ notes, sent for Google's review. Set it up once:
 5. **Pick the track** (optional). CI uploads to `alpha`, the id of Play's
    built-in closed testing track. For another track, add a repository
    *variable* (the **Variables** tab) `PLAY_TRACK` with its id: `beta`,
-   `production`, or the name of a closed track you created.
+   `production` (see [Releasing to production](#releasing-to-production)),
+   or the name of a closed track you created.
 
 From then on every push to `main` with a new version uploads its bundle. To
 upload the version already released (if it isn't on Play yet): **Actions →

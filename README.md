@@ -15,17 +15,26 @@ capsizing, sinking on a reef or getting dragged into a whirlpool.
 
 ## Download
 
-Every version is published as a pre-release on the
-[Releases page](https://github.com/manpreetgugga/boatify/releases) with a signed
-APK. Download `no-paddle-vX.Y.Z.apk` on your phone, open it and allow installing
-from that source. Android 8.0 or newer.
+**[Get No Paddle on Google Play](https://play.google.com/store/apps/details?id=io.github.manpreetgugga.boatify)**:
+free, Android 8.0 or newer. Play keeps it up to date, and it's the only build
+with Google Play Games, cloud save and real ads.
 
 ### Google Play
 
-The store listing (text, icon, feature graphic and screenshots) is in
-`fastlane/metadata/android/en-US/`, and the privacy policy is
-[PRIVACY.md](PRIVACY.md). [docs/PLAY_STORE.md](docs/PLAY_STORE.md) walks
-through signing up for Play Console and publishing.
+No Paddle is live on Google Play's production track. The store listing (text,
+icon, feature graphic and screenshots) is in `fastlane/metadata/android/`, one
+folder per language, and the privacy policy is [PRIVACY.md](PRIVACY.md).
+[docs/PLAY_STORE.md](docs/PLAY_STORE.md) covers how it got there and how each
+new version is released.
+
+### APK
+
+Every version is also published as a pre-release on the
+[Releases page](https://github.com/manpreetgugga/boatify/releases) with a signed
+APK. Download `no-paddle-vX.Y.Z.apk` on your phone, open it and allow installing
+from that source. It is signed with a different key from the Play version, so
+the two can't install over each other: to switch, uninstall first and carry
+your progress across with Settings → Backup code.
 
 ## How to play
 

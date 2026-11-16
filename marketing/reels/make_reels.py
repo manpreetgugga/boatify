@@ -403,7 +403,7 @@ def reel_teaser(t):
         word_stack(c, t, TL.HOOK, TL.HOOK_START, TL.HOOK_STEP, TL.HOOK_END)
     if TL.CAROUSEL_START - 0.05 <= t < TL.END_START + 0.6:
         carousel(c, t, FEATURES, TL.CAROUSEL_START, TL.SEG, exit_at=TL.CAROUSEL_EXIT)
-    end_card(c, t, TL.END_START, "Coming soon on Google Play")
+    end_card(c, t, TL.END_START, "Out now on Google Play")
     return c.convert("RGB")
 
 

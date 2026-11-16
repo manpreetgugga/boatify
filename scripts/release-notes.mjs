@@ -1,6 +1,7 @@
 // Prints the CHANGELOG section for a version, plus install notes, for a GitHub release.
 // --bundle notes the Google Play bundle attached beside the APK.
 import { readFileSync } from 'node:fs';
+import { PLAY_LINK } from '../web/src/platform/social.js';
 
 const version = process.argv[2];
 const bundle = process.argv.includes('--bundle');
@@ -16,7 +17,9 @@ console.log(`${section}
 
 ---
 
-**Install on Android:** download \`no-paddle-v${version}.apk\` below on your phone, open it and allow installing from this source. Android 8.0 or newer. Releases are signed with the same development key, so a new version installs over the old one and keeps your progress.${
+**Get it on Google Play:** ${PLAY_LINK} (Play can take a few days to offer a new version).
+
+**Install the APK instead:** download \`no-paddle-v${version}.apk\` below on your phone, open it and allow installing from this source. Android 8.0 or newer. Releases are signed with the same development key, so a new version installs over the old one and keeps your progress. It won't install over the Play version (a different key): uninstall that first, after copying Settings → Backup code to bring your progress across.${
   bundle
     ? `\n\n\`no-paddle-v${version}.aab\` is the same build for the Google Play Console, signed with the upload key. Phones can't install it.`
     : ''
