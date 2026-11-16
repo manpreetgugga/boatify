@@ -129,8 +129,7 @@ REELS = {
             ("ice", 0.4, cut(9), 1.0, 1.06),
         ],
         words=[
-            (0.0, cut(3), "Rule one:", "line"),
-            (cut(1), cut(5), "don't stop over\nthe [bubbles].", "hook"),
+            (0.0, cut(5), "Rule one: don't\nstop over the\n[bubbles].", "hook"),
             (cut(5), cut(9), "…too [late].", "hook"),
             (cut(9), cut(15), "Or just sail\nwith the [penguins].", "hook"),
         ],
